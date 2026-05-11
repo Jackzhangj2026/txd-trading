@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — TXD CO., LTD PP Hollow Board & Packaging Solutions</title>
+<meta name="description" content="Expert insights on PP hollow sheets, corrugated plastic boxes, packaging solutions, and global trade tips from TXD CO., LTD.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .post-list.empty { text-align: center; padding: 3rem 0; color: #666; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-logo">TXD<span> CO., LTD</span></a>
+  <ul class="nav-links">
+    <li><a href="../index.html">Home</a></li>
+    <li><a href="../index.html#products">Products</a></li>
+    <li><a href="../index.html#services">Services</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<div class="blog-header">
+  <div class="container">
+    <h1>TXD CO., LTD Blog</h1>
+    <p>Expert insights on PP hollow boards, packaging solutions, and global trade</p>
+  </div>
+</div>
+
+<section class="post-list">
+  <div class="container" id="postContainer">
+    <!-- Posts will be listed here -->
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2026 <a href="../index.html">TXD CO., LTD</a>. All rights reserved.</p>
+</footer>
+
+<script>
+// Blog post registry — auto-generated. Each post is an object.
+const posts = [
+  {
+    title: "PP Hollow Sheet Applications in Automotive Packaging",
+    date: "2026-05-11",
+    url: "pp-hollow-sheet-applications-automotive-packaging.html",
+    excerpt: "Explore how PP hollow sheets are revolutionizing automotive packaging with lightweight, durable, and reusable solutions for global supply chains.",
+    tags: ["automotive", "PP hollow sheet", "packaging solutions"]
+  },
+];
+
+const container = document.getElementById('postContainer');
+
+if (posts.length === 0) {
+  container.innerHTML = '<div class="post-list empty"><p>No posts yet. Check back soon!</p></div>';
+} else {
+  // Sort by date descending
+  posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  let html = '';
+  for (const post of posts) {
+    const tagsHtml = post.tags.map(t => `<span class="tag">${t}</span>`).join('');
+    html += `
+      <a href="${post.url}" class="post-card">
+        <div class="date">${post.date}</div>
+        <h2>${post.title}</h2>
+        <div class="excerpt">${post.excerpt}</div>
+        <div class="tags">${tagsHtml}</div>
+      </a>
+    `;
+  }
+  container.innerHTML = html;
+}
+</script>
+</body>
+</html>

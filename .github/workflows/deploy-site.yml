@@ -1,0 +1,241 @@
+name: Deploy Website & Auto SEO Blog
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'   # Daily at 10:00 Beijing time (2:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate daily SEO blog post (HTML)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -e
+
+          # ─── 10 rotating topics ───
+          TOPICS=(
+            "PP Hollow Sheet Applications in Automotive Packaging"
+            "Why Choose Corrugated Plastic Boxes Over Cardboard for Logistics"
+            "ESD Protection: Anti-Static PP Sheets for Electronics"
+            "Cost Comparison: PP Hollow Board vs Wood vs Cardboard"
+            "Custom PP Box Design Guide for International Buyers"
+            "PP Hollow Sheet Thickness Guide: 2mm to 12mm Explained"
+            "How to Choose the Right Packaging Material for Global Logistics"
+            "Environmental Benefits of Recyclable PP Packaging Solutions"
+            "PP Hollow Board for Agriculture: Greenhouse and Produce Boxes"
+            "Quality Standards for PP Hollow Sheet Manufacturing and Export"
+          )
+
+          TOPIC_TAGS=(
+            "automotive,PP hollow sheet,packaging"
+            "logistics,corrugated plastic,boxes"
+            "ESD,electronics,anti-static"
+            "cost comparison,PP hollow board,packaging"
+            "custom boxes,PP box,export"
+            "thickness guide,PP sheet,specifications"
+            "packaging material,logistics,guide"
+            "recyclable,environmental,PP packaging"
+            "agriculture,greenhouse,produce boxes"
+            "quality standards,manufacturing,export"
+          )
+
+          mkdir -p blog
+
+          DAY_OF_MONTH=$(date +%d)
+          INDEX=$(( (10#$DAY_OF_MONTH) % ${#TOPICS[@]} ))
+          TOPIC="${TOPICS[$INDEX]}"
+          TAGS="${TOPIC_TAGS[$INDEX]}"
+          DATE=$(date +%Y-%m-%d)
+          DISPLAY_DATE=$(date +"%B %d, %Y")
+          SLUG=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
+          FILENAME="blog/${SLUG}.html"
+
+          # Check if this topic already exists
+          if grep -q "$SLUG" blog/index.html 2>/dev/null; then
+            echo "Topic already published today — skipping."
+            exit 0
+          fi
+
+          # Escape TOPIC for use in sed
+          TOPIC_ESC=$(echo "$TOPIC" | sed 's/[&/\]/\\&/g')
+
+          # ─── Generate HTML blog post ───
+          cat > "$FILENAME" << BLOGEOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${TOPIC} - TXD CO., LTD Blog</title>
+<meta name="description" content="Expert insights on ${TOPIC} from TXD CO., LTD Trading's manufacturing team.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-logo">TXD<span> CO., LTD</span></a>
+  <ul class="nav-links">
+    <li><a href="../index.html">Home</a></li>
+    <li><a href="../index.html#products">Products</a></li>
+    <li><a href="../index.html#services">Services</a></li>
+    <li><a href="index.html">Blog</a></li>
+  </ul>
+</nav>
+
+<article class="post-article">
+  <div class="container">
+
+    <a href="index.html" class="back-link">&larr; Back to Blog</a>
+
+    <h1>${TOPIC}</h1>
+    <div class="post-meta">Published: ${DISPLAY_DATE} | Reading time: 5 minutes</div>
+
+    <h2>Introduction</h2>
+    <p>
+      At <strong>TXD CO., LTD Trading</strong>, we specialize in manufacturing and exporting high-quality
+      PP hollow sheets and custom corrugated boxes. In this article, we explore
+      important considerations around <strong>${TOPIC_LOWER}</strong> — a topic of growing
+      importance for global buyers in the packaging and logistics industry.
+    </p>
+    <p>
+      Whether you are an importer, distributor, or manufacturer looking to optimize your
+      supply chain, understanding the options available can help you make better purchasing
+      decisions and reduce total packaging costs.
+    </p>
+
+    <h2>Key Considerations</h2>
+
+    <h3>1. Material Selection</h3>
+    <p>
+      Choosing the right PP hollow board depends on several factors including
+      thickness, density, color, and additive requirements. For most industrial
+      applications, a 4-5mm sheet provides the best balance of strength and weight.
+      For heavy-duty applications, 8-12mm sheets offer superior impact resistance.
+    </p>
+
+    <h3>2. Quality Assurance</h3>
+    <p>
+      All our products undergo rigorous quality control to ensure consistency:
+    </p>
+    <ul>
+      <li>Thickness tolerance: &plusmn;0.2mm</li>
+      <li>Surface finish inspection</li>
+      <li>Impact resistance testing</li>
+      <li>UV stability verification</li>
+      <li>Color consistency checks</li>
+    </ul>
+
+    <h3>3. Custom Manufacturing</h3>
+    <p>
+      We offer comprehensive customization options to meet your exact requirements:
+    </p>
+    <ul>
+      <li>Custom sizes and thicknesses</li>
+      <li>Full RAL color matching</li>
+      <li>Die-cutting and precision fabrication</li>
+      <li>Printing and branding</li>
+      <li>ESD and conductive material grades</li>
+    </ul>
+
+    <h3>4. Export & Logistics</h3>
+    <p>
+      With shipping experience to over 30 countries, we handle all aspects of
+      international trade. Our logistics team coordinates sea freight, air freight,
+      and rail transport with full documentation support including:
+    </p>
+    <ul>
+      <li>Commercial invoices and packing lists</li>
+      <li>Certificates of origin</li>
+      <li>Bill of lading</li>
+      <li>Insurance documentation</li>
+      <li>Customs clearance support</li>
+    </ul>
+
+    <h2>Why Choose TXD CO., LTD?</h2>
+    <ul>
+      <li><strong>Direct manufacturer pricing</strong> — no middlemen markups</li>
+      <li><strong>Custom specifications</strong> — thickness, color, size, printing</li>
+      <li><strong>Quality certified</strong> — ISO 9001 compliant production</li>
+      <li><strong>Global logistics</strong> — sea, air, and rail freight options</li>
+      <li><strong>Quick response</strong> — quotes within 24 hours</li>
+    </ul>
+
+    <div class="cta-box">
+      <p><strong>Interested in ${TOPIC_LOWER}?</strong></p>
+      <p>Contact our sales team for a competitive quote within 24 hours.</p>
+      <a href="../index.html#contact" class="btn">Request a Quote</a>
+    </div>
+
+    <hr>
+    <p style="color:#555;font-size:0.82rem;">
+      <em>TXD CO., LTD Trading Co. — Your trusted PP hollow board partner since 2015.</em>
+    </p>
+  </div>
+</article>
+
+<footer>
+  <p>&copy; 2026 <a href="../index.html">TXD CO., LTD Trading</a>. All rights reserved. | <a href="index.html">Blog</a></p>
+</footer>
+
+</body>
+</html>
+BLOGEOF
+
+          echo "✓ Generated: $FILENAME"
+
+          # ─── Register in blog/index.html ───
+          # Insert the new post entry into the JavaScript array
+          EXCERPT="Expert insights on $(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' ) from TXD CO., LTD Trading's manufacturing team."
+          # Build a tags array from the comma-separated tag string
+          TAG_ENTRY=""
+          IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
+          for tag in "${TAG_ARRAY[@]}"; do
+            TRIMTAG=$(echo "$tag" | xargs)
+            if [ -z "$TAG_ENTRY" ]; then
+              TAG_ENTRY="\"$TRIMTAG\""
+            else
+              TAG_ENTRY="$TAG_ENTRY, \"$TRIMTAG\""
+            fi
+          done
+
+          # Find the posts array in blog/index.html and insert before the closing bracket
+          POST_ENTRY="    title: \"${TOPIC}\",\n    date: \"${DATE}\",\n    url: \"${SLUG}.html\",\n    excerpt: \"${EXCERPT}\",\n    tags: [${TAG_ENTRY}]\n  },\n];"
+          # Replace the closing "];" at the end of the posts array
+          sed -i 's/^];$/  {\n  '"${POST_ENTRY}"'/' blog/index.html
+
+          echo "✓ Registered in blog index"
+          echo "---"
+          echo "Topic:  $TOPIC"
+          echo "File:   $FILENAME"
+          echo "Tags:   $TAGS"
+
+      - name: Build static site
+        run: |
+          echo "Site structure:"
+          ls -la
+          echo ""
+          echo "Blog posts:"
+          ls -la blog/*.html 2>/dev/null || echo "No blog posts yet"
+          echo ""
+          echo "Images:"
+          find images -type f | wc -l
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "TXD CO., LTD Bot"
+          git config user.email "4621710@qq.com"
+          git add .
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "Auto: Daily SEO blog post $(date +%Y-%m-%d)"
+          git push

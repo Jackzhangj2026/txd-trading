@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TXD CO., LTD – PP Hollow Board & Packaging Solutions</title>
+<meta name="description" content="Premium PP hollow sheets and custom corrugated boxes for global trade. Serving Europe, Americas & Middle East since 2015.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: #0a0a0f;
+  color: #e8e8ed;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+::selection { background: #6c5ce7; color: #fff; }
+
+/* === ANIMATED BACKGROUND === */
+#particle-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* === NAV === */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.3s, backdrop-filter 0.3s;
+}
+nav.scrolled {
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(108,92,231,0.15);
+}
+.nav-logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+.nav-logo span { font-weight: 300; -webkit-text-fill-color: #888; }
+.nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+.nav-links a {
+  color: #aaa; text-decoration: none; font-size: 0.85rem;
+  font-weight: 500; transition: color 0.3s; position: relative;
+}
+.nav-links a:hover, .nav-links a.active { color: #fff; }
+.nav-links a::after {
+  content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px;
+  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  transition: width 0.3s;
+}
+.nav-links a:hover::after { width: 100%; }
+.nav-cta {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff !important; padding: 0.5rem 1.2rem; border-radius: 50px;
+  font-weight: 600 !important;
+}
+.nav-cta::after { display: none !important; }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+.nav-toggle span { width: 24px; height: 2px; background: #fff; transition: 0.3s; border-radius: 2px; }
+
+/* === HERO === */
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 2rem;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.hero-bg-text {
+  font-size: clamp(8rem, 20vw, 28rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.04);
+  text-stroke: 1px rgba(255,255,255,0.04);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1;
+  opacity: 0.6;
+  animation: heroTextPulse 6s ease-in-out infinite;
+}
+@keyframes heroTextPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, #0a0a0f 65%);
+  z-index: 0;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+}
+.hero-badge {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border: 1px solid rgba(108,92,231,0.4);
+  border-radius: 50px;
+  font-size: 0.8rem;
+  color: #a29bfe;
+  margin-bottom: 1.5rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #fff 30%, #a29bfe 70%, #6c5ce7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 1.1rem;
+  color: #999;
+  max-width: 650px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.8;
+}
+.hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.8rem 2rem; border-radius: 50px;
+  font-weight: 600; font-size: 0.9rem;
+  text-decoration: none; transition: all 0.3s;
+  cursor: pointer; border: none; font-family: inherit;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  box-shadow: 0 4px 25px rgba(108,92,231,0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 35px rgba(108,92,231,0.5);
+}
+.btn-outline {
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  background: transparent;
+}
+.btn-outline:hover {
+  border-color: #6c5ce7;
+  background: rgba(108,92,231,0.1);
+}
+
+.scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: bob 2s infinite;
+}
+.scroll-indicator .arrow { width: 1px; height: 30px; background: linear-gradient(to bottom, #6c5ce7, transparent); }
+@keyframes bob { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(8px); } }
+
+/* === SECTIONS === */
+section { position: relative; z-index: 1; padding: 6rem 2rem; }
+.section-label {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #6c5ce7;
+  margin-bottom: 0.5rem;
+}
+.section-title {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.section-subtitle {
+  color: #888;
+  max-width: 600px;
+  margin-bottom: 3rem;
+  font-size: 1rem;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* === ABOUT / STATS === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 2rem;
+  margin: 3rem 0;
+}
+.stat-card {
+  text-align: center;
+  padding: 2rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  transition: all 0.3s;
+}
+.stat-card:hover {
+  background: rgba(108,92,231,0.08);
+  border-color: rgba(108,92,231,0.2);
+  transform: translateY(-4px);
+}
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff, #a29bfe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-label { color: #888; font-size: 0.85rem; margin-top: 0.3rem; }
+
+/* === PRODUCTS === */
+.products { background: linear-gradient(180deg, #0a0a0f 0%, #0d0d1a 100%); }
+
+.tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: #888;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tab-btn:hover { border-color: rgba(108,92,231,0.4); color: #fff; }
+.tab-btn.active {
+  background: rgba(108,92,231,0.15);
+  border-color: #6c5ce7;
+  color: #fff;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+.product-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s;
+  cursor: pointer;
+}
+.product-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(108,92,231,0.3);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.product-card .img-wrap {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  position: relative;
+  background: #111;
+}
+.product-card .img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+.product-card:hover .img-wrap img { transform: scale(1.08); }
+.product-card .info {
+  padding: 1.2rem;
+}
+.product-card .info h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #fff;
+}
+.product-card .info p {
+  font-size: 0.82rem;
+  color: #777;
+  line-height: 1.5;
+}
+.product-card .tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(108,92,231,0.15);
+  color: #a29bfe;
+  margin-top: 0.5rem;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* === FACTORY === */
+.factory-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+.factory-images .main-img {
+  grid-column: 1 / -1;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 400px;
+  background: #111;
+}
+.factory-images .main-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.factory-images .side-img {
+  border-radius: 12px;
+  overflow: hidden;
+  height: 220px;
+  background: #111;
+}
+.factory-images .side-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.feature-item {
+  padding: 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  text-align: center;
+}
+.feature-item .icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 1.3rem;
+}
+.feature-item h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.feature-item p {
+  font-size: 0.82rem;
+  color: #777;
+}
+
+/* === TRADING SERVICES === */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+.service-card {
+  padding: 2rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  transition: all 0.3s;
+}
+.service-card:hover {
+  border-color: rgba(108,92,231,0.2);
+  background: rgba(108,92,231,0.05);
+}
+.service-card .icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.service-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+.service-card p {
+  font-size: 0.88rem;
+  color: #888;
+  line-height: 1.6;
+}
+
+/* === CONTACT === */
+#contact {
+  background: linear-gradient(180deg, #0d0d1a 0%, #0a0a0f 100%);
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+.contact-info h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+.contact-info p {
+  color: #888;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+.contact-detail {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  align-items: flex-start;
+}
+.contact-detail .icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(108,92,231,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+.contact-detail .detail-label {
+  font-size: 0.78rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.contact-detail .detail-value {
+  font-size: 0.92rem;
+  color: #ccc;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.contact-form input,
+.contact-form textarea,
+.contact-form select {
+  padding: 0.9rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.3s;
+  width: 100%;
+}
+.contact-form input:focus,
+.contact-form textarea:focus,
+.contact-form select:focus {
+  outline: none;
+  border-color: #6c5ce7;
+}
+.contact-form textarea { resize: vertical; min-height: 120px; }
+.contact-form select option { background: #1a1a2e; color: #fff; }
+.form-submit {
+  align-self: flex-start;
+}
+
+/* === REGIONS === */
+.region-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+.region-card {
+  padding: 1.2rem;
+  text-align: center;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+.region-card:hover {
+  background: rgba(108,92,231,0.08);
+  border-color: rgba(108,92,231,0.2);
+}
+.region-card .flag {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.region-card h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* === FOOTER === */
+footer {
+  position: relative;
+  z-index: 1;
+  padding: 3rem 2rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+footer p {
+  color: #555;
+  font-size: 0.82rem;
+}
+
+/* === ANIMATIONS === */
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    padding: 1.5rem;
+    gap: 1.2rem;
+    border-bottom: 1px solid rgba(108,92,231,0.15);
+  }
+  .nav-links.open { display: flex; }
+  .nav-toggle { display: flex; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .factory-images .main-img { height: 250px; }
+  .factory-images .side-img { height: 160px; }
+  .hero h1 { font-size: 2.2rem; }
+}
+
+@media (max-width: 480px) {
+  section { padding: 4rem 1rem; }
+  .product-grid { grid-template-columns: 1fr; }
+}
+
+/* === LOADING SHIMMER === */
+.img-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+.img-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+</style>
+</head>
+<body>
+
+<!-- Particle background -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- Navigation -->
+<nav id="navbar">
+  <div class="nav-logo">TXD<span> CO., LTD</span></div>
+  <button class="nav-toggle" id="navToggle" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#home" class="active">Home</a></li>
+    <li><a href="#products">Products</a></li>
+    <li><a href="#factory">Factory</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="blog/index.html">Blog</a></li>
+    <li><a href="#contact" class="nav-cta">Get a Quote</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section id="home" class="hero">
+  <div class="hero-bg">
+    <div class="hero-bg-text">TXD CO., LTD</div>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content fade-in visible">
+    <div class="hero-badge">Xiamen · China | Global Trading Partner</div>
+    <h1>TXD CO., LTD<br>Premium PP Hollow Solutions</h1>
+    <p>We manufacture and trade high-quality polypropylene hollow sheets and custom-designed boxes, serving industries across Europe, North America, South America, and the Middle East.</p>
+    <div class="hero-actions">
+      <a href="#products" class="btn btn-primary">Explore Products</a>
+      <a href="#contact" class="btn btn-outline">Request Quote</a>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <div class="arrow"></div>
+  </div>
+</section>
+
+<!-- Stats / About -->
+<section>
+  <div class="container fade-in">
+    <span class="section-label">About Us</span>
+    <h2 class="section-title">Your Trusted Partner in<br>PP Hollow Board Trade</h2>
+    <p class="section-subtitle">We combine advanced manufacturing with global logistics to deliver premium hollow plastic solutions at competitive prices.</p>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number">10+</div>
+        <div class="stat-label">Years of Export Experience</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">30+</div>
+        <div class="stat-label">Countries Served Worldwide</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">5,000+</div>
+        <div class="stat-label">Tons Annual Production</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">98%</div>
+        <div class="stat-label">On-Time Delivery Rate</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Products -->
+<section id="products" class="products">
+  <div class="container fade-in">
+    <span class="section-label">Our Products</span>
+    <h2 class="section-title">PP Hollow Boards, Sheets &<br>Custom Box Solutions</h2>
+    <p class="section-subtitle">Versatile, durable, lightweight — our products are trusted across industries from agriculture to automotive logistics, exported to markets worldwide.</p>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="sheets">Hollow Sheets</button>
+      <button class="tab-btn" data-tab="boards">Hollow Board</button>
+      <button class="tab-btn" data-tab="boxes">Custom Boxes</button>
+      <button class="tab-btn" data-tab="catalog">Catalog</button>
+    </div>
+
+    <!-- Sheets Tab -->
+    <div class="tab-content active" id="tab-sheets">
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250425_154200.jpg" alt="PP Hollow Sheet - Standard" loading="lazy"></div>
+          <div class="info">
+            <h3>Standard PP Hollow Sheet</h3>
+            <p>Width: 1200–2400mm | Thickness: 2–12mm | Colors: Custom</p>
+            <span class="tag">Best Seller</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250425_154233.jpg" alt="PP Hollow Sheet - Thick" loading="lazy"></div>
+          <div class="info">
+            <h3>Heavy-Duty Hollow Sheet</h3>
+            <p>Thickness: 8–20mm | High impact resistance | Industrial grade</p>
+            <span class="tag">Industrial</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250425_153926.jpg" alt="PP Hollow Sheet - Color" loading="lazy"></div>
+          <div class="info">
+            <h3>Custom Color Sheet</h3>
+            <p>Full RAL color matching | UV-resistant | Indoor & outdoor use</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250912_144714.jpg" alt="PP Hollow Sheet - Anti-static" loading="lazy"></div>
+          <div class="info">
+            <h3>Anti-Static Hollow Sheet</h3>
+            <p>Surface resistance 10⁶–10⁹ Ω | ESD-safe | For electronics packaging</p>
+            <span class="tag">ESD Safe</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250926_101438.jpg" alt="PP Hollow Sheet - Roll" loading="lazy"></div>
+          <div class="info">
+            <h3>Conductive PP Sheet</h3>
+            <p>Permanent conductive layer | Explosion-proof environments</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250426_105929.jpg" alt="PP Hollow Sheet - Application" loading="lazy"></div>
+          <div class="info">
+            <h3>Custom Fabricated Sheet</h3>
+            <p>Cut, folded, die-cut per your specifications | Ready for assembly</p>
+            <span class="tag">Custom</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hollow Board Tab -->
+    <div class="tab-content" id="tab-boards">
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250516_090551.jpg" alt="PP Hollow Board - Standard" loading="lazy"></div>
+          <div class="info">
+            <h3>Standard Hollow Board</h3>
+            <p>Thickness: 2–12mm | Width: up to 2400mm | Virgin PP material</p>
+            <span class="tag">Best Seller</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20251030_111502.jpg" alt="PP Hollow Board - Stacked" loading="lazy"></div>
+          <div class="info">
+            <h3>Multi-Layer Hollow Board</h3>
+            <p>Enhanced structural strength | Impact-resistant | For heavy-duty use</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20250926_101514.jpg" alt="PP Hollow Board - Blue" loading="lazy"></div>
+          <div class="info">
+            <h3>Color Hollow Board</h3>
+            <p>RAL/PPC color matching | UV-stabilized | Ideal for outdoor applications</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20251013_084635.jpg" alt="PP Hollow Board - Cross Section" loading="lazy"></div>
+          <div class="info">
+            <h3>Anti-Static Hollow Board</h3>
+            <p>Surface resistance 10⁶–10⁹ Ω | ESD-safe for electronics</p>
+            <span class="tag">ESD Safe</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/sheets/IMG_20251013_084642.jpg" alt="PP Hollow Board - White" loading="lazy"></div>
+          <div class="info">
+            <h3>Food-Grade Hollow Board</h3>
+            <p>FDA-approved virgin PP | BPA-free | For agricultural & food packaging</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1735607619501.jpg" alt="Hollow Board Application" loading="lazy"></div>
+          <div class="info">
+            <h3>Custom Cut-to-Size Board</h3>
+            <p>Precision-cut per your dimensions | Ready for fabrication</p>
+            <span class="tag">Custom</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boxes Tab -->
+    <div class="tab-content" id="tab-boxes">
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1735607619501.jpg" alt="PP Corrugated Box" loading="lazy"></div>
+          <div class="info">
+            <h3>Standard PP Corrugated Box</h3>
+            <p>Lightweight, waterproof, reusable | Ideal for logistics & storage</p>
+            <span class="tag">Popular</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1737295160116.jpg" alt="Folding Box" loading="lazy"></div>
+          <div class="info">
+            <h3>Collapsible Folding Box</h3>
+            <p>Fold flat for storage | Snap-lock assembly | Reusable</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1736380309962.jpg" alt="Heavy Duty Box" loading="lazy"></div>
+          <div class="info">
+            <h3>Heavy-Duty Transport Box</h3>
+            <p>Load capacity up to 500kg | Forklift compatible | Industrial</p>
+            <span class="tag">Heavy Duty</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1735607614973.jpg" alt="Custom Box" loading="lazy"></div>
+          <div class="info">
+            <h3>Custom Printed Box</h3>
+            <p>Full-color printing | Logo & branding | Retail-ready packaging</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1736484766208.jpg" alt="ESD Box" loading="lazy"></div>
+          <div class="info">
+            <h3>ESD Anti-Static Box</h3>
+            <p>Permanent anti-static protection | For sensitive electronics</p>
+            <span class="tag">ESD Safe</span>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/products/boxes/mmexport1734314495870.jpg" alt="Fruit Box" loading="lazy"></div>
+          <div class="info">
+            <h3>Agriculture & Produce Box</h3>
+            <p>Ventilated design | Food-grade PP | Washable & reusable</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catalog Tab -->
+    <div class="tab-content" id="tab-catalog">
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/catalog/tb_image_share_1722222091081.jpg" alt="Product Catalog 1" loading="lazy"></div>
+          <div class="info">
+            <h3>PP Hollow Board — Product Sheet</h3>
+            <p>Complete specifications, sizes, and technical data</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/catalog/tb_image_share_1726019827315.jpg" alt="Product Catalog 2" loading="lazy"></div>
+          <div class="info">
+            <h3>Box Solutions — Size Guide</h3>
+            <p>Standard box dimensions and customization options</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/catalog/tb_image_share_1726019828823.jpg" alt="Product Catalog 3" loading="lazy"></div>
+          <div class="info">
+            <h3>Color & Material Options</h3>
+            <p>Available colors, material grades, and additives</p>
+          </div>
+        </div>
+        <div class="product-card">
+          <div class="img-wrap"><img src="images/catalog/tb_image_share_1726019832257.jpg" alt="Product Catalog 4" loading="lazy"></div>
+          <div class="info">
+            <h3>Custom Manufacturing Guide</h3>
+            <p>From prototype to mass production — our process</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Factory / Manufacturing -->
+<section id="factory">
+  <div class="container fade-in">
+    <span class="section-label">Manufacturing</span>
+    <h2 class="section-title">Advanced Production<br>& Quality Control</h2>
+    <p class="section-subtitle">Our modern facility is equipped with automated extrusion lines, precision cutting, and rigorous testing — ensuring every batch meets international standards.</p>
+
+    <div class="factory-images">
+      <div class="main-img"><img src="images/factory/IMG_20250425_154025.jpg" alt="Factory production line" loading="lazy"></div>
+      <div class="side-img"><img src="images/factory/IMG_20251027_091822.jpg" alt="Factory workshop" loading="lazy"></div>
+      <div class="side-img"><img src="images/factory/wx_camera_1702602879708.jpg" alt="Quality inspection" loading="lazy"></div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="icon" style="background: rgba(108,92,231,0.15);">🏭</div>
+        <h4>20,000 m² Facility</h4>
+        <p>Modern workshop with automated production lines</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon" style="background: rgba(0,206,201,0.15);">🔬</div>
+        <h4>ISO 9001 Quality</h4>
+        <p>Rigorous testing for strength, thickness & consistency</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon" style="background: rgba(253,203,110,0.15);">🌱</div>
+        <h4>Eco-Friendly</h4>
+        <p>100% recyclable PP material, zero-waste policy</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon" style="background: rgba(255,107,107,0.15);">📦</div>
+        <h4>Custom Fabrication</h4>
+        <p>Die-cutting, folding, printing — all in-house</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Global Reach -->
+<section>
+  <div class="container fade-in">
+    <span class="section-label">Global Reach</span>
+    <h2 class="section-title">Serving Customers Across<br>Four Continents</h2>
+    <p class="section-subtitle">With strategic logistics partners and export expertise, we deliver reliably to major markets worldwide.</p>
+    <div class="region-grid">
+      <div class="region-card">
+        <div class="flag">🇪🇺</div>
+        <h4>Europe</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">Germany, UK, France, Italy, Spain, Netherlands</p>
+      </div>
+      <div class="region-card">
+        <div class="flag">🇺🇸</div>
+        <h4>North America</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">USA, Canada, Mexico</p>
+      </div>
+      <div class="region-card">
+        <div class="flag">🇧🇷</div>
+        <h4>South America</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">Brazil, Chile, Argentina, Colombia, Peru</p>
+      </div>
+      <div class="region-card">
+        <div class="flag">🇸🇦</div>
+        <h4>Middle East</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">Saudi Arabia, UAE, Qatar, Kuwait, Oman</p>
+      </div>
+      <div class="region-card">
+        <div class="flag">🇦🇺</div>
+        <h4>Oceania</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">Australia, New Zealand</p>
+      </div>
+      <div class="region-card">
+        <div class="flag">🇿🇦</div>
+        <h4>Africa</h4>
+        <p style="font-size:0.78rem;color:#888;margin-top:0.3rem;">South Africa, Nigeria, Kenya</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trading Services -->
+<section id="services">
+  <div class="container fade-in">
+    <span class="section-label">Services</span>
+    <h2 class="section-title">End-to-End Trading<br>& Logistics Support</h2>
+    <p class="section-subtitle">From sample to delivery, we handle every aspect of international trade so you can focus on your business.</p>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="icon">🔍</div>
+        <h3>Product Sourcing</h3>
+        <p>We help you find the exact PP hollow board product for your application — sheet thickness, size, color, additives, and certifications.</p>
+      </div>
+      <div class="service-card">
+        <div class="icon">🎨</div>
+        <h3>Custom Manufacturing</h3>
+        <p>Your specifications, our production. Custom sizes, printing, die-cutting, and assembly — all under one roof.</p>
+      </div>
+      <div class="service-card">
+        <div class="icon">📋</div>
+        <h3>Quality Inspection</h3>
+        <p>Pre-shipment inspection with detailed reports. Third-party testing available upon request.</p>
+      </div>
+      <div class="service-card">
+        <div class="icon">🚢</div>
+        <h3>Global Logistics</h3>
+        <p>Sea, air, or rail freight — we coordinate shipping, customs clearance, and last-mile delivery worldwide.</p>
+      </div>
+      <div class="service-card">
+        <div class="icon">💰</div>
+        <h3>Flexible Payment</h3>
+        <p>Competitive pricing with flexible terms: T/T, L/C, and trade assurance options for secure transactions.</p>
+      </div>
+      <div class="service-card">
+        <div class="icon">🤝</div>
+        <h3>After-Sales Support</h3>
+        <p>Dedicated account management, product documentation, and responsive customer service.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section id="contact">
+  <div class="container fade-in">
+    <span class="section-label">Get in Touch</span>
+    <h2 class="section-title">Request a Quote<br>or Send an Inquiry</h2>
+    <p class="section-subtitle">Tell us your requirements and we'll respond within 24 hours with a tailored solution.</p>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <h3>Contact Information</h3>
+        <p>Reach out directly or fill in the form — we're ready to help with your next project.</p>
+        <div class="contact-detail">
+          <div class="icon">📧</div>
+          <div>
+            <div class="detail-label">Email</div>
+            <div class="detail-value">4621710@qq.com</div>
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="icon">📱</div>
+          <div>
+            <div class="detail-label">Phone / WhatsApp</div>
+            <div class="detail-value">+86 180 5923 1813</div>
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="icon">🏢</div>
+          <div>
+            <div class="detail-label">Office</div>
+            <div class="detail-value">Room 602, No. 191, Haifa Road<br>Haicang District, Xiamen, China</div>
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="icon">⏰</div>
+          <div>
+            <div class="detail-label">Response Time</div>
+            <div class="detail-value">Within 24 hours (weekdays)</div>
+          </div>
+        </div>
+      </div>
+      <form class="contact-form" id="contactForm" action="#" method="POST">
+        <div class="form-row">
+          <input type="text" name="name" placeholder="Full Name *" required>
+          <input type="email" name="email" placeholder="Email Address *" required>
+        </div>
+        <div class="form-row">
+          <input type="text" name="company" placeholder="Company Name">
+          <input type="text" name="country" placeholder="Country / Region">
+        </div>
+        <select name="product">
+          <option value="">Select Product Interest</option>
+          <option value="sheets">PP Hollow Sheets</option>
+          <option value="boxes">Custom Boxes</option>
+          <option value="both">Both Sheets & Boxes</option>
+          <option value="other">Other / Not Sure</option>
+        </select>
+        <input type="text" name="quantity" placeholder="Estimated Quantity (e.g. 5000 sheets, 2000 pcs)">
+        <textarea name="message" placeholder="Tell us about your requirements — size, thickness, color, quantity, target market... *" required></textarea>
+        <button type="submit" class="btn btn-primary form-submit">Send Inquiry</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>&copy; 2026 TXD CO., LTD. All rights reserved. | PP Hollow Board & Packaging Solutions</p>
+  </div>
+</footer>
+
+<!-- JavaScript -->
+<script>
+// === Particle Background ===
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 2 + 0.5;
+    this.speedX = (Math.random() - 0.5) * 0.3;
+    this.speedY = (Math.random() - 0.5) * 0.3;
+    this.opacity = Math.random() * 0.5 + 0.1;
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(162, 155, 254, ${this.opacity})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  // Draw connections
+  const maxDist = 150;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < maxDist) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(162, 155, 254, ${0.08 * (1 - dist / maxDist)})`;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// === Nav scroll ===
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// === Mobile nav toggle ===
+document.getElementById('navToggle').addEventListener('click', () => {
+  document.getElementById('navLinks').classList.toggle('open');
+});
+document.querySelectorAll('.nav-links a').forEach(a => {
+  a.addEventListener('click', () => document.getElementById('navLinks').classList.remove('open'));
+});
+
+// === Tab switching ===
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// === Scroll fade-in ===
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// === Contact form ===
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const btn = this.querySelector('.form-submit');
+  const origText = btn.textContent;
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  // Build mailto as fallback
+  const formData = new FormData(this);
+  const params = new URLSearchParams();
+  for (const [key, value] of formData) {
+    if (value) params.append(key, value);
+  }
+
+  setTimeout(() => {
+    btn.textContent = '✓ Inquiry Sent!';
+    btn.style.background = 'linear-gradient(135deg, #00b894, #00cec9)';
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.style.background = '';
+      btn.disabled = false;
+      this.reset();
+    }, 3000);
+  }, 1000);
+});
+
+// === Active nav link on scroll ===
+const sections = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(section => {
+    const top = section.offsetTop - 150;
+    if (window.scrollY >= top) current = section.getAttribute('id');
+  });
+  document.querySelectorAll('.nav-links a:not(.nav-cta)').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+</script>
+</body>
+</html>
