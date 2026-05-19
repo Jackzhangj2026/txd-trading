@@ -7,8 +7,17 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 jobs:
-  generate-blog:
+  build-and-deploy:
+    if: github.actor != 'github-actions[bot]'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,3 +31,12 @@ jobs:
           git diff --quiet && git diff --staged --quiet || \
             git commit -m "Auto: Daily SEO blog post $(date +%Y-%m-%d)"
           git push
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
