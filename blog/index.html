@@ -42,46 +42,33 @@
 </footer>
 
 <script>
-// Blog post registry — auto-generated. Each post is an object.
-const posts = [
-  {
-    title: "PP Hollow Sheet Applications in Automotive Packaging",
-    date: "2026-05-11",
-    url: "pp-hollow-sheet-applications-automotive-packaging.html",
-    excerpt: "Explore how PP hollow sheets are revolutionizing automotive packaging with lightweight, durable, and reusable solutions for global supply chains.",
-    tags: ["automotive", "PP hollow sheet", "packaging solutions"]
-  },
-  {
-    title: "Why Choose Corrugated Plastic Boxes Over Cardboard for Logistics",
-    date: "2026-05-12",
-    url: "why-choose-corrugated-plastic-boxes-over-cardboard-for-logistics.html",
-    excerpt: "Discover why corrugated plastic boxes outperform cardboard in logistics — comparing durability, cost per trip, moisture resistance, and sustainability for global supply chains.",
-    tags: ["corrugated plastic", "logistics", "packaging comparison"]
-  },
-];
-
 const container = document.getElementById('postContainer');
 
-if (posts.length === 0) {
-  container.innerHTML = '<div class="post-list empty"><p>No posts yet. Check back soon!</p></div>';
-} else {
-  // Sort by date descending
-  posts.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  let html = '';
-  for (const post of posts) {
-    const tagsHtml = post.tags.map(t => `<span class="tag">${t}</span>`).join('');
-    html += `
-      <a href="${post.url}" class="post-card">
-        <div class="date">${post.date}</div>
-        <h2>${post.title}</h2>
-        <div class="excerpt">${post.excerpt}</div>
-        <div class="tags">${tagsHtml}</div>
-      </a>
-    `;
-  }
-  container.innerHTML = html;
-}
+fetch('posts.json')
+  .then(r => r.json())
+  .then(posts => {
+    if (!posts || posts.length === 0) {
+      container.innerHTML = '<div class="post-list empty"><p>No posts yet. Check back soon!</p></div>';
+      return;
+    }
+    posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    let html = '';
+    for (const post of posts) {
+      const tagsHtml = (post.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+      html += `
+        <a href="${post.url}" class="post-card">
+          <div class="date">${post.date}</div>
+          <h2>${post.title}</h2>
+          <div class="excerpt">${post.excerpt}</div>
+          <div class="tags">${tagsHtml}</div>
+        </a>
+      `;
+    }
+    container.innerHTML = html;
+  })
+  .catch(() => {
+    container.innerHTML = '<div class="post-list empty"><p>No posts yet. Check back soon!</p></div>';
+  });
 </script>
 </body>
 </html>

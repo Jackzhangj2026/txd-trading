@@ -1,8 +1,6 @@
-name: Deploy Website & Auto SEO Blog
+name: Daily SEO Blog Generator
 
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: '0 2 * * *'   # Daily at 10:00 Beijing time (2:00 UTC)
   workflow_dispatch:
@@ -11,13 +9,12 @@ permissions:
   contents: write
 
 jobs:
-  build-and-deploy:
+  generate-blog:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate daily SEO blog post (HTML)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      - name: Generate daily SEO blog post
         run: |
           set -e
 
@@ -59,14 +56,13 @@ jobs:
           SLUG=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
           FILENAME="blog/${SLUG}.html"
 
-          # Check if this topic already exists
-          if grep -q "$SLUG" blog/index.html 2>/dev/null; then
-            echo "Topic already published today — skipping."
+          # Check if this topic already exists in posts.json
+          if jq -e --arg slug "$SLUG" 'any(.url == ($slug + ".html"))' blog/posts.json > /dev/null 2>&1; then
+            echo "Topic already published — skipping."
             exit 0
           fi
 
-          # Escape TOPIC for use in sed
-          TOPIC_ESC=$(echo "$TOPIC" | sed 's/[&/\]/\\&/g')
+          TOPIC_LOWER=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]')
 
           # ─── Generate HTML blog post ───
           cat > "$FILENAME" << BLOGEOF
@@ -194,44 +190,32 @@ BLOGEOF
 
           echo "✓ Generated: $FILENAME"
 
-          # ─── Register in blog/index.html ───
-          # Insert the new post entry into the JavaScript array
-          EXCERPT="Expert insights on $(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' ) from TXD CO., LTD Trading's manufacturing team."
-          # Build a tags array from the comma-separated tag string
-          TAG_ENTRY=""
-          IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
-          for tag in "${TAG_ARRAY[@]}"; do
-            TRIMTAG=$(echo "$tag" | xargs)
-            if [ -z "$TAG_ENTRY" ]; then
-              TAG_ENTRY="\"$TRIMTAG\""
-            else
-              TAG_ENTRY="$TAG_ENTRY, \"$TRIMTAG\""
-            fi
-          done
+          # ─── Register in posts.json ───
+          EXCERPT="Expert insights on $(echo "$TOPIC" | tr '[:upper:]' '[:lower:]') from TXD CO., LTD Trading's manufacturing team."
 
-          # Find the posts array in blog/index.html and insert before the closing bracket
-          POST_ENTRY="    title: \"${TOPIC}\",\n    date: \"${DATE}\",\n    url: \"${SLUG}.html\",\n    excerpt: \"${EXCERPT}\",\n    tags: [${TAG_ENTRY}]\n  },\n];"
-          # Replace the closing "];" at the end of the posts array
-          sed -i 's/^];$/  {\n  '"${POST_ENTRY}"'/' blog/index.html
+          python3 -c "
+import json
+with open('blog/posts.json') as f:
+    posts = json.load(f)
+posts.append({
+    'title': '$TOPIC',
+    'date': '$DATE',
+    'url': '${SLUG}.html',
+    'excerpt': '$EXCERPT',
+    'tags': [t.strip() for t in '$TAGS'.split(',')]
+})
+with open('blog/posts.json', 'w') as f:
+    json.dump(posts, f, indent=2)
+    f.write('\n')
+"
 
-          echo "✓ Registered in blog index"
+          echo "✓ Registered in blog/posts.json"
           echo "---"
           echo "Topic:  $TOPIC"
           echo "File:   $FILENAME"
           echo "Tags:   $TAGS"
 
-      - name: Build static site
-        run: |
-          echo "Site structure:"
-          ls -la
-          echo ""
-          echo "Blog posts:"
-          ls -la blog/*.html 2>/dev/null || echo "No blog posts yet"
-          echo ""
-          echo "Images:"
-          find images -type f | wc -l
-
-      - name: Commit and push changes
+      - name: Commit and push
         run: |
           git config user.name "TXD CO., LTD Bot"
           git config user.email "4621710@qq.com"
