@@ -64,15 +64,6 @@ git push -u origin main
 - 自动生成一篇关于 PP 中空板/箱子的 SEO 文章
 - 自动推送到仓库，触发网站重新部署
 
-### 方式二：Cowork 定时任务（已创建）
-
-系统已经创建了一个名为 `daily-pp-hollowtech-blog` 的定时任务，每天 10:04 AM 自动运行，它会：
-1. 生成一篇 SEO 优化的博客文章
-2. 提交到 GitHub
-3. 触发网站自动部署
-
-你可以在 Cowork 的 "Scheduled" 侧边栏中管理这个任务。
-
 ---
 
 ## 📁 项目结构
@@ -81,6 +72,8 @@ git push -u origin main
 hollowsheet/
 ├── index.html                          # 官网首页（单页，英文）
 ├── .nojekyll                           # GitHub Pages 配置
+├── robots.txt                          # 爬虫规则（自动生成）
+├── sitemap.xml                         # 站点地图（自动生成）
 ├── images/
 │   ├── hero/                           # 横幅大图（6张）
 │   ├── products/sheets/                # 中空板产品图（11张）
@@ -88,8 +81,14 @@ hollowsheet/
 │   ├── factory/                        # 工厂实拍图（18张）
 │   └── catalog/                        # 产品目录图（4张）
 ├── blog/                               # SEO 博客文章
+│   ├── index.html                      # 博客列表（动态加载 posts.json）
+│   ├── posts.json                      # 博客文章数据
+│   └── style.css                       # 博客样式
+├── scripts/
+│   ├── generate_blog.py                # 每日博客自动生成脚本
+│   └── generate_sitemap.py             # sitemap.xml + robots.txt 生成脚本
 ├── .github/workflows/
-│   └── deploy-site.yml                 # GitHub Actions 自动部署
+│   └── deploy-site.yml                 # 自动部署 + 博客生成 + 站点地图
 ├── marketing-automation-plan.md        # 自动化推广计划
 ├── trade-automation-plan.md            # 自动化贸易业务计划
 └── README.md                           # 本文档
@@ -106,6 +105,16 @@ hollowsheet/
 - 响应式设计（手机/平板/桌面）
 - 每日 SEO 博客自动更新
 
+## 🔧 SEO 优化配置
+
+| 项目 | 状态 | 说明 |
+|------|------|------|
+| Google Analytics GA4 | ✅ 已配置 | ID: G-K7D5MN77C2 |
+| JSON-LD 结构化数据 | ✅ 已配置 | Organization / Product / BreadcrumbList |
+| sitemap.xml | ✅ 自动生成 | 每次部署自动更新，需在 Google Search Console 提交 |
+| robots.txt | ✅ 自动生成 | 允许所有爬虫，指向 sitemap |
+| Google Search Console | ✅ 已配置 | 验证文件已部署 |
+
 ## 📊 推广计划
 
 详见 [marketing-automation-plan.md](marketing-automation-plan.md)
@@ -113,6 +122,17 @@ hollowsheet/
 ## 💼 贸易业务自动化
 
 详见 [trade-automation-plan.md](trade-automation-plan.md)
+
+## 🌐 外贸推广渠道
+
+| 渠道 | 优先级 | 说明 |
+|------|--------|------|
+| Google SEO | ⭐ 已启动 | 每日博客 + sitemap 自动提交 |
+| LinkedIn Company Page | 📋 待创建 | B2B 最佳免费渠道，发产品图和工厂实拍 |
+| Made-in-China.com | 📋 待注册 | 免费会员产品对买家可见，适合起步 |
+| Alibaba RFQ | 📋 待使用 | 免费会员每90天可报10次买家询盘 |
+| TradeIndia.com | 📋 待注册 | 面向南亚/中东市场 |
+| Google Business Profile | 📋 待创建 | 本地搜索曝光 |
 
 ## 📬 联系方式
 

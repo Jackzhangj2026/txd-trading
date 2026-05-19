@@ -9,9 +9,10 @@ Zero-cost automated promotion system for the TXD CO., LTD B2B website targeting 
 
 ### Technical SEO
 - [x] Static site on GitHub Pages (fast loading, free hosting)
-- [ ] Generate `sitemap.xml` automatically via GitHub Actions weekly
-- [ ] Generate `robots.txt` pointing to sitemap
-- [ ] Add structured data (Product, Organization, BreadcrumbList JSON-LD)
+- [x] Generate `sitemap.xml` automatically via GitHub Actions (every deploy)
+- [x] Generate `robots.txt` pointing to sitemap
+- [x] Add structured data (Product, Organization, BreadcrumbList JSON-LD)
+- [x] Google Analytics GA4 configured (G-K7D5MN77C2)
 
 ### Content Strategy
 | Frequency | Task | Tool |
