@@ -23,6 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate daily SEO blog post
         run: python3 scripts/generate_blog.py
+      - name: Generate sitemap.xml and robots.txt
+        run: python3 scripts/generate_sitemap.py
       - name: Commit and push
         run: |
           git config user.name "TXD CO., LTD Bot"
