@@ -13,8 +13,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 jobs:
-  build-and-deploy:
-    if: github.actor != 'github-actions[bot]'
+  deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -22,10 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Generate daily SEO blog post
+        if: github.actor != 'github-actions[bot]'
         run: python3 scripts/generate_blog.py
       - name: Generate sitemap.xml and robots.txt
+        if: github.actor != 'github-actions[bot]'
         run: python3 scripts/generate_sitemap.py
       - name: Commit and push
+        if: github.actor != 'github-actions[bot]'
         run: |
           git config user.name "TXD CO., LTD Bot"
           git config user.email "4621710@qq.com"
