@@ -58,30 +58,86 @@ const posts = [
     excerpt: "Discover why corrugated plastic boxes outperform cardboard in logistics — comparing durability, cost per trip, moisture resistance, and sustainability for global supply chains.",
     tags: ["corrugated plastic", "logistics", "packaging comparison"]
   },
+  {
+    title: "ESD Protection: Anti-Static PP Sheets for Electronics",
+    date: "2026-05-13",
+    url: "esd-protection-anti-static-pp-sheets-for-electronics.html",
+    excerpt: "Discover how anti-static PP hollow sheets protect sensitive electronics from electrostatic discharge. A guide to ESD-safe packaging standards, applications, and sourcing for global supply chains.",
+    tags: ["ESD protection", "anti-static", "electronics packaging"]
+  },
+  {
+    title: "Cost Comparison: PP Hollow Board vs Wood vs Cardboard",
+    date: "2026-05-14",
+    url: "cost-comparison-pp-hollow-board-vs-wood-vs-cardboard.html",
+    excerpt: "A detailed cost comparison of PP hollow board, wood, and cardboard — comparing acquisition cost, per-trip cost, durability, and total cost of ownership for global supply chains.",
+    tags: ["cost comparison", "PP hollow board", "packaging TCO"]
+  },
+  {
+    title: "Custom PP Box Design Guide for International Buyers",
+    date: "2026-05-15",
+    url: "custom-pp-box-design-guide-for-international-buyers.html",
+    excerpt: "A step-by-step guide to designing custom PP hollow board boxes — covering dimensions, thickness, fold styles, printing methods, reinforcement options, and quality verification for international buyers.",
+    tags: ["custom design", "PP box", "buyer guide"]
+  },
+  {
+    title: "PP Hollow Sheet Thickness Guide: 2mm to 12mm Explained",
+    date: "2026-05-16",
+    url: "pp-hollow-sheet-thickness-guide-2mm-to-12mm-explained.html",
+    excerpt: "A comprehensive guide to PP hollow sheet thickness options from 2mm to 12mm — learn which gauge suits your packaging, construction, or industrial application needs.",
+    tags: ["thickness guide", "PP hollow sheet", "material selection"]
+  },
+  {
+    title: "Quality Standards for PP Hollow Sheet Manufacturing and Export",
+    date: "2026-05-18",
+    url: "quality-standards-pp-hollow-sheet-manufacturing-and-export.html",
+    excerpt: "A comprehensive overview of global quality standards for PP hollow sheet manufacturing, including ISO 9001, dimensional tolerances, and export compliance requirements for international trade.",
+    tags: ["quality standards", "manufacturing", "export compliance"]
+  },
+  {
+    title: "Environmental Benefits of Recyclable PP Packaging Solutions",
+    date: "2026-05-19",
+    url: "environmental-benefits-recyclable-pp-packaging-solutions.html",
+    excerpt: "Discover how recyclable PP hollow board packaging reduces carbon footprint, supports circular economy goals, and meets global environmental regulations for international trade.",
+    tags: ["sustainability", "recyclable packaging", "green logistics"]
+  },
+  {
+    title: "PP Hollow Board for Agriculture: Greenhouse and Produce Boxes",
+    date: "2026-05-20",
+    url: "pp-hollow-board-for-agriculture-greenhouse-and-produce-boxes.html",
+    excerpt: "Discover how PP hollow board is transforming agriculture — from greenhouse paneling and hydroponic rafts to reusable harvest crates and ventilated produce boxes for global farm-to-market logistics.",
+    tags: ["agriculture", "greenhouse", "produce packaging"]
+  },
+  {
+    title: "How to Choose the Right Packaging Material for Global Logistics",
+    date: "2026-05-21",
+    url: "how-to-choose-the-right-packaging-material-for-global-logistics.html",
+    excerpt: "A practical guide to selecting the best packaging material for international logistics — comparing PP hollow board, cardboard, wood, and plastic for cost, durability, and compliance.",
+    tags: ["packaging comparison", "global logistics", "material selection"]
+  },
+  {
+    title: "PP Hollow Sheet Applications in Automotive Packaging",
+    date: "2026-05-22",
+    url: "pp-hollow-sheet-applications-automotive-packaging.html",
+    excerpt: "Explore next-generation PP hollow sheet applications in automotive packaging — from EV battery module protection and returnable systems to Industry 4.0 smart packaging and precision dunnage solutions.",
+    tags: ["automotive packaging", "EV batteries", "returnable systems", "smart packaging"]
+  },
+  {
+    title: "Why Choose Corrugated Plastic Boxes Over Cardboard for Logistics",
+    date: "2026-05-23",
+    url: "why-choose-corrugated-plastic-boxes-over-cardboard-for-logistics.html",
+    excerpt: "Discover why leading logistics operators are switching from cardboard to corrugated plastic boxes. Cost analysis, durability comparison, and real-world case studies for global supply chains.",
+    tags: ["corrugated plastic", "logistics", "packaging comparison", "cost analysis"]
+  },
+  {
+    title: "ESD Protection: Anti-Static PP Sheets for Electronics",
+    date: "2026-05-24",
+    url: "esd-protection-anti-static-pp-sheets-for-electronics.html",
+    excerpt: "Comprehensive guide to ESD-safe anti-static PP hollow sheets for semiconductor logistics, PCB assembly trays, and electronics warehouse storage solutions from TXD CO., LTD.",
+    tags: ["ESD protection", "anti-static", "electronics packaging", "PCB trays"]
+  },
 ];
 
-const container = document.getElementById('postContainer');
-
-if (posts.length === 0) {
-  container.innerHTML = '<div class="post-list empty"><p>No posts yet. Check back soon!</p></div>';
-} else {
-  // Sort by date descending
-  posts.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  let html = '';
-  for (const post of posts) {
-    const tagsHtml = post.tags.map(t => `<span class="tag">${t}</span>`).join('');
-    html += `
-      <a href="${post.url}" class="post-card">
-        <div class="date">${post.date}</div>
-        <h2>${post.title}</h2>
-        <div class="excerpt">${post.excerpt}</div>
-        <div class="tags">${tagsHtml}</div>
-      </a>
-    `;
-  }
-  container.innerHTML = html;
-}
 </script>
+
 </body>
 </html>
