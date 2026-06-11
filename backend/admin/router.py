@@ -37,3 +37,8 @@ async def admin_markets(request: Request):
 @router.get("/content", response_class=HTMLResponse)
 async def admin_content(request: Request):
     return templates.TemplateResponse("content.html", {"request": request})
+
+
+@router.get("/social", response_class=HTMLResponse)
+async def admin_social(request: Request):
+    return templates.TemplateResponse("social.html", {"request": request})

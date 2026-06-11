@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Social Media{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">📱 Social Media</h1>
+    <p class="text-gray-500 mt-1">Generate, schedule, and manage social media content</p>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">✨ Generate Content</h2>
+    <div class="flex gap-3 mb-4">
+        <input id="topic-input" type="text" placeholder="Enter a topic (e.g. 'PP hollow board benefits for logistics')"
+            class="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm border border-gray-700">
+        <button onclick="generateContent()" id="gen-btn"
+            class="px-4 py-2 rounded-lg font-semibold text-sm transition"
+            style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff">
+            🪄 Generate
+        </button>
+    </div>
+    <div id="platform-select" class="flex flex-wrap gap-2 mb-2">
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="linkedin" checked> LinkedIn</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="twitter" checked> Twitter/X</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="youtube"> YouTube</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="pinterest"> Pinterest</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="tiktok"> TikTok</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="facebook"> Facebook</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="red" checked> 小红书</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="douyin"> 抖音</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="wechat_article"> 公众号</label>
+        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="wechat_moment"> 朋友圈</label>
+    </div>
+    <div id="gen-status" class="text-sm text-gray-500"></div>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">📅 Content Queue</h2>
+    <div class="flex gap-2 mb-4">
+        <select id="filter-platform" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadQueue()">
+            <option value="">All Platforms</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="twitter">Twitter/X</option>
+            <option value="youtube">YouTube</option>
+            <option value="red">小红书</option>
+            <option value="douyin">抖音</option>
+            <option value="wechat_article">公众号</option>
+            <option value="wechat_moment">朋友圈</option>
+        </select>
+        <select id="filter-status" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadQueue()">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="published">Published</option>
+        </select>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Platform</th>
+                <th class="text-left py-3 px-2">Title</th>
+                <th class="text-left py-3 px-2">Status</th>
+                <th class="text-left py-3 px-2">Language</th>
+                <th class="text-left py-3 px-2">Created</th>
+                <th class="text-left py-3 px-2">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="queue-table-body">
+            <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function generateContent() {
+    const topic = document.getElementById('topic-input').value;
+    if (!topic) { alert('Please enter a topic'); return; }
+
+    const checkboxes = document.querySelectorAll('.platform-cb:checked');
+    const platforms = Array.from(checkboxes).map(cb => cb.value);
+
+    const btn = document.getElementById('gen-btn');
+    const status = document.getElementById('gen-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    status.textContent = '';
+
+    try {
+        const res = await fetch('/api/content-media/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic, platforms})
+        });
+        const data = await res.json();
+        status.textContent = `✅ Generated ${data.total} posts`;
+        loadQueue();
+    } catch (e) {
+        status.textContent = '❌ Failed to generate';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🪄 Generate';
+    }
+}
+
+async function loadQueue() {
+    const platform = document.getElementById('filter-platform').value;
+    const status = document.getElementById('filter-status').value;
+    let url = '/api/content-media/queue?page_size=30';
+    if (platform) url += '&platform=' + platform;
+    if (status) url += '&status=' + status;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const tbody = document.getElementById('queue-table-body');
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No content yet. Generate some!</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(c => {
+            const platformColors = {
+                'linkedin': '#0a66c2', 'twitter': '#1da1f2', 'youtube': '#ff0000',
+                'pinterest': '#e60023', 'tiktok': '#000000', 'facebook': '#1877f2',
+                'red': '#ff2442', 'douyin': '#161823', 'wechat_article': '#07c160',
+                'wechat_moment': '#07c160',
+            };
+            const stColors = {'draft': '#6b7280', 'scheduled': '#eab308', 'published': '#22c55e', 'failed': '#f43f5e'};
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2"><span class="badge" style="background:${platformColors[c.platform] || '#333'}22;color:${platformColors[c.platform] || '#fff'}">${c.platform_display}</span></td>
+                <td class="py-3 px-2 text-gray-300">${c.title.substring(0, 50)}</td>
+                <td class="py-3 px-2"><span class="badge" style="background:${stColors[c.status] || '#333'}22;color:${stColors[c.status] || '#fff'}">${c.status}</span></td>
+                <td class="py-3 px-2 text-gray-400">${c.language === 'zh' ? '🇨🇳' : '🇬🇧'}</td>
+                <td class="py-3 px-2 text-gray-400">${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                <td class="py-3 px-2">
+                    <button onclick="publishContent('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300">Publish</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('queue-table-body').innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
+    }
+}
+
+async function publishContent(id) {
+    if (!confirm('Mark this content as published?')) return;
+    try {
+        await fetch(`/api/content-media/${id}/publish`, { method: 'POST' });
+        loadQueue();
+    } catch (e) {
+        alert('Failed to publish');
+    }
+}
+
+loadQueue();
+</script>
+{% endblock %}
