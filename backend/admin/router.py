@@ -1,0 +1,14 @@
+"""Admin panel routes — Jinja2 + HTMX based management interface."""
+
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from pathlib import Path
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("", response_class=HTMLResponse)
+async def admin_dashboard(request: Request):
+    return templates.TemplateResponse(request, "dashboard.html")

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">Dashboard</h1>
+    <p class="text-gray-500 mt-1">TXD Trade Agent System — overview</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="card">
+        <div class="text-gray-400 text-sm">New Inquiries</div>
+        <div class="text-3xl font-bold mt-2" id="inquiry-count">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">Total Customers</div>
+        <div class="text-3xl font-bold mt-2" id="customer-count">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">Active Products</div>
+        <div class="text-3xl font-bold mt-2" id="product-count">—</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold mb-4">System Status</h2>
+    <div class="text-sm text-gray-400 space-y-2">
+        <div>🔧 LLM Provider: <span id="llm-provider" class="text-white">loading...</span></div>
+        <div>💾 Database: <span id="db-status" class="text-white">connecting...</span></div>
+        <div>📡 API Version: <span id="api-version" class="text-white">0.1.0</span></div>
+    </div>
+</div>
+
+<script>
+    fetch('/api/health')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('llm-provider').textContent = d.llm_provider;
+            document.getElementById('api-version').textContent = d.version;
+        });
+    fetch('/api/products')
+        .then(r => r.json())
+        .then(d => document.getElementById('product-count').textContent = d.total)
+        .catch(() => document.getElementById('product-count').textContent = '0');
+</script>
+{% endblock %}
