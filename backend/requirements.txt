@@ -22,9 +22,8 @@ python-multipart==0.0.12
 aiofiles==24.1.0
 
 # Email (Phase 3+)
-# httpx==0.28.0
-# python-dotenv==1.0.1
 
 # Dev
 # pytest==8.3.0
+# python-dotenv==1.0.1
 # httpx==0.28.0 (for test client)
