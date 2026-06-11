@@ -29,6 +29,11 @@ async def admin_emails(request: Request):
     return templates.TemplateResponse("emails.html", {"request": request})
 
 
+@router.get("/markets", response_class=HTMLResponse)
+async def admin_markets(request: Request):
+    return templates.TemplateResponse("markets.html", {"request": request})
+
+
 @router.get("/content", response_class=HTMLResponse)
 async def admin_content(request: Request):
     return templates.TemplateResponse("content.html", {"request": request})
