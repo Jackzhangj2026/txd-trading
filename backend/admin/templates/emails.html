@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Email Management{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">📧 Email Management</h1>
+    <p class="text-gray-500 mt-1">Multi-mailbox configuration and email tracking</p>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">Mailboxes</h2>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Name</th>
+                <th class="text-left py-3 px-2">Email</th>
+                <th class="text-left py-3 px-2">IMAP</th>
+                <th class="text-left py-3 px-2">SMTP</th>
+                <th class="text-left py-3 px-2">Status</th>
+                <th class="text-left py-3 px-2">Last Checked</th>
+            </tr>
+        </thead>
+        <tbody id="mailbox-table-body">
+            <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">Email Templates</h2>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Name</th>
+                <th class="text-left py-3 px-2">Category</th>
+                <th class="text-left py-3 px-2">Subject</th>
+                <th class="text-left py-3 px-2">Active</th>
+            </tr>
+        </thead>
+        <tbody id="template-table-body">
+            <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold mb-4">Recent Email Activity</h2>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Date</th>
+                <th class="text-left py-3 px-2">Direction</th>
+                <th class="text-left py-3 px-2">Subject</th>
+                <th class="text-left py-3 px-2">Status</th>
+            </tr>
+        </thead>
+        <tbody id="log-table-body">
+            <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function loadMailboxes() {
+    try {
+        const res = await fetch('/api/mailboxes');
+        const data = await res.json();
+        const tbody = document.getElementById('mailbox-table-body');
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No mailboxes configured. Add one via the API.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(m => {
+            const statusBadge = m.active
+                ? '<span class="badge" style="background:#22c55e22;color:#22c55e">Active</span>'
+                : '<span class="badge" style="background:#6b728022;color:#9ca3af">Inactive</span>';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2 text-white">${m.name || '—'}</td>
+                <td class="py-3 px-2 text-gray-300">${m.email_address}</td>
+                <td class="py-3 px-2 text-gray-400">${m.imap_host ? '✅' : '❌'}</td>
+                <td class="py-3 px-2 text-gray-400">${m.smtp_host ? '✅' : '❌'}</td>
+                <td class="py-3 px-2">${statusBadge}</td>
+                <td class="py-3 px-2 text-gray-400">${m.last_checked ? new Date(m.last_checked).toLocaleString() : '—'}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('mailbox-table-body').innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
+    }
+}
+
+async function loadTemplates() {
+    try {
+        const res = await fetch('/api/emails/templates');
+        const data = await res.json();
+        const tbody = document.getElementById('template-table-body');
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No templates yet</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(t => {
+            const activeBadge = t.active
+                ? '<span class="badge" style="background:#22c55e22;color:#22c55e">Active</span>'
+                : '<span class="badge" style="background:#6b728022;color:#9ca3af">Inactive</span>';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2 text-white">${t.name}</td>
+                <td class="py-3 px-2"><span class="badge" style="background:#6c5ce722;color:#a29bfe">${t.category || 'general'}</span></td>
+                <td class="py-3 px-2 text-gray-400">${t.subject_template ? t.subject_template.substring(0, 50) + '...' : '—'}</td>
+                <td class="py-3 px-2">${activeBadge}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('template-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
+    }
+}
+
+async function loadLog() {
+    try {
+        const res = await fetch('/api/emails/log?page_size=20');
+        const data = await res.json();
+        const tbody = document.getElementById('log-table-body');
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No email activity yet</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(log => {
+            const dirIcon = log.direction === 'out' ? '📤' : '📥';
+            const statusColors = {
+                'sent': '#22c55e', 'received': '#3b82f6', 'pending': '#eab308', 'failed': '#f43f5e'
+            };
+            const color = statusColors[log.status] || '#6b7280';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2 text-gray-400">${log.sent_at ? new Date(log.sent_at).toLocaleDateString() : '—'}</td>
+                <td class="py-3 px-2">${dirIcon}</td>
+                <td class="py-3 px-2 text-gray-300">${log.subject ? log.subject.substring(0, 60) : '(no subject)'}</td>
+                <td class="py-3 px-2"><span class="badge" style="background:${color}22;color:${color}">${log.status}</span></td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
+    }
+}
+
+loadMailboxes();
+loadTemplates();
+loadLog();
+</script>
+{% endblock %}
