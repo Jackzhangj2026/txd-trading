@@ -1,14 +1,24 @@
 """TXD Trade Agent System — FastAPI Application Entry Point."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
+from backend.database import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
 
 app = FastAPI(
     title="TXD Trade Agent API",
     description="International trade intelligence agent system for TXD CO., LTD",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS — allow GitHub Pages frontend to call API
