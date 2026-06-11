@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Inquiries{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">Inquiries</h1>
+    <p class="text-gray-500 mt-1">Manage incoming inquiries</p>
+</div>
+
+<div class="mb-4 flex gap-2">
+    <select id="filter-classification" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadInquiries()">
+        <option value="">All Classifications</option>
+        <option value="high">🔥 High</option>
+        <option value="medium">🔵 Medium</option>
+        <option value="low">🟡 Low</option>
+        <option value="spam">⛔ Spam</option>
+    </select>
+    <select id="filter-status" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadInquiries()">
+        <option value="">All Status</option>
+        <option value="new">New</option>
+        <option value="classified">Classified</option>
+        <option value="replied">Replied</option>
+        <option value="closed">Closed</option>
+    </select>
+</div>
+
+<div class="card">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Date</th>
+                <th class="text-left py-3 px-2">Classification</th>
+                <th class="text-left py-3 px-2">Status</th>
+                <th class="text-left py-3 px-2">Message</th>
+                <th class="text-left py-3 px-2">Source</th>
+            </tr>
+        </thead>
+        <tbody id="inquiry-table-body">
+            <tr><td colspan="5" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function loadInquiries() {
+    const cls = document.getElementById('filter-classification').value;
+    const st = document.getElementById('filter-status').value;
+    let url = '/api/inquiries?page_size=50';
+    if (cls) url += '&classification=' + cls;
+    if (st) url += '&status=' + st;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const tbody = document.getElementById('inquiry-table-body');
+    if (data.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-gray-500 py-8 text-center">No inquiries found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.items.map(inq => {
+        const clsBadge = {
+            'high': '<span class="badge" style="background:#f43f5e22;color:#f43f5e">🔥 High</span>',
+            'medium': '<span class="badge" style="background:#3b82f622;color:#3b82f6">🔵 Medium</span>',
+            'low': '<span class="badge" style="background:#eab30822;color:#eab308">🟡 Low</span>',
+            'spam': '<span class="badge" style="background:#6b728022;color:#9ca3af">⛔ Spam</span>',
+        }[inq.classification] || inq.classification;
+        const stBadge = {
+            'new': '<span class="badge" style="background:#22c55e22;color:#22c55e">New</span>',
+            'classified': '<span class="badge" style="background:#3b82f622;color:#3b82f6">Classified</span>',
+            'replied': '<span class="badge" style="background:#8b5cf622;color:#8b5cf6">Replied</span>',
+            'closed': '<span class="badge" style="background:#6b728022;color:#9ca3af">Closed</span>',
+        }[inq.status] || inq.status;
+        const date = new Date(inq.created_at).toLocaleDateString();
+        const msg = inq.message.length > 80 ? inq.message.substring(0, 80) + '...' : inq.message;
+        return `<tr class="border-b border-gray-800 hover:bg-white/5">
+            <td class="py-3 px-2 text-gray-400">${date}</td>
+            <td class="py-3 px-2">${clsBadge}</td>
+            <td class="py-3 px-2">${stBadge}</td>
+            <td class="py-3 px-2 text-gray-300">${msg}</td>
+            <td class="py-3 px-2 text-gray-400">${inq.source}</td>
+        </tr>`;
+    }).join('');
+}
+loadInquiries();
+</script>
+{% endblock %}
