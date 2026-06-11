@@ -196,3 +196,59 @@ async def send_email(data: SendEmailRequest, db: AsyncSession = Depends(get_db))
     await db.refresh(log)
 
     return {"id": log.id, "status": "pending", "message": "Email queued for sending"}
+
+
+# === Check / Test ===
+
+class CheckInboxRequest(BaseModel):
+    mailbox_id: str
+
+
+@router.post("/check")
+async def check_inbox(data: CheckInboxRequest, db: AsyncSession = Depends(get_db)):
+    """Check a mailbox for new emails via IMAP."""
+    result = await db.execute(select(Mailbox).where(Mailbox.id == data.mailbox_id))
+    mailbox = result.scalar_one_or_none()
+    if not mailbox:
+        raise HTTPException(status_code=404, detail="Mailbox not found")
+
+    from backend.services.email_service import EmailService
+
+    emails = await EmailService.check_inbox(
+        imap_host=mailbox.imap_host,
+        imap_port=mailbox.imap_port,
+        imap_user=mailbox.imap_username,
+        imap_pass=mailbox.imap_password_enc,
+        use_ssl=mailbox.use_ssl,
+    )
+
+    # Update last_checked
+    mailbox.last_checked = datetime.now(timezone.utc).isoformat()
+    await db.commit()
+
+    # Classify each email
+    classified = []
+    for email_data in emails:
+        classification = await EmailService.classify_email(
+            email_data["subject"], email_data["body"]
+        )
+
+        # Log it
+        log = EmailLog(
+            mailbox_id=data.mailbox_id,
+            direction="in",
+            subject=email_data["subject"],
+            body=email_data["body"][:2000],
+            status="received",
+            message_id=email_data["message_id"],
+            sent_at=email_data["date"],
+        )
+        db.add(log)
+        classified.append({**email_data, "classification": classification})
+
+    await db.commit()
+
+    return {
+        "emails_found": len(emails),
+        "emails": classified,
+    }
