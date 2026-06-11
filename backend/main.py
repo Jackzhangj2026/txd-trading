@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
 from backend.database import init_db
+from backend.scheduler import start_scheduler
 from backend.admin.router import router as admin_router
 from backend.routers import customers, products, inquiries
 
@@ -13,6 +14,7 @@ from backend.routers import customers, products, inquiries
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    start_scheduler()
     yield
 
 
