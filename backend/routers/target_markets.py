@@ -287,3 +287,39 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
 
     scan_result["leads_extracted"] = scan_result.get("leads_extracted", [])[:10]  # Return first 10
     return scan_result
+
+
+@router.post("/{market_id}/score-leads")
+async def score_market_leads(market_id: str, db: AsyncSession = Depends(get_db)):
+    """Re-score all leads for a target market."""
+    from backend.services.lead_scoring import LeadScoringEngine
+
+    result = await db.execute(select(TargetMarket).where(TargetMarket.id == market_id))
+    m = result.scalar_one_or_none()
+    if not m:
+        raise HTTPException(status_code=404, detail="Target market not found")
+
+    # Get all customers for this market
+    cust_result = await db.execute(
+        select(Customer).where(Customer.matched_market == m.name)
+    )
+    customers = cust_result.scalars().all()
+
+    updated = 0
+    for customer in customers:
+        score = LeadScoringEngine.calculate_score(
+            company=customer.company or "",
+            email=customer.email or "",
+            phone=customer.phone or "",
+            country=customer.country or "",
+            intent_text=customer.notes or "",
+            source=customer.source or "",
+            matched_market=customer.matched_market or "",
+            market_priority=m.priority,
+        )
+        if customer.score != score:
+            customer.score = score
+            updated += 1
+
+    await db.commit()
+    return {"customers_found": len(customers), "scores_updated": updated}
