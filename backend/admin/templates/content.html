@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Content Management{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">Content Management</h1>
+    <p class="text-gray-500 mt-1">Manage blog posts and media content</p>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">Blog Posts</h2>
+    <div class="mb-4">
+        <button id="generate-btn" onclick="generateBlog()" class="px-4 py-2 rounded-lg font-semibold text-sm transition"
+            style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff">
+            ✨ Generate Blog Post Now
+        </button>
+        <span id="generate-status" class="ml-3 text-sm text-gray-400"></span>
+    </div>
+
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Title</th>
+                <th class="text-left py-3 px-2">Date</th>
+                <th class="text-left py-3 px-2">Tags</th>
+                <th class="text-left py-3 px-2"></th>
+            </tr>
+        </thead>
+        <tbody id="blog-table-body">
+            <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold mb-4">Media Library</h2>
+    <p class="text-gray-400 text-sm mb-4">Product images and factory media</p>
+    <div class="grid grid-cols-4 gap-4" id="media-grid">
+        <p class="text-gray-500 text-sm col-span-4">Media scanning available in a future update.</p>
+    </div>
+</div>
+
+<script>
+async function loadBlogPosts() {
+    // Try to fetch the blog index to get posts
+    try {
+        const res = await fetch('/blog/index.html');
+        const html = await res.text();
+        // Extract the posts array
+        const match = html.match(/const posts = (\[[\s\S]*?\]);/);
+        if (match) {
+            // We can't directly eval, so we'll parse the structure
+            const tbody = document.getElementById('blog-table-body');
+            // Simple regex to extract post objects
+            const postMatches = html.matchAll(/\{\s*title:\s*"([^"]+)",\s*date:\s*"([^"]+)",\s*url:\s*"([^"]+)",\s*excerpt:\s*"([^"]*)",\s*tags:\s*\[([^\]]+)\]\s*\},?\s*/g);
+            let rows = '';
+            for (const m of postMatches) {
+                rows += `<tr class="border-b border-gray-800 hover:bg-white/5">
+                    <td class="py-3 px-2 text-white">${m[1]}</td>
+                    <td class="py-3 px-2 text-gray-400">${m[2]}</td>
+                    <td class="py-3 px-2">${m[5].split(',').map(t => `<span class="badge" style="background:#6c5ce722;color:#a29bfe;margin-right:4px">${t.trim().replace(/"/g,'')}</span>`).join('')}</td>
+                    <td class="py-3 px-2"><a href="/blog/${m[3]}" target="_blank" class="text-purple-400 hover:text-purple-300 text-xs">View →</a></td>
+                </tr>`;
+            }
+            tbody.innerHTML = rows || '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No posts found</td></tr>';
+        } else {
+            document.getElementById('blog-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Could not parse blog index</td></tr>';
+        }
+    } catch (e) {
+        document.getElementById('blog-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Failed to load blog posts</td></tr>';
+    }
+}
+
+async function generateBlog() {
+    const btn = document.getElementById('generate-btn');
+    const status = document.getElementById('generate-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    status.textContent = '';
+
+    try {
+        const res = await fetch('/api/content/generate-blog', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = '✅ ' + data.message;
+            loadBlogPosts(); // Refresh the list
+        } else {
+            status.textContent = '❌ ' + data.message;
+        }
+    } catch (e) {
+        status.textContent = '❌ Failed to generate blog post';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Generate Blog Post Now';
+    }
+}
+
+loadBlogPosts();
+</script>
+{% endblock %}
