@@ -8,7 +8,7 @@ from backend.config import settings
 from backend.database import init_db
 from backend.scheduler import start_scheduler
 from backend.admin.router import router as admin_router
-from backend.routers import content, customers, products, inquiries
+from backend.routers import content, customers, products, inquiries, mailboxes
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(content.router)
 app.include_router(customers.router)
 app.include_router(products.router)
 app.include_router(inquiries.router)
+app.include_router(mailboxes.router)
 app.include_router(admin_router)
 
 
