@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -201,3 +202,88 @@ async def get_market_leads(
         ],
         "total": total,
     }
+
+
+class ScanResponse(BaseModel):
+    market_name: str
+    keywords_used: list[str]
+    results_found: int
+    leads_extracted: list[dict]
+    scanned_at: str
+
+
+@router.post("/{market_id}/scan", response_model=ScanResponse)
+async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
+    """Trigger a market scan — search web for leads."""
+    from backend.services.market_scanner import MarketScanner
+
+    result = await db.execute(select(TargetMarket).where(TargetMarket.id == market_id))
+    m = result.scalar_one_or_none()
+    if not m:
+        raise HTTPException(status_code=404, detail="Target market not found")
+
+    scanner = MarketScanner()
+    market_dict = {
+        "name": m.name,
+        "keywords": m.keywords,
+        "products": m.products,
+        "industries": m.industries,
+        "customer_types": m.customer_types,
+        "search_keywords": m.search_keywords,
+    }
+
+    scan_result = await scanner.scan_market(market_dict)
+
+    # Save extracted leads as customers
+    from backend.models.customer import Customer
+    saved_count = 0
+    for lead in scan_result.get("leads_extracted", []):
+        company = lead.get("company", "Unknown")
+        country = lead.get("country", "Unknown")
+        product = lead.get("product_interest", "")
+
+        # Try to match market
+        all_markets_result = await db.execute(select(TargetMarket).where(TargetMarket.active == True))
+        all_markets = all_markets_result.scalars().all()
+        market_list = [{"name": mm.name, "keywords": mm.keywords, "products": mm.products, "industries": mm.industries} for mm in all_markets]
+
+        from backend.services.market_scanner import MarketScanner
+        matched = await MarketScanner.match_market(company + " " + product, market_list)
+
+        # Score the lead
+        score = 0
+        if lead.get("confidence", 0) > 0.7:
+            score += 30
+        if country not in ("Unknown", ""):
+            score += 20
+        if company not in ("Unknown", ""):
+            score += 20
+        if product:
+            score += 15
+
+        # Check if customer already exists (by company name)
+        existing = await db.execute(
+            select(Customer).where(Customer.company.ilike(f"%{company[:50]}%"))
+        )
+        existing_customer = existing.scalar_one_or_none()
+
+        if not existing_customer and company not in ("Unknown", ""):
+            customer = Customer(
+                name=company,
+                company=company,
+                country=country,
+                source=f"market_scan_{m.name}",
+                score=min(score, 100),
+                matched_market=matched,
+                notes=lead.get("source_text", ""),
+            )
+            db.add(customer)
+            saved_count += 1
+
+    # Update market stats
+    m.leads_count = (m.leads_count or 0) + saved_count
+    m.last_scanned = datetime.now(timezone.utc).isoformat()
+    await db.commit()
+
+    scan_result["leads_extracted"] = scan_result.get("leads_extracted", [])[:10]  # Return first 10
+    return scan_result
