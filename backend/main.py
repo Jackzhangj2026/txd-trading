@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
 from backend.database import init_db
 from backend.admin.router import router as admin_router
-from backend.routers import products
+from backend.routers import products, inquiries
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(products.router)
+app.include_router(inquiries.router)
 app.include_router(admin_router)
 
 
