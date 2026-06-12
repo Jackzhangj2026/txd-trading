@@ -1,32 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TXD Trade Agent — {% block title %}Dashboard{% endblock %}</title>
+    <title>TXD Trade Agent — {% block title %}{{ _t('Dashboard') }}{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #0a0a0f; color: #e8e8ed; font-family: system-ui, sans-serif; }
         .sidebar { background: #111; border-right: 1px solid #222; }
         .card { background: #1a1a24; border: 1px solid #2a2a35; border-radius: 12px; padding: 1.5rem; }
+        .btn-primary {
+            background: linear-gradient(135deg,#6c5ce7,#a29bfe); color: #fff;
+            padding: 0.5rem 1.2rem; border-radius: 999px; font-weight: 600; font-size: 0.85rem;
+            border: none; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(108,92,231,0.4); }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+        .lang-btn { padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; border: 1px solid #333; background: transparent; color: #888; transition: all 0.2s; }
+        .lang-btn.active { border-color: #6c5ce7; color: #a29bfe; background: rgba(108,92,231,0.1); }
+        .lang-btn:hover { border-color: #6c5ce7; color: #fff; }
     </style>
 </head>
 <body class="flex min-h-screen">
     <!-- Sidebar -->
     <nav class="sidebar w-64 p-6 flex flex-col gap-6">
-        <div class="text-xl font-bold bg-gradient-to-r from-purple-400 to-purple-200 bg-clip-text text-transparent">
-            TXD<span class="text-gray-500 font-normal"> Agent</span>
+        <div class="flex items-center justify-between">
+            <div class="text-xl font-bold bg-gradient-to-r from-purple-400 to-purple-200 bg-clip-text text-transparent">
+                TXD<span class="text-gray-500 font-normal"> {{ _t('Agent') }}</span>
+            </div>
+            <div class="flex gap-1">
+                <a href="/admin/set-lang/en" class="lang-btn {% if lang == 'en' %}active{% endif %}">EN</a>
+                <a href="/admin/set-lang/zh" class="lang-btn {% if lang == 'zh' %}active{% endif %}">中文</a>
+            </div>
         </div>
         <div class="flex flex-col gap-2 text-sm">
-            <a href="/admin" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📊 Dashboard</a>
-            <a href="/admin/inquiries" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📩 Inquiries</a>
-            <a href="/admin/customers" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">👥 Customers</a>
-            <a href="/admin/products" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📦 Products</a>
-            <span class="text-gray-600 text-xs mt-4 px-3">SYSTEM</span>
-            <a href="/admin/emails" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📧 Emails</a>
-            <a href="/admin/markets" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">🎯 Target Markets</a>
-            <a href="/admin/social" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📱 Social Media</a>
+            <a href="/admin" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📊 {{ _t('Dashboard') }}</a>
+            <a href="/admin/inquiries" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📩 {{ _t('Inquiries') }}</a>
+            <a href="/admin/customers" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">👥 {{ _t('Customers') }}</a>
+            <a href="/admin/products" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📦 {{ _t('Products') }}</a>
+            <span class="text-gray-600 text-xs mt-4 px-3">{{ _t('SYSTEM') }}</span>
+            <a href="/admin/emails" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📧 {{ _t('Emails') }}</a>
+            <a href="/admin/markets" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">🎯 {{ _t('Target Markets') }}</a>
+            <a href="/admin/content" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📝 {{ _t('Blog Posts') }}</a>
+            <a href="/admin/social" class="px-3 py-2 rounded-lg hover:bg-white/5 transition">📱 {{ _t('Social Media') }}</a>
         </div>
     </nav>
 
@@ -34,5 +51,10 @@
     <main class="flex-1 p-8">
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+    // Translations for JS use
+    const _t = {{ _js_t | safe }};
+    </script>
 </body>
 </html>
