@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}{{ _t('Websites') }}{% endblock %}
+{% block content %}
+
+<div class="mb-8 flex items-center justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">{{ _t('Websites') }}</h1>
+        <p class="text-gray-500 mt-1">{{ _t('Generate and manage company websites') }}</p>
+    </div>
+    <div class="flex gap-3">
+        <button onclick="showNewWebsiteModal()" class="btn-primary">+ {{ _t('New Website') }}</button>
+        <button onclick="showBatchModal()" class="btn-primary" style="background:linear-gradient(135deg,#059669,#34d399)">⚡ {{ _t('Batch Generate') }}</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="mb-4 flex gap-2">
+    <select id="filter-status" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadWebsites()">
+        <option value="">{{ _t('All') }}</option>
+        <option value="draft">{{ _t('Draft') }}</option>
+        <option value="generated">{{ _t('Generated') }}</option>
+        <option value="deployed">{{ _t('Published') }}</option>
+        <option value="failed">{{ _t('Failed') }}</option>
+    </select>
+    <input id="filter-search" type="search" placeholder="{{ _t('Search') }}" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 flex-1 max-w-xs" oninput="debounceLoad()">
+</div>
+
+<!-- Website Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="website-grid">
+    <div class="card col-span-full text-center text-gray-500 py-12">{{ _t('Loading') }}</div>
+</div>
+
+<!-- New Website Modal -->
+<div id="new-website-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">{{ _t('New Website') }}</h2>
+            <button onclick="closeModal('new-website-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="new-website-form" class="flex flex-col gap-4" onsubmit="createWebsite(event)">
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Template') }} *</label>
+                <select id="new-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required>
+                    <option value="">{{ _t('Loading') }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Company Name') }}</label>
+                <input id="new-company" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Your Trading Co., Ltd">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Industry Keywords') }}</label>
+                <input id="new-industry" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="packaging, export, PP products">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Domain') }} (subfolder)</label>
+                <input id="new-domain" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="my-company-trading">
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button type="submit" class="btn-primary flex-1">{{ _t('Create') }}</button>
+                <button type="button" onclick="closeModal('new-website-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">{{ _t('Cancel') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Batch Generate Modal -->
+<div id="batch-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">⚡ {{ _t('Batch Generate') }}</h2>
+            <button onclick="closeModal('batch-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="batch-form" class="flex flex-col gap-4" onsubmit="batchGenerate(event)">
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Template') }} *</label>
+                <select id="batch-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required>
+                    <option value="">{{ _t('Loading') }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Industries') }}</label>
+                <div id="industry-checkboxes" class="grid grid-cols-2 gap-2 mt-1 max-h-48 overflow-y-auto">
+                    <div class="text-gray-500 text-sm">{{ _t('Loading') }}</div>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" style="background:linear-gradient(135deg,#059669,#34d399)">⚡ {{ _t('Generate') }}</button>
+        </form>
+    </div>
+</div>
+
+<!-- Template Preview Modal -->
+<div id="preview-modal" class="fixed inset-0 bg-black/80 hidden z-50">
+    <div class="absolute top-4 right-4 z-10">
+        <button onclick="closeModal('preview-modal')" class="text-white bg-black/50 px-4 py-2 rounded-lg hover:bg-black/70">&times; {{ _t('Close') }}</button>
+    </div>
+    <iframe id="preview-frame" class="w-full h-full border-0"></iframe>
+</div>
+
+<script>
+const LANG = '{{ lang }}';
+const STR = {{ _js_t | safe }};
+
+function _t(k) { return STR[k] || k; }
+
+function debounceLoad() {
+    clearTimeout(window._dl);
+    window._dl = setTimeout(loadWebsites, 300);
+}
+
+async function loadWebsites() {
+    const status = document.getElementById('filter-status').value;
+    const search = document.getElementById('filter-search').value;
+    let url = '/api/websites?page_size=50';
+    if (status) url += '&status=' + status;
+    if (search) url += '&search=' + encodeURIComponent(search);
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const grid = document.getElementById('website-grid');
+
+        if (data.items.length === 0) {
+            grid.innerHTML = '<div class="card col-span-full text-center text-gray-500 py-12">' + _t('No websites yet') + '</div>';
+            return;
+        }
+
+        grid.innerHTML = data.items.map(site => {
+            const statusColors = {
+                'draft': 'bg-gray-600',
+                'generated': 'bg-green-600',
+                'deployed': 'bg-blue-600',
+                'failed': 'bg-red-600',
+            };
+            const statusText = {
+                'draft': _t('Draft'),
+                'generated': _t('Generated'),
+                'deployed': _t('Published'),
+                'failed': _t('Failed'),
+            };
+            const sc = statusColors[site.status] || 'bg-gray-600';
+            const st = statusText[site.status] || site.status;
+            const kw = JSON.parse(site.industry_keywords || '[]');
+            const svcs = JSON.parse(site.services || '[]');
+            const company = LANG === 'zh' && site.company_name_zh ? site.company_name_zh : site.company_name;
+            const tagline = LANG === 'zh' && site.tagline_zh ? site.tagline_zh : site.tagline;
+            return `<div class="card flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-lg">${company || site.domain || 'Unnamed'}</h3>
+                    <span class="badge ${sc}">${st}</span>
+                </div>
+                ${tagline ? `<p class="text-sm text-gray-400">${tagline.substring(0, 80)}</p>` : ''}
+                ${kw.length ? `<div class="flex flex-wrap gap-1">${kw.slice(0, 3).map(k => `<span class="text-xs bg-gray-700 px-2 py-0.5 rounded-full text-gray-300">${k}</span>`).join('')}</div>` : ''}
+                <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                    <span>${site.template_name || '—'}</span>
+                    <span>${site.deploy_url ? `<a href="${site.deploy_url}" target="_blank" class="text-blue-400">${_t('Visit')} ↗</a>` : ''}</span>
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <button onclick="generateSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ ${_t('Generate')}</button>
+                    ${site.html_path ? `<button onclick="previewSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/40">👁 ${_t('Preview')}</button>` : ''}
+                    <button onclick="deleteSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-red-600/20 text-red-300 hover:bg-red-600/40 ml-auto">🗑</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('website-grid').innerHTML = '<div class="card col-span-full text-center text-red-400 py-12">' + _t('Failed to load') + '</div>';
+    }
+}
+
+async function generateSite(id) {
+    if (!confirm(_t('Generate') + '?')) return;
+    try {
+        const res = await fetch('/api/websites/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({website_id: id, lang: LANG}),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            loadWebsites();
+        } else {
+            alert(_t('Failed'));
+        }
+    } catch (e) {
+        alert(_t('Failed'));
+    }
+}
+
+async function deleteSite(id) {
+    if (!confirm('Delete?')) return;
+    await fetch('/api/websites/' + id, {method: 'DELETE'});
+    loadWebsites();
+}
+
+async function previewSite(id) {
+    // Generate first, then open preview
+    document.getElementById('preview-frame').src = '/api/websites/preview/' + id;
+    document.getElementById('preview-modal').classList.remove('hidden');
+}
+
+async function createWebsite(e) {
+    e.preventDefault();
+    const templateId = document.getElementById('new-template').value;
+    const company = document.getElementById('new-company').value;
+    const industry = document.getElementById('new-industry').value;
+    const domain = document.getElementById('new-domain').value;
+
+    await fetch('/api/websites', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            template_id: templateId,
+            company_name: company,
+            industry_keywords: JSON.stringify(industry.split(',').map(s => s.trim()).filter(Boolean)),
+            domain: domain || company.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        }),
+    });
+    closeModal('new-website-modal');
+    loadWebsites();
+}
+
+async function batchGenerate(e) {
+    e.preventDefault();
+    const templateId = document.getElementById('batch-template').value;
+    const checked = document.querySelectorAll('#industry-checkboxes input:checked');
+    const industries = Array.from(checked).map(cb => cb.value);
+
+    if (industries.length === 0) { alert('Select at least one industry'); return; }
+
+    await fetch('/api/websites/batch-generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({template_id: templateId, industries: industries, count: industries.length, lang: LANG}),
+    });
+    closeModal('batch-modal');
+    loadWebsites();
+}
+
+// Modals
+function showNewWebsiteModal() {
+    document.getElementById('new-website-modal').classList.remove('hidden');
+    loadTemplateSelect('new-template');
+}
+function showBatchModal() {
+    document.getElementById('batch-modal').classList.remove('hidden');
+    loadTemplateSelect('batch-template');
+    loadIndustryPresets();
+}
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+async function loadTemplateSelect(selectId) {
+    const sel = document.getElementById(selectId);
+    try {
+        const res = await fetch('/api/websites/templates?page_size=50');
+        const data = await res.json();
+        sel.innerHTML = '<option value="">' + _t('Select Template') + '</option>'
+            + data.items.map(t => `<option value="${t.id}">${LANG === 'zh' && t.display_name_zh ? t.display_name_zh : t.display_name}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">' + _t('Failed to load') + '</option>';
+    }
+}
+
+async function loadIndustryPresets() {
+    const container = document.getElementById('industry-checkboxes');
+    try {
+        const res = await fetch('/api/websites/presets/industries');
+        const data = await res.json();
+        container.innerHTML = data.presets.map(p => {
+            const label = LANG === 'zh' ? p.zh : p.industry;
+            return `<label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" value="${p.industry}" class="accent-purple-500">
+                ${label}
+            </label>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="text-gray-500">' + _t('Failed to load') + '</div>';
+    }
+}
+
+// Initial load
+loadWebsites();
+</script>
+
+{% endblock %}

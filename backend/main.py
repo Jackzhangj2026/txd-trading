@@ -9,6 +9,7 @@ from backend.database import init_db
 from backend.scheduler import start_scheduler
 from backend.admin.router import router as admin_router
 from backend.routers import content, customers, products, inquiries, mailboxes, emails, target_markets
+from backend.routers import websites as websites_router
 from backend.routers import content_media as content_media_router
 
 
@@ -41,6 +42,7 @@ app.include_router(inquiries.router)
 app.include_router(mailboxes.router)
 app.include_router(emails.router)
 app.include_router(target_markets.router)
+app.include_router(websites_router.router)
 app.include_router(admin_router)
 app.include_router(content_media_router.router)
 

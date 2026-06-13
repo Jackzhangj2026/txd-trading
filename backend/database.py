@@ -21,3 +21,10 @@ async def init_db():
     from backend.models.base import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Seed website templates on first run
+    from backend.tasks.seed_templates import seed_templates
+    async with async_session() as session:
+        result = await seed_templates(session)
+        if result["seeded"] > 0:
+            print(f"  [OK] Seeded {result['seeded']} website templates")

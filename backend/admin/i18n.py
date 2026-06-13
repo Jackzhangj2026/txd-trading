@@ -112,6 +112,27 @@ I18N = {
 
     # Products page
     "Products management": {"en": "Products management", "zh": "产品管理"},
+    
+    # Website Manager
+    "Websites": {"en": "Websites", "zh": "网站"},
+    "Generate and manage company websites": {"en": "Generate and manage company websites", "zh": "生成和管理公司网站"},
+    "New Website": {"en": "New Website", "zh": "新建网站"},
+    "Batch Generate": {"en": "Batch Generate", "zh": "批量生成"},
+    "Generated": {"en": "Generated", "zh": "已生成"},
+    "Published": {"en": "Published", "zh": "已发布"},
+    "Failed": {"en": "Failed", "zh": "失败"},
+    "Company Name": {"en": "Company Name", "zh": "公司名称"},
+    "Industry Keywords": {"en": "Industry Keywords", "zh": "行业关键词"},
+    "Domain": {"en": "Domain (subfolder)", "zh": "域名（子目录）"},
+    "Select Template": {"en": "Select Template", "zh": "选择模板"},
+    "No websites yet": {"en": "No websites yet. Create one!", "zh": "暂无网站，立即创建！"},
+    "Visit": {"en": "Visit", "zh": "访问"},
+    "Preview": {"en": "Preview", "zh": "预览"},
+    "Close": {"en": "Close", "zh": "关闭"},
+    "Create": {"en": "Create", "zh": "创建"},
+    "Cancel": {"en": "Cancel", "zh": "取消"},
+    "Industries": {"en": "Industries", "zh": "行业"},
+    "Template": {"en": "Template", "zh": "模板"},
 
     # Weekdays
     "Mon": {"en": "Mon", "zh": "周一"},

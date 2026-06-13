@@ -1,0 +1,10 @@
+{
+  "sender_name": "TXD CO., LTD Sales Team",
+  "sender_email": "necata@163.com",
+  "smtp_server": "smtp.163.com",
+  "smtp_port": 465,
+  "smtp_password": "JUj9qDm9tTkgQAiu",
+  "daily_limit": 5,
+  "interval_min": 180,
+  "enabled": true
+}

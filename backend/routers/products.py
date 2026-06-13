@@ -19,7 +19,7 @@ async def list_products(
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Product).where(Product.active == True)
+    query = select(Product).where(Product.active)
 
     if category:
         query = query.where(Product.category == category)

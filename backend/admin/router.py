@@ -68,3 +68,8 @@ async def admin_content(request: Request):
 @router.get("/social", response_class=HTMLResponse)
 async def admin_social(request: Request):
     return render(request, "social.html")
+
+
+@router.get("/websites", response_class=HTMLResponse)
+async def admin_websites(request: Request):
+    return render(request, "websites.html")
