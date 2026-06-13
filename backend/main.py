@@ -10,6 +10,8 @@ from backend.scheduler import start_scheduler
 from backend.admin.router import router as admin_router
 from backend.routers import content, customers, products, inquiries, mailboxes, emails, target_markets
 from backend.routers import websites as websites_router
+from backend.routers.settings import router as settings_router
+from backend.routers.auto_crm import router as auto_crm_router
 from backend.routers import content_media as content_media_router
 
 
@@ -43,10 +45,32 @@ app.include_router(mailboxes.router)
 app.include_router(emails.router)
 app.include_router(target_markets.router)
 app.include_router(websites_router.router)
+app.include_router(settings_router)
+app.include_router(auto_crm_router)
 app.include_router(admin_router)
 app.include_router(content_media_router.router)
 
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "version": "0.1.0", "llm_provider": settings.active_llm}
+    db_ok = False
+    try:
+        from backend.database import async_session
+        from sqlalchemy import text
+        async with async_session() as session:
+            await session.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:
+        db_ok = False
+    
+    from backend.services.llm_config import get_active_provider, get_api_key
+    provider = get_active_provider()
+    has_key = bool(get_api_key(provider))
+    
+    return {
+        "status": "ok",
+        "version": "0.1.0",
+        "llm_provider": provider,
+        "database": "connected" if db_ok else "disconnected",
+        "has_api_key": has_key,
+    }

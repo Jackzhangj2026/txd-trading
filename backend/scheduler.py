@@ -6,6 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 from backend.tasks.daily_blog import scheduled_blog_task
 from backend.tasks.email_sequences import scheduled_email_sequences
 from backend.tasks.market_scan import scheduled_market_scan
+from backend.tasks.auto_crm_daily import scheduled_auto_crm_task
 
 scheduler = AsyncIOScheduler()
 
@@ -33,6 +34,14 @@ def start_scheduler():
         scheduled_market_scan,
         CronTrigger(hour=0, minute=0),
         id="market_scan",
+        replace_existing=True,
+    )
+
+    # Auto-CRM: send development emails at 10:00 Beijing time (02:00 UTC)
+    scheduler.add_job(
+        scheduled_auto_crm_task,
+        CronTrigger(hour=2, minute=0),  # UTC = 10:00 Beijing
+        id="auto_crm_daily",
         replace_existing=True,
     )
 

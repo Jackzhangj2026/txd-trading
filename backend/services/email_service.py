@@ -43,13 +43,20 @@ class EmailService:
         body: str,
         use_ssl: bool = True,
     ) -> bool:
-        """Send an email via SMTP. Returns True on success."""
+        """Send an email via SMTP. Auto-detects HTML content and sends multipart."""
         try:
             msg = EmailMessage()
             msg["From"] = from_addr
             msg["To"] = to_addr
             msg["Subject"] = subject
-            msg.set_content(body)
+            msg.set_content(subject)  # placeholder, replaced below
+            
+            # Detect HTML content
+            if body.strip().startswith("<") or "html" in body[:200].lower():
+                msg.set_content("This email requires HTML support. Please enable HTML viewing.")
+                msg.add_alternative(body, subtype="html")
+            else:
+                msg.set_content(body)
 
             if use_ssl or smtp_port == 465:
                 with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as server:

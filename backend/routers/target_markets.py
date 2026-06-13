@@ -260,6 +260,16 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
             score += 20
         if product:
             score += 15
+        
+        # Use proper scoring engine
+        from backend.services.lead_scoring import LeadScoringEngine
+        proper_score = LeadScoringEngine.calculate_score(
+            company=company, country=country,
+            intent_text=str(lead.get("source_text", "")),
+            source=f"market_scan_{m.name}",
+            matched_market=matched,
+        )
+        final_score = max(score, proper_score)  # Take the higher of both
 
         # Check if customer already exists (by company name)
         existing = await db.execute(
@@ -273,7 +283,7 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
                 company=company,
                 country=country,
                 source=f"market_scan_{m.name}",
-                score=min(score, 100),
+                score=min(final_score, 100),
                 matched_market=matched,
                 notes=lead.get("source_text", ""),
             )

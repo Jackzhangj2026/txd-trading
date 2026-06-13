@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Auto CRM{% endblock %}
+{% block content %}
+<div class="mb-8 flex items-center justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">🤖 Auto CRM</h1>
+        <p class="text-gray-500 mt-1">Import and manage auto-crm lead data</p>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="stats-grid">
+    <div class="card"><div class="text-gray-400 text-sm">Auto CRM Customers</div><div class="text-3xl font-bold mt-2" id="stat-customers">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">Email Logs</div><div class="text-3xl font-bold mt-2" id="stat-logs">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">Status</div><div class="text-3xl font-bold mt-2" id="stat-status">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">Last Daily Run</div><div class="text-3xl font-bold mt-2 text-sm" id="stat-last-run">—</div></div>
+</div>
+
+<!-- Actions -->
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold mb-4">⚡ Actions</h2>
+    <div class="flex flex-wrap gap-4">
+        <button onclick="importData()" class="btn-primary" id="import-btn">
+            📥 Import Auto CRM Data
+        </button>
+        <button onclick="runDailyTask()" class="btn-primary" style="background:linear-gradient(135deg,#059669,#34d399)" id="run-btn">
+            ▶️ Run Daily Task Now (Dry Run)
+        </button>
+    </div>
+    <div id="action-result" class="mt-4 hidden"></div>
+</div>
+
+<!-- Recent Customers -->
+<div class="card">
+    <h2 class="text-lg font-semibold mb-4">📋 Recent Auto CRM Customers</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Name</th>
+                <th class="text-left py-3 px-2">Company</th>
+                <th class="text-left py-3 px-2">Email</th>
+                <th class="text-left py-3 px-2">Country</th>
+                <th class="text-left py-3 px-2">Score</th>
+                <th class="text-left py-3 px-2">Source</th>
+            </tr></thead>
+            <tbody id="customer-table">
+                <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const STR = {{ _js_t | safe }};
+const LANG = '{{ lang }}';
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/auto-crm/stats');
+        const data = await res.json();
+        document.getElementById('stat-customers').textContent = data.auto_crm_customers;
+        document.getElementById('stat-logs').textContent = data.total_email_logs;
+        document.getElementById('stat-status').textContent = data.auto_crm_customers > 0 ? '✅ Imported' : '⏳ Not imported';
+    } catch(e) {
+        document.getElementById('stat-customers').textContent = 'Error';
+    }
+}
+
+async function loadCustomers() {
+    try {
+        const res = await fetch('/api/customers?page_size=20&search=auto_crm');
+        const data = await res.json();
+        const tbody = document.getElementById('customer-table');
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No auto-crm customers yet. Click Import!</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(c => {
+            const sc = c.score >= 60 ? '#22c55e' : c.score >= 30 ? '#eab308' : '#6b7280';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2 text-white">${c.name || '—'}</td>
+                <td class="py-3 px-2 text-gray-300">${c.company || '—'}</td>
+                <td class="py-3 px-2 text-gray-400">${c.email || '—'}</td>
+                <td class="py-3 px-2 text-gray-400">${c.country || '—'}</td>
+                <td class="py-3 px-2"><span class="badge" style="background:${sc}22;color:${sc}">${c.score}</span></td>
+                <td class="py-3 px-2 text-gray-400">${c.source || '—'}</td>
+            </tr>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('customer-table').innerHTML = '<tr><td colspan="6" class="text-red-400 py-8 text-center">Failed to load</td></tr>';
+    }
+}
+
+async function importData() {
+    const btn = document.getElementById('import-btn');
+    btn.textContent = '⏳ Importing...'; btn.disabled = true;
+    const result = document.getElementById('action-result');
+    result.className = 'mt-4';
+    try {
+        const res = await fetch('/api/auto-crm/import', {method:'POST'});
+        const data = await res.json();
+        result.className = 'mt-4 p-3 rounded-lg bg-green-900/30 text-green-300';
+        result.textContent = '✅ ' + data.message;
+        result.classList.remove('hidden');
+        loadStats();
+        loadCustomers();
+    } catch(e) {
+        result.className = 'mt-4 p-3 rounded-lg bg-red-900/30 text-red-300';
+        result.textContent = '❌ Failed: ' + e.message;
+        result.classList.remove('hidden');
+    }
+    btn.textContent = '📥 Import Auto CRM Data'; btn.disabled = false;
+}
+
+async function runDailyTask() {
+    const btn = document.getElementById('run-btn');
+    btn.textContent = '⏳ Running...'; btn.disabled = true;
+    const result = document.getElementById('action-result');
+    try {
+        const res = await fetch('/api/auto-crm/run-daily', {method:'POST'});
+        const data = await res.json();
+        result.className = 'mt-4 p-3 rounded-lg bg-green-900/30 text-green-300';
+        result.textContent = '✅ ' + (data.message || 'Task completed');
+        result.classList.remove('hidden');
+    } catch(e) {
+        result.className = 'mt-4 p-3 rounded-lg bg-red-900/30 text-red-300';
+        result.textContent = '❌ Failed';
+        result.classList.remove('hidden');
+    }
+    btn.textContent = '▶️ Run Daily Task Now'; btn.disabled = false;
+}
+
+loadStats();
+loadCustomers();
+</script>
+{% endblock %}

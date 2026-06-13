@@ -22,24 +22,169 @@
 </div>
 
 <div class="card">
-    <h2 class="text-lg font-semibold mb-4">System Status</h2>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">System Status</h2>
+        <button onclick="showLLMConfig()" class="text-sm px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 transition">⚙️ Configure LLM</button>
+    </div>
     <div class="text-sm text-gray-400 space-y-2">
-        <div>🔧 LLM Provider: <span id="llm-provider" class="text-white">loading...</span></div>
+        <div>🔧 LLM Provider: <span id="llm-provider" class="text-white">loading...</span>
+            <span id="llm-key-status" class="text-xs ml-2"></span></div>
         <div>💾 Database: <span id="db-status" class="text-white">connecting...</span></div>
         <div>📡 API Version: <span id="api-version" class="text-white">0.1.0</span></div>
     </div>
 </div>
 
+<!-- LLM Config Modal -->
+<div id="llm-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-md w-full mx-4">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">⚙️ LLM Configuration</h2>
+            <button onclick="closeModal('llm-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="llm-form" class="flex flex-col gap-4" onsubmit="saveLLMConfig(event)">
+            <div>
+                <label class="text-sm text-gray-400">Provider</label>
+                <select id="llm-provider-select" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" onchange="onProviderChange()">
+                </select>
+            </div>
+            <div id="api-key-group">
+                <label class="text-sm text-gray-400">API Key</label>
+                <div class="relative mt-1">
+                    <input id="llm-api-key" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 pr-10" placeholder="Enter API key">
+                    <button type="button" onclick="toggleKeyVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm">👁</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key</p>
+            </div>
+            <div id="llm-info" class="text-xs text-gray-500 bg-gray-800/50 rounded-lg p-3"></div>
+            <div class="flex gap-3 mt-2">
+                <button type="submit" class="btn-primary flex-1" id="llm-save-btn">Save & Apply</button>
+                <button type="button" onclick="closeModal('llm-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button>
+            </div>
+            <div id="llm-result" class="text-sm hidden"></div>
+        </form>
+    </div>
+</div>
+
+<style>
+.password-visible input[type="password"] { -webkit-text-security: none; }
+</style>
+
 <script>
-    fetch('/api/health')
-        .then(r => r.json())
-        .then(d => {
-            document.getElementById('llm-provider').textContent = d.llm_provider;
-            document.getElementById('api-version').textContent = d.version;
+let llmProviders = [];
+let hasApiKey = false;
+
+// ─── Dashboard init ──────────────────────────────────────────────────
+fetch('/api/health')
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById('llm-provider').textContent = d.llm_provider;
+        document.getElementById('api-version').textContent = d.version;
+        hasApiKey = d.has_api_key;
+
+        const dbEl = document.getElementById('db-status');
+        dbEl.textContent = d.database === 'connected' ? '✅ connected' : '❌ disconnected';
+        dbEl.className = d.database === 'connected' ? 'text-green-400' : 'text-red-400';
+
+        const keyEl = document.getElementById('llm-key-status');
+        keyEl.textContent = d.has_api_key ? '🔑 key set' : '⚠️ no key';
+        keyEl.className = 'text-xs ml-2 ' + (d.has_api_key ? 'text-green-400' : 'text-yellow-400');
+    });
+
+fetch('/api/products')
+    .then(r => r.json())
+    .then(d => document.getElementById('product-count').textContent = d.total)
+    .catch(() => document.getElementById('product-count').textContent = '0');
+fetch('/api/inquiries')
+    .then(r => r.json())
+    .then(d => document.getElementById('inquiry-count').textContent = d.total)
+    .catch(() => document.getElementById('inquiry-count').textContent = '0');
+fetch('/api/customers')
+    .then(r => r.json())
+    .then(d => document.getElementById('customer-count').textContent = d.total)
+    .catch(() => document.getElementById('customer-count').textContent = '0');
+
+// ─── LLM Config Modal ────────────────────────────────────────────────
+async function showLLMConfig() {
+    document.getElementById('llm-modal').classList.remove('hidden');
+
+    const res = await fetch('/api/settings/llm');
+    const data = await res.json();
+    llmProviders = data.available_providers;
+
+    const sel = document.getElementById('llm-provider-select');
+    sel.innerHTML = data.available_providers.map(p =>
+        `<option value="${p.id}" ${p.id === data.active_llm ? 'selected' : ''}>${p.label} (${p.model})</option>`
+    ).join('');
+
+    document.getElementById('llm-api-key').value = '';
+    document.getElementById('llm-result').classList.add('hidden');
+    onProviderChange();
+}
+
+function onProviderChange() {
+    const pid = document.getElementById('llm-provider-select').value;
+    const p = llmProviders.find(x => x.id === pid);
+    const info = document.getElementById('llm-info');
+    const needsKey = ['deepseek', 'openai', 'claude'].includes(pid);
+    document.getElementById('api-key-group').style.display = needsKey ? 'block' : 'none';
+
+    if (p) {
+        const keyStatus = needsKey ? (hasApiKey ? '🔑 Key saved' : '⚠️ No key set') : '';
+        info.innerHTML = `<div><strong>${p.label}</strong></div>
+            <div>Model: ${p.model}</div>
+            <div>${keyStatus}</div>`;
+    }
+}
+
+function toggleKeyVisibility() {
+    const input = document.getElementById('llm-api-key');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function saveLLMConfig(e) {
+    e.preventDefault();
+    const btn = document.getElementById('llm-save-btn');
+    btn.textContent = '⏳ Saving...'; btn.disabled = true;
+
+    const pid = document.getElementById('llm-provider-select').value;
+    const key = document.getElementById('llm-api-key').value;
+
+    try {
+        const res = await fetch('/api/settings/llm', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({active_llm: pid, api_key: key}),
         });
-    fetch('/api/products')
-        .then(r => r.json())
-        .then(d => document.getElementById('product-count').textContent = d.total)
-        .catch(() => document.getElementById('product-count').textContent = '0');
+        const data = await res.json();
+        const resultEl = document.getElementById('llm-result');
+        resultEl.className = 'text-sm p-3 rounded-lg ' + (data.status === 'ok' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300');
+        resultEl.textContent = data.status === 'ok'
+            ? '✅ Switched to ' + pid + (data.has_api_key ? ' (key configured)' : ' (no key)')
+            : '❌ Failed: ' + (data.detail || 'unknown');
+        resultEl.classList.remove('hidden');
+
+        // Update dashboard display
+        document.getElementById('llm-provider').textContent = pid;
+        const keyEl = document.getElementById('llm-key-status');
+        keyEl.textContent = data.has_api_key ? '🔑 key set' : '⚠️ no key';
+        keyEl.className = 'text-xs ml-2 ' + (data.has_api_key ? 'text-green-400' : 'text-yellow-400');
+        hasApiKey = data.has_api_key;
+
+        // Close modal on success
+        if (data.status === 'ok') {
+            setTimeout(() => closeModal('llm-modal'), 600);
+        }
+    } catch(e) {
+        document.getElementById('llm-result').className = 'text-sm p-3 rounded-lg bg-red-900/30 text-red-300';
+        document.getElementById('llm-result').textContent = '❌ Network error';
+        document.getElementById('llm-result').classList.remove('hidden');
+    }
+
+    btn.textContent = 'Save & Apply'; btn.disabled = false;
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
 </script>
 {% endblock %}

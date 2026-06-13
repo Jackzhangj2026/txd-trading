@@ -73,3 +73,8 @@ async def admin_social(request: Request):
 @router.get("/websites", response_class=HTMLResponse)
 async def admin_websites(request: Request):
     return render(request, "websites.html")
+
+
+@router.get("/auto-crm", response_class=HTMLResponse)
+async def admin_auto_crm(request: Request):
+    return render(request, "auto_crm.html")

@@ -55,6 +55,11 @@ I18N = {
     "Country": {"en": "Country", "zh": "国家"},
     "Score": {"en": "Score", "zh": "评分"},
     "No customers found": {"en": "No customers found", "zh": "暂无客户"},
+    "Add Customer": {"en": "Add Customer", "zh": "添加客户"},
+    "Phone": {"en": "Phone", "zh": "电话"},
+    "Notes": {"en": "Notes", "zh": "备注"},
+    "Actions": {"en": "Actions", "zh": "操作"},
+    "All": {"en": "All", "zh": "全部"},
 
     # Emails page
     "Multi-mailbox configuration and email tracking": {"en": "Multi-mailbox configuration and email tracking", "zh": "多邮箱配置和邮件追踪"},
@@ -144,6 +149,26 @@ I18N = {
     "Generate Blog Post": {"en": "Generate Blog Post", "zh": "生成博客文章"},
     "No blog posts yet": {"en": "No blog posts yet. Generate one!", "zh": "暂无博客，立即生成！"},
     "Enter a topic (optional):": {"en": "Enter a topic (optional):", "zh": "输入主题（可选）："},
+    # Auto CRM
+    "Auto CRM": {"en": "Auto CRM", "zh": "自动获客"},
+    "Import and manage auto-crm lead data": {"en": "Import and manage auto-crm lead data", "zh": "导入和管理自动获客数据"},
+    "Import Auto CRM Data": {"en": "Import Auto CRM Data", "zh": "导入自动获客数据"},
+    "Run Daily Task Now": {"en": "Run Daily Task Now", "zh": "立即运行每日任务"},
+    "AUTO": {"en": "AUTO", "zh": "自动"},
+    "Auto CRM Customers": {"en": "Auto CRM Customers", "zh": "自动获客客户数"},
+    "Email Logs": {"en": "Email Logs", "zh": "邮件记录"},
+    "Last Daily Run": {"en": "Last Daily Run", "zh": "上次运行"},
+    "Recent Auto CRM Customers": {"en": "Recent Auto CRM Customers", "zh": "最近导入的客户"},
+    "Imported": {"en": "Imported", "zh": "已导入"},
+    "Not imported": {"en": "Not imported", "zh": "未导入"},
+    "LLM Configuration": {"en": "LLM Configuration", "zh": "大模型配置"},
+    "Configure LLM": {"en": "Configure LLM", "zh": "配置大模型"},
+    "Provider": {"en": "Provider", "zh": "提供商"},
+    "API Key": {"en": "API Key", "zh": "API 密钥"},
+    "Leave blank to keep existing key": {"en": "Leave blank to keep existing key", "zh": "留空则保留现有密钥"},
+    "Save & Apply": {"en": "Save & Apply", "zh": "保存并应用"},
+    "key set": {"en": "key set", "zh": "密钥已配置"},
+    "no key": {"en": "no key", "zh": "未配置密钥"},
 
     # Weekdays
     "Mon": {"en": "Mon", "zh": "周一"},

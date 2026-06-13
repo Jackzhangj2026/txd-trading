@@ -7,6 +7,11 @@ class InquiryCreate(BaseModel):
     product_id: str | None = None
     message: str
     source: str = "website"
+    # Auto-create customer fields
+    customer_name: str = ""
+    customer_email: str = ""
+    customer_company: str = ""
+    customer_country: str = ""
 
 
 class InquiryUpdate(BaseModel):

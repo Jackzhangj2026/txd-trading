@@ -61,6 +61,8 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=CustomerResponse, status_code=201)
 async def create_customer(data: CustomerCreate, db: AsyncSession = Depends(get_db)):
+    from backend.services.lead_scoring import LeadScoringEngine
+
     # Check if customer with same email exists
     if data.email:
         result = await db.execute(select(Customer).where(Customer.email == data.email))
@@ -70,11 +72,21 @@ async def create_customer(data: CustomerCreate, db: AsyncSession = Depends(get_d
             for key, value in data.model_dump(exclude_unset=True).items():
                 if value:
                     setattr(existing, key, value)
+            existing.score = LeadScoringEngine.calculate_score(
+                company=existing.company or "", email=existing.email or "",
+                phone=existing.phone or "", country=existing.country or "",
+                intent_text=existing.notes or "", source=existing.source or "",
+            )
             await db.commit()
             await db.refresh(existing)
             return existing
 
     customer = Customer(**data.model_dump())
+    customer.score = LeadScoringEngine.calculate_score(
+        company=customer.company or "", email=customer.email or "",
+        phone=customer.phone or "", country=customer.country or "",
+        intent_text=customer.notes or "", source=customer.source or "",
+    )
     db.add(customer)
     await db.commit()
     await db.refresh(customer)

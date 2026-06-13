@@ -3,6 +3,7 @@
 from typing import Any
 from litellm import acompletion
 from backend.config import settings
+from backend.services.llm_config import load_runtime_config, get_api_key
 
 # Provider configuration map
 LLM_PROVIDERS = {
@@ -30,25 +31,35 @@ LLM_PROVIDERS = {
         "model": "ollama/llama3.2",
         "api_base": "http://localhost:11434",
     },
+    "lmstudio": {
+        "model": "openai/qwen3-vl-4b-instruct",
+        "api_base": "http://localhost:1234/v1",
+    },
 }
 
 
 def get_provider_config(provider_name: str) -> dict[str, Any]:
-    """Get provider configuration, falling back to deepseek."""
+    """Get provider configuration, checking runtime config first, then env."""
     provider = LLM_PROVIDERS.get(provider_name, LLM_PROVIDERS["deepseek"])
     config: dict[str, Any] = {
         "model": provider["model"],
         "api_base": provider["api_base"],
     }
 
-    # Inject the correct API key
-    api_key_map = {
-        "deepseek": settings.deepseek_api_key,
-        "openai": settings.openai_api_key,
-        "claude": settings.anthropic_api_key,
-    }
-    if provider_name in api_key_map and api_key_map[provider_name]:
-        config["api_key"] = api_key_map[provider_name]
+    # Check runtime config first (set via admin UI)
+    runtime = load_runtime_config()
+    key = get_api_key(provider_name, runtime)
+    if key:
+        config["api_key"] = key
+    else:
+        # Fallback to .env
+        api_key_map = {
+            "deepseek": settings.deepseek_api_key,
+            "openai": settings.openai_api_key,
+            "claude": settings.anthropic_api_key,
+        }
+        if provider_name in api_key_map and api_key_map[provider_name]:
+            config["api_key"] = api_key_map[provider_name]
 
     return config
 
@@ -60,7 +71,9 @@ class TradeAgent:
     """
 
     def __init__(self, system_prompt: str | None = None):
-        provider_cfg = get_provider_config(settings.active_llm)
+        runtime = load_runtime_config()
+        active = runtime.get("active_llm") or settings.active_llm
+        provider_cfg = get_provider_config(active)
         self.model = provider_cfg["model"]
         self.api_base = provider_cfg["api_base"]
         self.api_key = provider_cfg.get("api_key")

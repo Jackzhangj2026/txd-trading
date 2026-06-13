@@ -70,23 +70,48 @@ MARKET: <target market or "general">""")
 
 @router.post("", response_model=InquiryResponse, status_code=201)
 async def create_inquiry(data: InquiryCreate, db: AsyncSession = Depends(get_db)):
-    """Submit a new inquiry — auto-classifies and links to customer."""
-    # Find or create customer by email
+    """Submit a new inquiry — auto-classifies, creates/links customer, auto-scores."""
+    from backend.services.lead_scoring import LeadScoringEngine
+
     customer = None
-    if data.customer_id:
+    customer_id = data.customer_id
+
+    # Auto-create or find customer by email
+    if data.customer_email:
+        result = await db.execute(select(Customer).where(Customer.email == data.customer_email))
+        customer = result.scalar_one_or_none()
+        if not customer:
+            customer = Customer(
+                name=data.customer_name or data.customer_email.split("@")[0],
+                email=data.customer_email,
+                company=data.customer_company,
+                country=data.customer_country,
+                source=data.source,
+                notes=data.message[:500],
+            )
+            db.add(customer)
+            await db.flush()
+        else:
+            # Update existing customer info
+            if data.customer_name and not customer.name:
+                customer.name = data.customer_name
+            if data.customer_company and not customer.company:
+                customer.company = data.customer_company
+            if data.customer_country and not customer.country:
+                customer.country = data.customer_country
+
+        customer_id = customer.id
+
+    elif data.customer_id:
         result = await db.execute(select(Customer).where(Customer.id == data.customer_id))
         customer = result.scalar_one_or_none()
-
-    if not customer and data.customer_id:
-        # Try to find by email if customer_id was given but not found
-        pass
 
     # Classify the inquiry
     classification, summary, market = await classify_inquiry(data.message)
 
     # Create inquiry
     inquiry = Inquiry(
-        customer_id=data.customer_id,
+        customer_id=customer_id,
         product_id=data.product_id,
         message=data.message,
         source=data.source,
@@ -95,6 +120,22 @@ async def create_inquiry(data: InquiryCreate, db: AsyncSession = Depends(get_db)
         status="classified" if classification != "spam" else "closed",
     )
     db.add(inquiry)
+    await db.flush()
+
+    # Auto-score the customer
+    if customer:
+        score = LeadScoringEngine.calculate_score(
+            company=customer.company or "",
+            email=customer.email or "",
+            phone=customer.phone or "",
+            country=customer.country or "",
+            intent_text=customer.notes or " " + data.message,
+            source=customer.source or data.source,
+            matched_market=market,
+        )
+        customer.score = score
+        customer.matched_market = market
+
     await db.commit()
     await db.refresh(inquiry)
     return inquiry
