@@ -1,0 +1,113 @@
+[
+  {
+    "date": "2026-06-13",
+    "leads_selected": 10,
+    "emails_sent": 10,
+    "status": "completed"
+  },
+  {
+    "date": "2026-06-13",
+    "leads_selected": 10,
+    "emails_sent": 10,
+    "status": "completed"
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 60,
+      "leads_extracted": 0,
+      "saved": 0
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 60,
+      "leads_extracted": 0,
+      "saved": 0
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 60,
+      "leads_extracted": 0,
+      "saved": 0
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 41
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 43
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 12,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 44
+    },
+    "email": {
+      "leads_selected": 10
+    }
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 10
+    },
+    "error": "name 'subject' is not defined"
+  },
+  {
+    "date": "2026-06-13",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 56.0
+  }
+]

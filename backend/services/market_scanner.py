@@ -16,28 +16,40 @@ class MarketScanner:
 
     @staticmethod
     async def google_search(query: str, num_results: int = 10) -> list[dict]:
-        """Simulate Google search for buyer intent queries.
+        """Generate realistic buyer/company leads for a B2B search query.
         
-        In production, replace with SerpAPI/Google Custom Search/Playwright.
-        For now, returns structured search-like data via LLM.
+        Uses LLM to simulate finding real companies that match the buyer intent query.
+        In production, replace this method with SerpAPI/Google Custom Search.
         """
-        agent = TradeAgent(system_prompt="You simulate a web search engine for B2B leads.")
+        agent = TradeAgent(system_prompt="You are a B2B lead generation specialist. Find real-looking importing companies.")
         
-        prompt = f"""Generate {num_results} realistic Google search results for the query: "{query}"
+        prompt = f"""I need to find {num_results} companies that could be BUYERS or IMPORTERS for this product/query: "{query}"
 
-Each result should look like a real search result from a B2B perspective — include company names,
-industry news, supplier/buyer platforms, and trade directories.
+For each company, provide realistic details as if found through web search. Include a mix of countries.
 
-Respond with a JSON array of objects:
+Respond with ONLY a JSON array (no other text):
 [
   {{
-    "title": "Company Name - Product/Service",
+    "title": "Company Name - Brief Description",
     "url": "www.example.com/page",
-    "snippet": "Brief description of what this result is about..."
+    "snippet": "Detailed description about this company: what they do, where they are located, what products they need, and evidence they could be a buyer/importer of this product."
   }}
 ]
 
-Only output the JSON array, nothing else."""
+Make the company names diverse and realistic. Only output the JSON array."""
+        try:
+            response = await agent.chat(prompt, temperature=0.8)
+            match = re.search(r'\[.*?\]', response, re.DOTALL)
+            if match:
+                results = json.loads(match.group())
+                for r in results:
+                    r["source"] = "google"
+                    r["query"] = query
+                return results[:num_results]
+        except Exception:
+            pass
+        
+        return []
         try:
             response = await agent.chat(prompt, temperature=0.7)
             match = re.search(r'\[.*?\]', response, re.DOTALL)
