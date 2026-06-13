@@ -2,6 +2,7 @@ from backend.models.base import Base, UUIDMixin, TimestampMixin
 from backend.models.product import Product
 from backend.models.website_template import WebsiteTemplate
 from backend.models.website import Website
+from backend.models.website_blog_post import WebsiteBlogPost
 from backend.models.customer import Customer
 from backend.models.inquiry import Inquiry
 from backend.models.mailbox import Mailbox

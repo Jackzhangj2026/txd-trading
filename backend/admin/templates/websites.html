@@ -13,7 +13,6 @@
     </div>
 </div>
 
-<!-- Filters -->
 <div class="mb-4 flex gap-2">
     <select id="filter-status" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadWebsites()">
         <option value="">{{ _t('All') }}</option>
@@ -25,230 +24,414 @@
     <input id="filter-search" type="search" placeholder="{{ _t('Search') }}" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 flex-1 max-w-xs" oninput="debounceLoad()">
 </div>
 
-<!-- Website Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="website-grid">
+<div id="website-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <div class="card col-span-full text-center text-gray-500 py-12">{{ _t('Loading') }}</div>
 </div>
 
-<!-- New Website Modal -->
-<div id="new-website-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
-    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+<!-- Website Detail Panel -->
+<div id="detail-panel" class="fixed inset-0 bg-black/70 hidden z-50 overflow-y-auto">
+    <div class="max-w-5xl mx-auto my-8 p-6" style="background: #1a1a24; border-radius: 16px;">
         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold">{{ _t('New Website') }}</h2>
-            <button onclick="closeModal('new-website-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+            <h2 id="detail-title" class="text-2xl font-bold"></h2>
+            <button onclick="closeDetail()" class="text-gray-500 hover:text-white text-2xl">&times;</button>
         </div>
+        <div id="detail-tabs" class="flex gap-2 mb-6 border-b border-gray-700 pb-2">
+            <button class="tab-btn active" data-tab="products" onclick="switchTab(this)">📦 {{ _t('Products') }}</button>
+            <button class="tab-btn" data-tab="blog" onclick="switchTab(this)">📝 {{ _t('Blog') }}</button>
+            <button class="tab-btn" data-tab="pages" onclick="switchTab(this)">🌐 {{ _t('Preview') }}</button>
+            <button class="tab-btn" data-tab="settings" onclick="switchTab(this)">⚙️ {{ _t('Settings') }}</button>
+        </div>
+        <div id="detail-content"></div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="new-website-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4">
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">{{ _t('New Website') }}</h2><button onclick="closeModal('new-website-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
         <form id="new-website-form" class="flex flex-col gap-4" onsubmit="createWebsite(event)">
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Template') }} *</label>
-                <select id="new-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required>
-                    <option value="">{{ _t('Loading') }}</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Company Name') }}</label>
-                <input id="new-company" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Your Trading Co., Ltd">
-            </div>
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Industry Keywords') }}</label>
-                <input id="new-industry" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="packaging, export, PP products">
-            </div>
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Domain') }} (subfolder)</label>
-                <input id="new-domain" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="my-company-trading">
-            </div>
-            <div class="flex gap-3 mt-2">
-                <button type="submit" class="btn-primary flex-1">{{ _t('Create') }}</button>
-                <button type="button" onclick="closeModal('new-website-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">{{ _t('Cancel') }}</button>
-            </div>
+            <div><label class="text-sm text-gray-400">{{ _t('Template') }} *</label><select id="new-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></select></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Company Name') }}</label><input id="new-company" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Industry Keywords') }}</label><input id="new-industry" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Domain') }}</label><input id="new-domain" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">{{ _t('Create') }}</button><button type="button" onclick="closeModal('new-website-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">{{ _t('Cancel') }}</button></div>
         </form>
     </div>
 </div>
 
-<!-- Batch Generate Modal -->
 <div id="batch-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
-    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold">⚡ {{ _t('Batch Generate') }}</h2>
-            <button onclick="closeModal('batch-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
-        </div>
+    <div class="card max-w-lg w-full mx-4">
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">⚡ {{ _t('Batch Generate') }}</h2><button onclick="closeModal('batch-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
         <form id="batch-form" class="flex flex-col gap-4" onsubmit="batchGenerate(event)">
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Template') }} *</label>
-                <select id="batch-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required>
-                    <option value="">{{ _t('Loading') }}</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-sm text-gray-400">{{ _t('Industries') }}</label>
-                <div id="industry-checkboxes" class="grid grid-cols-2 gap-2 mt-1 max-h-48 overflow-y-auto">
-                    <div class="text-gray-500 text-sm">{{ _t('Loading') }}</div>
-                </div>
-            </div>
+            <div><label class="text-sm text-gray-400">{{ _t('Template') }} *</label><select id="batch-template" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></select></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Industries') }}</label><div id="industry-checkboxes" class="grid grid-cols-2 gap-2 mt-1 max-h-48 overflow-y-auto"></div></div>
             <button type="submit" class="btn-primary" style="background:linear-gradient(135deg,#059669,#34d399)">⚡ {{ _t('Generate') }}</button>
         </form>
     </div>
 </div>
 
-<!-- Template Preview Modal -->
+<div id="product-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4">
+        <div class="flex items-center justify-between mb-6"><h2 id="product-modal-title" class="text-xl font-bold">{{ _t('Add Product') }}</h2><button onclick="closeModal('product-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
+        <form id="product-form" class="flex flex-col gap-4">
+            <input id="product-index" type="hidden" value="">
+            <div><label class="text-sm text-gray-400">{{ _t('Title') }} *</label><input id="prod-title" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Description') }}</label><textarea id="prod-desc" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" rows="3"></textarea></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Category') }}</label><input id="prod-cat" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Images') }}</label><input id="prod-images" type="file" multiple accept="image/*" class="w-full text-gray-400 mt-1 text-sm" onchange="uploadProductImages(event)"></div>
+            <div id="prod-preview" class="flex gap-2 flex-wrap mt-2"></div>
+            <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">{{ _t('Save') }}</button><button type="button" onclick="closeModal('product-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">{{ _t('Cancel') }}</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Preview Modal -->
 <div id="preview-modal" class="fixed inset-0 bg-black/80 hidden z-50">
-    <div class="absolute top-4 right-4 z-10">
-        <button onclick="closeModal('preview-modal')" class="text-white bg-black/50 px-4 py-2 rounded-lg hover:bg-black/70">&times; {{ _t('Close') }}</button>
+    <div class="absolute top-4 right-4 z-10 flex gap-2">
+        <button onclick="previewPage(-1)" class="text-white bg-black/50 px-3 py-2 rounded-lg hover:bg-black/70">◀</button>
+        <span id="preview-page-label" class="text-white bg-black/50 px-3 py-2 rounded-lg text-sm"></span>
+        <button onclick="previewPage(1)" class="text-white bg-black/50 px-3 py-2 rounded-lg hover:bg-black/70">▶</button>
+        <button onclick="closeModal('preview-modal')" class="text-white bg-black/50 px-3 py-2 rounded-lg hover:bg-black/70">✕ {{ _t('Close') }}</button>
     </div>
     <iframe id="preview-frame" class="w-full h-full border-0"></iframe>
 </div>
 
+<style>
+.tab-btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; cursor: pointer; background: transparent; color: #888; border: none; transition: all 0.2s; }
+.tab-btn.active { background: rgba(108,92,231,0.15); color: #a29bfe; }
+.tab-btn:hover { background: rgba(255,255,255,0.05); }
+</style>
+
 <script>
 const LANG = '{{ lang }}';
 const STR = {{ _js_t | safe }};
-
 function _t(k) { return STR[k] || k; }
 
-function debounceLoad() {
-    clearTimeout(window._dl);
-    window._dl = setTimeout(loadWebsites, 300);
-}
+let currentSiteId = null;
+let previewPages = ['index', 'products', 'about', 'blog', 'contact'];
+let previewIdx = 0;
 
+function debounceLoad() { clearTimeout(window._dl); window._dl = setTimeout(loadWebsites, 300); }
+
+// ─── Website List ────────────────────────────────────────────────────
 async function loadWebsites() {
     const status = document.getElementById('filter-status').value;
     const search = document.getElementById('filter-search').value;
     let url = '/api/websites?page_size=50';
     if (status) url += '&status=' + status;
     if (search) url += '&search=' + encodeURIComponent(search);
-
     try {
         const res = await fetch(url);
         const data = await res.json();
         const grid = document.getElementById('website-grid');
-
         if (data.items.length === 0) {
             grid.innerHTML = '<div class="card col-span-full text-center text-gray-500 py-12">' + _t('No websites yet') + '</div>';
             return;
         }
-
         grid.innerHTML = data.items.map(site => {
-            const statusColors = {
-                'draft': 'bg-gray-600',
-                'generated': 'bg-green-600',
-                'deployed': 'bg-blue-600',
-                'failed': 'bg-red-600',
-            };
-            const statusText = {
-                'draft': _t('Draft'),
-                'generated': _t('Generated'),
-                'deployed': _t('Published'),
-                'failed': _t('Failed'),
-            };
-            const sc = statusColors[site.status] || 'bg-gray-600';
-            const st = statusText[site.status] || site.status;
+            const sc = {draft:'bg-gray-600',generated:'bg-green-600',deployed:'bg-blue-600',failed:'bg-red-600'}[site.status]||'bg-gray-600';
+            const st = {draft:_t('Draft'),generated:_t('Generated'),deployed:_t('Published'),failed:_t('Failed')}[site.status]||site.status;
             const kw = JSON.parse(site.industry_keywords || '[]');
-            const svcs = JSON.parse(site.services || '[]');
             const company = LANG === 'zh' && site.company_name_zh ? site.company_name_zh : site.company_name;
-            const tagline = LANG === 'zh' && site.tagline_zh ? site.tagline_zh : site.tagline;
-            return `<div class="card flex flex-col gap-3">
+            return `<div class="card flex flex-col gap-3 cursor-pointer hover:border-purple-500/30 transition" onclick="openDetail('${site.id}')">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-lg">${company || site.domain || 'Unnamed'}</h3>
                     <span class="badge ${sc}">${st}</span>
                 </div>
-                ${tagline ? `<p class="text-sm text-gray-400">${tagline.substring(0, 80)}</p>` : ''}
+                ${site.tagline ? `<p class="text-sm text-gray-400">${site.tagline.substring(0, 80)}</p>` : ''}
                 ${kw.length ? `<div class="flex flex-wrap gap-1">${kw.slice(0, 3).map(k => `<span class="text-xs bg-gray-700 px-2 py-0.5 rounded-full text-gray-300">${k}</span>`).join('')}</div>` : ''}
                 <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
                     <span>${site.template_name || '—'}</span>
-                    <span>${site.deploy_url ? `<a href="${site.deploy_url}" target="_blank" class="text-blue-400">${_t('Visit')} ↗</a>` : ''}</span>
-                </div>
-                <div class="flex gap-2 mt-1">
-                    <button onclick="generateSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ ${_t('Generate')}</button>
-                    ${site.html_path ? `<button onclick="previewSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/40">👁 ${_t('Preview')}</button>` : ''}
-                    <button onclick="deleteSite('${site.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-red-600/20 text-red-300 hover:bg-red-600/40 ml-auto">🗑</button>
+                    ${site.deploy_url ? `<a href="${site.deploy_url}" target="_blank" class="text-blue-400">${_t('Visit')} ↗</a>` : ''}
                 </div>
             </div>`;
         }).join('');
-    } catch (e) {
+    } catch(e) {
         document.getElementById('website-grid').innerHTML = '<div class="card col-span-full text-center text-red-400 py-12">' + _t('Failed to load') + '</div>';
     }
 }
 
-async function generateSite(id) {
-    if (!confirm(_t('Generate') + '?')) return;
-    try {
-        const res = await fetch('/api/websites/generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({website_id: id, lang: LANG}),
+// ─── Detail Panel ────────────────────────────────────────────────────
+async function openDetail(id) {
+    currentSiteId = id;
+    const res = await fetch('/api/websites/' + id);
+    const site = await res.json();
+    const company = LANG === 'zh' && site.company_name_zh ? site.company_name_zh : site.company_name;
+    document.getElementById('detail-title').textContent = company || site.domain || 'Website';
+    document.getElementById('detail-panel').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    switchTab(document.querySelector('.tab-btn.active') || document.querySelector('.tab-btn'));
+}
+
+function closeDetail() {
+    document.getElementById('detail-panel').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function switchTab(btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    const content = document.getElementById('detail-content');
+    if (tab === 'products') content.innerHTML = '<div class="text-gray-400 py-8 text-center">' + _t('Loading') + '</div>';
+    if (tab === 'blog') content.innerHTML = '<div class="text-gray-400 py-8 text-center">' + _t('Loading') + '</div>';
+    if (tab === 'pages') content.innerHTML = '<div class="text-gray-400 py-8 text-center">' + _t('Loading') + '</div>';
+    if (tab === 'settings') content.innerHTML = '<div class="text-gray-400 py-8 text-center">' + _t('Loading') + '</div>';
+
+    if (tab === 'products') await loadProductsTab();
+    else if (tab === 'blog') await loadBlogTab();
+    else if (tab === 'pages') await loadPreviewTab();
+    else if (tab === 'settings') await loadSettingsTab();
+}
+
+// ─── Products Tab ────────────────────────────────────────────────────
+async function loadProductsTab() {
+    const res = await fetch(`/api/websites/${currentSiteId}/products`);
+    const data = await res.json();
+    const products = data.products || [];
+    let html = `<div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">${_t('Products')} (${products.length})</h3>
+        <button onclick="showProductModal(-1)" class="btn-primary text-sm">+ ${_t('Add Product')}</button>
+    </div>
+    <div class="generate-actions mb-4 flex gap-2">
+        <button onclick="generateSite('${currentSiteId}')" class="px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 text-sm">✨ ${_t('Generate')}</button>
+        <button onclick="uploadBulkImages()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 text-sm">📷 ${_t('Upload Images')}</button>
+    </div>`;
+    if (products.length === 0) {
+        html += '<div class="text-gray-500 text-center py-8">' + _t('No products yet') + '</div>';
+    } else {
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
+        products.forEach((p, i) => {
+            const imgs = p.image_urls || [];
+            html += `<div class="card flex gap-4">
+                <div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-800 flex items-center justify-center">
+                    ${imgs[0] ? `<img src="${imgs[0]}" class="w-full h-full object-cover">` : `<span class="text-2xl text-gray-600">📦</span>`}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-semibold">${p.title}</h4>
+                    <p class="text-xs text-gray-400 mt-1">${(p.description||'').substring(0, 100)}</p>
+                    ${imgs.length > 1 ? `<div class="flex gap-1 mt-2">${imgs.slice(0, 3).map(u => `<img src="${u}" class="w-8 h-8 rounded object-cover cursor-pointer" onclick="window.open(this.src)">`).join('')}</div>` : ''}
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="showProductModal(${i})" class="text-xs text-blue-400 hover:text-blue-300">${_t('Edit')}</button>
+                        <button onclick="deleteProduct(${i})" class="text-xs text-red-400 hover:text-red-300">${_t('Delete')}</button>
+                    </div>
+                </div>
+            </div>`;
         });
+        html += '</div>';
+    }
+    document.getElementById('detail-content').innerHTML = html;
+}
+
+// ─── Blog Tab ────────────────────────────────────────────────────────
+async function loadBlogTab() {
+    const res = await fetch(`/api/websites/${currentSiteId}/blog?page_size=50`);
+    const data = await res.json();
+    const posts = data.items || [];
+    let html = `<div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">${_t('Blog')} (${posts.length})</h3>
+        <button onclick="generateBlogPost()" class="btn-primary text-sm" style="background:linear-gradient(135deg,#059669,#34d399)">✨ ${_t('Generate Blog Post')}</button>
+    </div>`;
+    if (posts.length === 0) {
+        html += '<div class="text-gray-500 text-center py-8">' + _t('No blog posts yet') + '</div>';
+    } else {
+        html += '<div class="space-y-2">';
+        posts.forEach(p => {
+            const tags = JSON.parse(p.tags || '[]');
+            html += `<div class="card flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold">${p.title}</div>
+                    <div class="text-xs text-gray-500 mt-1">${p.published_at} ${p.excerpt ? '— ' + p.excerpt.substring(0, 100) : ''}</div>
+                    ${tags.length ? `<div class="flex gap-1 mt-1">${tags.slice(0, 3).map(t => `<span class="text-xs bg-gray-700 px-2 py-0.5 rounded-full text-gray-400">${t}</span>`).join('')}</div>` : ''}
+                </div>
+                <button onclick="deleteBlogPost('${p.id}')" class="text-xs text-red-400 hover:text-red-300 flex-shrink-0">${_t('Delete')}</button>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    document.getElementById('detail-content').innerHTML = html;
+}
+
+// ─── Preview Tab ─────────────────────────────────────────────────────
+async function loadPreviewTab() {
+    const pages = [
+        {key:'index', label:'Home', icon:'🏠'},
+        {key:'products', label:'Products', icon:'📦'},
+        {key:'about', label:'About', icon:'ℹ️'},
+        {key:'blog', label:'Blog', icon:'📝'},
+        {key:'contact', label:'Contact', icon:'📧'},
+    ];
+    let html = `<h3 class="text-lg font-semibold mb-4">${_t('Preview')}</h3><div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">`;
+    pages.forEach(p => {
+        html += `<div class="card text-center cursor-pointer hover:border-purple-500/30 transition" onclick="openPreview('${currentSiteId}','${p.key}')">
+            <div class="text-2xl mb-1">${p.icon}</div>
+            <div class="text-sm">${p.label}</div>
+        </div>`;
+    });
+    html += '</div>';
+    html += `<div class="mt-6"><button onclick="regenerateSite('${currentSiteId}')" class="btn-primary">🔄 ${_t('Regenerate All Pages')}</button></div>`;
+    document.getElementById('detail-content').innerHTML = html;
+}
+
+// ─── Settings Tab ────────────────────────────────────────────────────
+async function loadSettingsTab() {
+    const res = await fetch('/api/websites/' + currentSiteId);
+    const site = await res.json();
+    document.getElementById('detail-content').innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">${_t('Settings')}</h3>
+        <div class="space-y-3 max-w-lg">
+            <div><label class="text-sm text-gray-400">${_t('Company Name')}</label><input id="set-company" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" value="${site.company_name}"></div>
+            <div><label class="text-sm text-gray-400">${_t('Domain')}</label><input id="set-domain" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" value="${site.domain}"></div>
+            <div><label class="text-sm text-gray-400">Email</label><input id="set-email" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" value="${site.contact_email}"></div>
+            <div><label class="text-sm text-gray-400">Phone</label><input id="set-phone" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" value="${site.contact_phone}"></div>
+            <div><label class="text-sm text-gray-400">Address</label><input id="set-address" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" value="${site.contact_address}"></div>
+            <button onclick="saveSettings()" class="btn-primary mt-2">${_t('Save')}</button>
+        </div>`;
+}
+
+async function saveSettings() {
+    const body = {
+        company_name: document.getElementById('set-company').value,
+        domain: document.getElementById('set-domain').value,
+        contact_email: document.getElementById('set-email').value,
+        contact_phone: document.getElementById('set-phone').value,
+        contact_address: document.getElementById('set-address').value,
+    };
+    await fetch('/api/websites/' + currentSiteId, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    loadWebsites();
+}
+
+// ─── Product CRUD ────────────────────────────────────────────────────
+async function showProductModal(index) {
+    document.getElementById('product-index').value = index;
+    document.getElementById('prod-title').value = '';
+    document.getElementById('prod-desc').value = '';
+    document.getElementById('prod-cat').value = '';
+    document.getElementById('prod-preview').innerHTML = '';
+    document.getElementById('product-modal-title').textContent = index === -1 ? _t('Add Product') : _t('Edit Product');
+    if (index >= 0) {
+        const res = await fetch(`/api/websites/${currentSiteId}/products`);
         const data = await res.json();
-        if (data.status === 'success') {
-            loadWebsites();
-        } else {
-            alert(_t('Failed'));
+        const p = data.products[index];
+        if (p) {
+            document.getElementById('prod-title').value = p.title || '';
+            document.getElementById('prod-desc').value = p.description || '';
+            document.getElementById('prod-cat').value = p.category || '';
+            const imgs = p.image_urls || [];
+            document.getElementById('prod-preview').innerHTML = imgs.map(u => `<img src="${u}" class="w-16 h-16 rounded object-cover">`).join('');
         }
-    } catch (e) {
-        alert(_t('Failed'));
+    }
+    document.getElementById('product-modal').classList.remove('hidden');
+}
+document.getElementById('product-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const index = parseInt(document.getElementById('product-index').value);
+    const body = {
+        title: document.getElementById('prod-title').value,
+        description: document.getElementById('prod-desc').value,
+        category: document.getElementById('prod-cat').value,
+        image_urls: '[]',
+    };
+    if (index === -1) {
+        await fetch(`/api/websites/${currentSiteId}/products`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    } else {
+        await fetch(`/api/websites/${currentSiteId}/products/${index}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    }
+    closeModal('product-modal');
+    loadProductsTab();
+};
+
+async function deleteProduct(index) {
+    if (!confirm('Delete?')) return;
+    await fetch(`/api/websites/${currentSiteId}/products/${index}`, {method:'DELETE'});
+    loadProductsTab();
+}
+
+async function uploadProductImages(event) {
+    const files = event.target.files;
+    if (!files.length) return;
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`/api/websites/${currentSiteId}/upload-image`, {method:'POST', body:formData});
+        const data = await res.json();
+        document.getElementById('prod-preview').innerHTML += `<img src="${data.url}" class="w-16 h-16 rounded object-cover">`;
     }
 }
 
-async function deleteSite(id) {
-    if (!confirm('Delete?')) return;
-    await fetch('/api/websites/' + id, {method: 'DELETE'});
-    loadWebsites();
+async function uploadBulkImages() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+        for (const file of e.target.files) {
+            const fd = new FormData();
+            fd.append('file', file);
+            await fetch(`/api/websites/${currentSiteId}/upload-image`, {method:'POST', body:fd});
+        }
+        loadProductsTab();
+    };
+    input.click();
 }
 
-async function previewSite(id) {
-    // Generate first, then open preview
-    document.getElementById('preview-frame').src = '/api/websites/preview/' + id;
+// ─── Blog CRUD ───────────────────────────────────────────────────────
+async function generateBlogPost() {
+    const topic = prompt(_t('Enter a topic (optional):'));
+    const body = {website_id: currentSiteId, topic: topic || ''};
+    const btn = event.target; btn.textContent = '⏳'; btn.disabled = true;
+    try {
+        await fetch(`/api/websites/${currentSiteId}/blog/generate`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+        loadBlogTab();
+    } catch(e) { alert(_t('Failed')); }
+    btn.textContent = '✨ Generate Blog Post'; btn.disabled = false;
+}
+
+async function deleteBlogPost(id) {
+    if (!confirm('Delete?')) return;
+    await fetch(`/api/websites/${currentSiteId}/blog/${id}`, {method:'DELETE'});
+    loadBlogTab();
+}
+
+// ─── Preview ─────────────────────────────────────────────────────────
+function openPreview(id, page) {
+    previewPages = ['index','products','about','blog','contact'];
+    previewIdx = previewPages.indexOf(page);
+    showPreview();
+}
+
+function previewPage(delta) {
+    previewIdx = (previewIdx + delta + previewPages.length) % previewPages.length;
+    showPreview();
+}
+
+function showPreview() {
+    const page = previewPages[previewIdx];
+    document.getElementById('preview-frame').src = `/api/websites/preview/${currentSiteId}?page=${page}`;
+    document.getElementById('preview-page-label').textContent = page;
     document.getElementById('preview-modal').classList.remove('hidden');
 }
 
-async function createWebsite(e) {
-    e.preventDefault();
-    const templateId = document.getElementById('new-template').value;
-    const company = document.getElementById('new-company').value;
-    const industry = document.getElementById('new-industry').value;
-    const domain = document.getElementById('new-domain').value;
-
-    await fetch('/api/websites', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            template_id: templateId,
-            company_name: company,
-            industry_keywords: JSON.stringify(industry.split(',').map(s => s.trim()).filter(Boolean)),
-            domain: domain || company.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        }),
-    });
-    closeModal('new-website-modal');
-    loadWebsites();
+// ─── Generate / Regenerate ──────────────────────────────────────────
+async function generateSite(id) {
+    const btn = event.target; btn.textContent = '⏳'; btn.disabled = true;
+    try {
+        await fetch('/api/websites/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({website_id: id, lang: LANG})});
+        loadWebsites();
+        if (currentSiteId === id) loadProductsTab();
+    } catch(e) { alert(_t('Failed')); }
+    btn.textContent = '✨ Generate'; btn.disabled = false;
 }
 
-async function batchGenerate(e) {
-    e.preventDefault();
-    const templateId = document.getElementById('batch-template').value;
-    const checked = document.querySelectorAll('#industry-checkboxes input:checked');
-    const industries = Array.from(checked).map(cb => cb.value);
-
-    if (industries.length === 0) { alert('Select at least one industry'); return; }
-
-    await fetch('/api/websites/batch-generate', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({template_id: templateId, industries: industries, count: industries.length, lang: LANG}),
-    });
-    closeModal('batch-modal');
-    loadWebsites();
+async function regenerateSite(id) {
+    await fetch('/api/websites/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({website_id: id, lang: LANG})});
+    loadPreviewTab();
 }
 
-// Modals
-function showNewWebsiteModal() {
-    document.getElementById('new-website-modal').classList.remove('hidden');
-    loadTemplateSelect('new-template');
-}
-function showBatchModal() {
-    document.getElementById('batch-modal').classList.remove('hidden');
-    loadTemplateSelect('batch-template');
-    loadIndustryPresets();
-}
-function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
+// ─── Modals ──────────────────────────────────────────────────────────
+function showNewWebsiteModal() { document.getElementById('new-website-modal').classList.remove('hidden'); loadTemplateSelect('new-template'); }
+function showBatchModal() { document.getElementById('batch-modal').classList.remove('hidden'); loadTemplateSelect('batch-template'); loadIndustryPresets(); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 async function loadTemplateSelect(selectId) {
     const sel = document.getElementById(selectId);
@@ -257,11 +440,8 @@ async function loadTemplateSelect(selectId) {
         const data = await res.json();
         sel.innerHTML = '<option value="">' + _t('Select Template') + '</option>'
             + data.items.map(t => `<option value="${t.id}">${LANG === 'zh' && t.display_name_zh ? t.display_name_zh : t.display_name}</option>`).join('');
-    } catch (e) {
-        sel.innerHTML = '<option value="">' + _t('Failed to load') + '</option>';
-    }
+    } catch(e) { sel.innerHTML = '<option value="">Failed</option>'; }
 }
-
 async function loadIndustryPresets() {
     const container = document.getElementById('industry-checkboxes');
     try {
@@ -269,18 +449,37 @@ async function loadIndustryPresets() {
         const data = await res.json();
         container.innerHTML = data.presets.map(p => {
             const label = LANG === 'zh' ? p.zh : p.industry;
-            return `<label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" value="${p.industry}" class="accent-purple-500">
-                ${label}
-            </label>`;
+            return `<label class="flex items-center gap-2 text-sm"><input type="checkbox" value="${p.industry}" class="accent-purple-500">${label}</label>`;
         }).join('');
-    } catch (e) {
-        container.innerHTML = '<div class="text-gray-500">' + _t('Failed to load') + '</div>';
-    }
+    } catch(e) { container.innerHTML = '<div class="text-gray-500">Failed</div>'; }
 }
 
-// Initial load
+async function createWebsite(e) {
+    e.preventDefault();
+    await fetch('/api/websites', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        template_id: document.getElementById('new-template').value,
+        company_name: document.getElementById('new-company').value,
+        industry_keywords: JSON.stringify(document.getElementById('new-industry').value.split(',').map(s=>s.trim()).filter(Boolean)),
+        domain: document.getElementById('new-domain').value || document.getElementById('new-company').value.toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    })});
+    closeModal('new-website-modal');
+    loadWebsites();
+}
+
+async function batchGenerate(e) {
+    e.preventDefault();
+    const checked = document.querySelectorAll('#industry-checkboxes input:checked');
+    const industries = Array.from(checked).map(cb => cb.value);
+    if (!industries.length) { alert('Select at least one'); return; }
+    await fetch('/api/websites/batch-generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        template_id: document.getElementById('batch-template').value,
+        industries, count: industries.length, lang: LANG,
+    })});
+    closeModal('batch-modal');
+    loadWebsites();
+}
+
+// ─── Init ────────────────────────────────────────────────────────────
 loadWebsites();
 </script>
-
 {% endblock %}

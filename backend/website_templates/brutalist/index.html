@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ company_name }} — {{ page_title }}</title>
+<meta name="description" content="{{ seo_description }}">
+<meta name="keywords" content="{{ seo_keywords|join(', ') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+--primary: #c0c0c0; --primary-light: #e0e0e0; --accent: #ff0000; --bg: #808080; --bg-alt: #999999; --text: #000000; --text-light: #333333; --font: 'Courier New', monospace; --radius: 0px; --shadow: 4px 4px 0px #000000;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+img { max-width: 100%; height: auto; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+nav { background: var(--primary); color: white; padding: 1rem 0; position: sticky; top: 0; z-index: 100; }
+nav .container { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+nav .logo { font-size: 1.5rem; font-weight: 800; color: white; }
+nav .logo span { color: var(--accent); }
+nav .nav-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+nav .nav-links a { color: rgba(255,255,255,0.8); transition: color 0.3s; font-weight: 500; font-size: 0.95rem; padding: 0.25rem 0; }
+nav .nav-links a:hover, nav .nav-links a.active { color: white; border-bottom: 2px solid var(--accent); }
+.nav-toggle { display: none; font-size: 1.5rem; cursor: pointer; color: white; }
+.hero { padding: 5rem 0; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; text-align: center; }
+.hero h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.2; }
+.hero p { font-size: 1.2rem; max-width: 700px; margin: 0 auto 2rem; opacity: 0.9; }
+.hero .btn { display: inline-block; padding: 1rem 2.5rem; background: var(--accent); color: white; border-radius: var(--radius); font-weight: 600; transition: transform 0.3s; border: none; font-size: 1rem; cursor: pointer; }
+.hero .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+section { padding: 4rem 0; }
+section:nth-child(even) { background: var(--bg-alt); }
+.section-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; text-align: center; }
+.section-sub { text-align: center; color: var(--text-light); max-width: 600px; margin: 0 auto 3rem; }
+.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
+.product-card { background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; transition: transform 0.3s; border: 1px solid rgba(0,0,0,0.05); }
+.product-card:hover { transform: translateY(-4px); }
+.product-card .img-wrap { height: 220px; background: var(--bg-alt); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.product-card .img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.product-card .img-wrap .no-img { color: var(--text-light); font-size: 2.5rem; opacity: 0.3; }
+.product-card .info { padding: 1.25rem; }
+.product-card .info h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--primary); }
+.product-card .info p { font-size: 0.9rem; color: var(--text-light); }
+.services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
+.service-card { background: var(--bg); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow); transition: transform 0.3s; }
+.service-card:hover { transform: translateY(-4px); }
+.service-card h3 { font-size: 1.2rem; margin-bottom: 0.75rem; color: var(--primary); }
+.service-card p { color: var(--text-light); font-size: 0.95rem; }
+.page-header { background: var(--primary); color: white; padding: 3rem 0; text-align: center; }
+.page-header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.page-header p { opacity: 0.8; }
+.mission-vision { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem; }
+.mission-vision .card { background: var(--bg); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+.mission-vision .card h3 { color: var(--accent); margin-bottom: 1rem; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem; text-align: center; margin: 3rem 0; }
+.stat-item .num { font-size: 2.5rem; font-weight: 800; color: var(--accent); }
+.stat-item .label { color: var(--text-light); font-size: 0.9rem; }
+.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2rem; }
+.blog-card { background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; transition: transform 0.3s; border: 1px solid rgba(0,0,0,0.05); }
+.blog-card:hover { transform: translateY(-4px); }
+.blog-card .img-wrap { height: 200px; background: var(--bg-alt); display: flex; align-items: center; justify-content: center; }
+.blog-card .img-wrap .no-img { color: var(--text-light); font-size: 3rem; opacity: 0.3; }
+.blog-card .img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.blog-card .info { padding: 1.5rem; }
+.blog-card .info .date { font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.5rem; }
+.blog-card .info h3 { font-size: 1.15rem; margin-bottom: 0.5rem; }
+.blog-card .info p { font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; }
+.blog-card .info .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.blog-card .info .tags span { font-size: 0.75rem; background: var(--bg-alt); padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--text-light); }
+.contact-section { padding: 4rem 0; }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+.contact-info .info-item { margin-bottom: 1.5rem; }
+.contact-info .info-item h4 { color: var(--primary); margin-bottom: 0.25rem; }
+.contact-info .info-item p { color: var(--text-light); }
+.contact-form input, .contact-form textarea { width: 100%; padding: 0.8rem 1rem; margin-bottom: 1rem; border: 2px solid var(--bg-alt); border-radius: var(--radius); font-family: var(--font); font-size: 0.95rem; background: var(--bg); color: var(--text); }
+.contact-form input:focus, .contact-form textarea:focus { outline: none; border-color: var(--accent); }
+.contact-form textarea { min-height: 150px; resize: vertical; }
+.contact-form .btn { width: 100%; }
+footer { background: var(--primary); color: rgba(255,255,255,0.7); padding: 3rem 0 1.5rem; margin-top: 3rem; font-size: 0.9rem; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+footer a { color: var(--accent); }
+footer h4 { color: white; margin-bottom: 1rem; }
+.footer-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.footer-bottom { text-align: center; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+{{ custom_css }}
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2rem; }
+  nav .nav-links { display: none; width: 100%; flex-direction: column; padding: 1rem 0; gap: 0.75rem; }
+  nav .nav-links.show { display: flex; }
+  .nav-toggle { display: block; }
+  .products-grid, .services-grid, .blog-grid { grid-template-columns: 1fr; }
+  .contact-grid, .mission-vision { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .page-header h1 { font-size: 1.8rem; }
+}
+
+{{ custom_css }}
+
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="index.html" class="logo">{{ company_name }}<span>.</span></a>
+    <div class="nav-toggle" onclick="document.querySelector('nav .nav-links').classList.toggle('show')">&#9776;</div>
+    <ul class="nav-links">
+<li><a href="index.html" class="active">Home</a></li>
+<li><a href="products.html">Products</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="blog.html">Blog</a></li>
+<li><a href="contact.html">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<body>
+<section class="hero">
+  <div class="container">
+    <h1>{{ tagline }}</h1>
+    <p>Your trusted partner in {{ industry_name }} — delivering quality products worldwide.</p>
+    <a href="products.html" class="btn">View Our Products</a>
+  </div>
+</section>
+
+<section id="products">
+  <div class="container">
+    <h2 class="section-title">Our Products</h2>
+    <p class="section-sub">High-quality products for global markets</p>
+    <div class="products-grid">
+      {% for product in products[:6] %}
+      <div class="product-card">
+        <div class="img-wrap">
+          {% if product.image_urls and product.image_urls[0] %}
+          <img src="{{ product.image_urls[0] }}" alt="{{ product.title }}">
+          {% else %}
+          <div class="no-img">&#x1f4e6;</div>
+          {% endif %}
+        </div>
+        <div class="info">
+          <h3>{{ product.title }}</h3>
+          <p>{{ product.description[:120] }}{% if product.description|length > 120 %}...{% endif %}</p>
+        </div>
+      </div>
+      {% else %}
+      <div class="service-card" style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+        <p style="color: var(--text-light);">Product catalog coming soon. <a href="contact.html">Contact us</a> for inquiries.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="container">
+    <h2 class="section-title">About {{ company_name }}</h2>
+    <div class="about-content" style="max-width: 800px; margin: 0 auto; font-size: 1.1rem; line-height: 1.8;">
+      {{ about_us }}
+    </div>
+    <div class="text-center" style="text-align: center; margin-top: 2rem;">
+      <a href="about.html" class="btn" style="display: inline-block;">Learn More About Us</a>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="container">
+    <h2 class="section-title">Our Services</h2>
+    <p class="section-sub">Comprehensive solutions tailored to your business needs</p>
+    <div class="services-grid">
+      {% for service in services %}
+      <div class="service-card">
+        <div class="icon">&#x2728;</div>
+        <h3>{{ service.title }}</h3>
+        <p>{{ service.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="cta" style="text-align: center; padding: 4rem 0; background: var(--primary); color: white;">
+  <div class="container">
+    <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to Start?</h2>
+    <p style="margin-bottom: 2rem; opacity: 0.9;">Contact us today for competitive quotes and expert service.</p>
+    <a href="contact.html" class="btn">Get in Touch</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>{{ company_name }}</h4>
+        <p>{{ tagline }}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="about.html">About Us</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <p>&#x2709; {{ contact_email }}</p>
+        <p>&#x260E; {{ contact_phone }}</p>
+        <p>&#x1f4cd; {{ contact_address }}</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <a href="index.html">{{ company_name }}</a>. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,122 @@
+[
+  {
+    "name": "minimal-corporate",
+    "display_name": "Minimal Corporate",
+    "display_name_zh": "简约商务",
+    "category": "business"
+  },
+  {
+    "name": "modern-tech",
+    "display_name": "Modern Tech",
+    "display_name_zh": "现代科技",
+    "category": "tech"
+  },
+  {
+    "name": "nature-green",
+    "display_name": "Nature Green",
+    "display_name_zh": "自然绿",
+    "category": "eco"
+  },
+  {
+    "name": "luxury-gold",
+    "display_name": "Luxury Gold",
+    "display_name_zh": "奢华金",
+    "category": "premium"
+  },
+  {
+    "name": "startup-vibrant",
+    "display_name": "Startup Vibrant",
+    "display_name_zh": "创业活力",
+    "category": "startup"
+  },
+  {
+    "name": "industrial-bold",
+    "display_name": "Industrial Bold",
+    "display_name_zh": "工业粗狂",
+    "category": "industry"
+  },
+  {
+    "name": "minimal-white",
+    "display_name": "Pure White",
+    "display_name_zh": "纯白极简",
+    "category": "minimal"
+  },
+  {
+    "name": "dark-elegance",
+    "display_name": "Dark Elegance",
+    "display_name_zh": "暗黑优雅",
+    "category": "dark"
+  },
+  {
+    "name": "gradient-modern",
+    "display_name": "Gradient Flow",
+    "display_name_zh": "渐变流动",
+    "category": "modern"
+  },
+  {
+    "name": "neo-brutalism",
+    "display_name": "Neo Brutalism",
+    "display_name_zh": "新粗野主义",
+    "category": "bold"
+  },
+  {
+    "name": "glassmorphism",
+    "display_name": "Glassmorphism",
+    "display_name_zh": "玻璃拟态",
+    "category": "modern"
+  },
+  {
+    "name": "cyberpunk",
+    "display_name": "Cyberpunk",
+    "display_name_zh": "赛博朋克",
+    "category": "edgy"
+  },
+  {
+    "name": "japanese-minimal",
+    "display_name": "Japanese Zen",
+    "display_name_zh": "和风禅意",
+    "category": "zen"
+  },
+  {
+    "name": "bold-typography",
+    "display_name": "Bold Type",
+    "display_name_zh": "大字排版",
+    "category": "editorial"
+  },
+  {
+    "name": "card-based",
+    "display_name": "Card Grid",
+    "display_name_zh": "卡片网格",
+    "category": "clean"
+  },
+  {
+    "name": "magazine",
+    "display_name": "Magazine",
+    "display_name_zh": "杂志风格",
+    "category": "editorial"
+  },
+  {
+    "name": "retro-vintage",
+    "display_name": "Retro Vintage",
+    "display_name_zh": "复古风",
+    "category": "vintage"
+  },
+  {
+    "name": "material-design",
+    "display_name": "Material Design",
+    "display_name_zh": "Material 设计",
+    "category": "google"
+  },
+  {
+    "name": "brutalist",
+    "display_name": "Brutalist Heavy",
+    "display_name_zh": "粗野主义",
+    "category": "raw"
+  },
+  {
+    "name": "fluid-organic",
+    "display_name": "Fluid Organic",
+    "display_name_zh": "流体有机",
+    "category": "creative"
+  }
+]

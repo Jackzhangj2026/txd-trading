@@ -133,6 +133,17 @@ I18N = {
     "Cancel": {"en": "Cancel", "zh": "取消"},
     "Industries": {"en": "Industries", "zh": "行业"},
     "Template": {"en": "Template", "zh": "模板"},
+    "Add Product": {"en": "Add Product", "zh": "添加产品"},
+    "Edit Product": {"en": "Edit Product", "zh": "编辑产品"},
+    "No products yet": {"en": "No products yet. Add your first product or Generate AI content!", "zh": "暂无产品，添加产品或生成 AI 内容！"},
+    "Upload Images": {"en": "Upload Images", "zh": "上传图片"},
+    "Regenerate All Pages": {"en": "Regenerate All Pages", "zh": "重新生成所有页面"},
+    "Save": {"en": "Save", "zh": "保存"},
+    "Delete": {"en": "Delete", "zh": "删除"},
+    "Edit": {"en": "Edit", "zh": "编辑"},
+    "Generate Blog Post": {"en": "Generate Blog Post", "zh": "生成博客文章"},
+    "No blog posts yet": {"en": "No blog posts yet. Generate one!", "zh": "暂无博客，立即生成！"},
+    "Enter a topic (optional):": {"en": "Enter a topic (optional):", "zh": "输入主题（可选）："},
 
     # Weekdays
     "Mon": {"en": "Mon", "zh": "周一"},

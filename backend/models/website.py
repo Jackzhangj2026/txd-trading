@@ -26,6 +26,10 @@ class Website(UUIDMixin, TimestampMixin, Base):
     about_us: Mapped[str] = mapped_column(Text, default="")  # HTML
     about_us_zh: Mapped[str] = mapped_column(Text, default="")
     services: Mapped[str] = mapped_column(Text, default="[]")  # JSON array
+
+    # ⭐ Products — each website has its own products with images
+    products: Mapped[str] = mapped_column(Text, default="[]")  # JSON: [{title, title_zh, description, description_zh, image_urls:[], category}]
+
     contact_email: Mapped[str] = mapped_column(String(200), default="")
     contact_phone: Mapped[str] = mapped_column(String(100), default="")
     contact_address: Mapped[str] = mapped_column(String(500), default="")

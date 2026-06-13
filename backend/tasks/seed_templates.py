@@ -51,8 +51,11 @@ async def seed_templates(db_session):
     seeded = 0
     for m in meta:
         name = m["name"]
-        tpl_file = TEMPLATES_DIR / f"{name}.html"
-        if not tpl_file.exists():
+        tpl_dir = TEMPLATES_DIR / name
+        if not tpl_dir.is_dir():
+            continue
+        # Check it has at least index.html
+        if not (tpl_dir / "index.html").exists():
             continue
         tpl = WebsiteTemplate(
             name=name,

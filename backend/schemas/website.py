@@ -4,6 +4,47 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+# ─── Blog Posts ─────────────────────────────────────────────────────────────
+
+class BlogPostCreate(BaseModel):
+    title: str
+    body_html: str = ""
+    excerpt: str = ""
+    tags: str = "[]"
+    cover_image: str = ""
+    published: bool = True
+
+
+class BlogPostUpdate(BaseModel):
+    title: str | None = None
+    body_html: str | None = None
+    excerpt: str | None = None
+    tags: str | None = None
+    cover_image: str | None = None
+    published: bool | None = None
+
+
+class BlogPostResponse(BaseModel):
+    id: str
+    website_id: str
+    title: str
+    slug: str
+    excerpt: str
+    body_html: str
+    tags: str
+    cover_image: str
+    published: bool
+    published_at: str
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class BlogPostList(BaseModel):
+    items: list[BlogPostResponse]
+    total: int
+
+
 # ─── Templates ──────────────────────────────────────────────────────────────
 
 class TemplateResponse(BaseModel):
@@ -56,6 +97,7 @@ class WebsiteUpdate(BaseModel):
     about_us: str | None = None
     about_us_zh: str | None = None
     services: str | None = None
+    products: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
     contact_address: str | None = None
@@ -84,6 +126,7 @@ class WebsiteResponse(BaseModel):
     about_us: str
     about_us_zh: str
     services: str
+    products: str = "[]"
     contact_email: str
     contact_phone: str
     contact_address: str
@@ -109,6 +152,26 @@ class WebsiteList(BaseModel):
     total: int
 
 
+# ─── Product/Image ──────────────────────────────────────────────────────────
+
+class ProductAddRequest(BaseModel):
+    title: str
+    title_zh: str = ""
+    description: str = ""
+    description_zh: str = ""
+    category: str = "general"
+    image_urls: str = "[]"
+
+
+class ProductUpdateRequest(BaseModel):
+    title: str | None = None
+    title_zh: str | None = None
+    description: str | None = None
+    description_zh: str | None = None
+    category: str | None = None
+    image_urls: str | None = None
+
+
 # ─── Generation Request ─────────────────────────────────────────────────────
 
 class GenerateRequest(BaseModel):
@@ -127,3 +190,8 @@ class BatchGenerateRequest(BaseModel):
 class DeployRequest(BaseModel):
     website_id: str
     repo_name: str = ""  # optional override
+
+
+class BlogGenerateRequest(BaseModel):
+    website_id: str
+    topic: str = ""  # empty = LLM pick topic
