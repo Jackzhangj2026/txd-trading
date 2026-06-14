@@ -49,7 +49,30 @@ async def run_auto_crm_daily():
     """Trigger the daily auto-crm task manually."""
     from backend.tasks.auto_crm_daily import scheduled_auto_crm_task
     try:
-        await scheduled_auto_crm_task()
-        return {"status": "ok", "message": "Daily auto-crm task completed"}
+        report = await scheduled_auto_crm_task()
+        msg = f"Searched {report.get('search', {}).get('queries', 0)} queries, found {report.get('search', {}).get('saved', 0)} new leads, sent {report.get('email', {}).get('sent', 0)} emails"
+        return {
+            "status": "ok",
+            "message": msg,
+            "detail": {
+                "search_queries": report.get("search", {}).get("queries", 0),
+                "search_saved": report.get("search", {}).get("saved", 0),
+                "email_sent": report.get("email", {}).get("sent", 0),
+                "email_leads": report.get("email", {}).get("leads_selected", 0),
+                "elapsed": f"{report.get('elapsed_seconds', 0)}s" if report.get("elapsed_seconds") else "",
+            },
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/reports")
+async def get_auto_crm_reports():
+    """Get the auto-crm report history."""
+    from pathlib import Path
+    report_file = Path("generated_sites") / "auto_crm_report.json"
+    if report_file.exists():
+        import json
+        reports = json.loads(report_file.read_text(encoding="utf-8"))
+        return reports
+    return []

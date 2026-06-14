@@ -239,7 +239,7 @@ async def scheduled_auto_crm_task():
                 await db.commit()
                 report["email"]["sent"] = 0
                 _save_report(report)
-                return
+                return report
 
             # Step 2: Get mailbox & template
             mailbox_result = await db.execute(
@@ -253,12 +253,16 @@ async def scheduled_auto_crm_task():
 
             if not mailbox:
                 print("[Auto-CRM] No active mailbox configured")
+                report["email"]["sent"] = 0
                 await db.commit()
-                return
+                _save_report(report)
+                return report
             if not template:
                 print("[Auto-CRM] No email template found")
+                report["email"]["sent"] = 0
                 await db.commit()
-                return
+                _save_report(report)
+                return report
 
             # Step 3: Send emails
             sent_count = 0
@@ -300,6 +304,7 @@ async def scheduled_auto_crm_task():
             report["error"] = str(e)
 
     _save_report(report)
+    return report
 
 
 def _save_report(report: dict):
