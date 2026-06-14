@@ -118,7 +118,19 @@
                     </div>
                 </div>
                 <textarea id="camp-body" rows="12" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm" required></textarea>
-                <div class="text-xs text-gray-500 mt-1">Use {{name}}, {{company}}, {{country}} as placeholders. HTML tags supported.</div>
+                <div class="text-xs text-gray-500 mt-1">Use &#123;&#123;name&#125;&#125;, &#123;&#123;company&#125;&#125;, &#123;&#123;country&#125;&#125; as placeholders. Use &#123;&#123;image_1&#125;&#125;, &#123;&#123;image_2&#125;&#125; etc. to embed images inline.</div>
+            </div>
+
+            <!-- Factory Image Picker -->
+            <div>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm text-gray-400">Embed Factory Images (optional)</label>
+                    <span class="text-xs text-gray-500" id="image-count">0 selected</span>
+                </div>
+                <div id="image-gallery" class="mt-1 bg-gray-800 rounded-lg p-3" style="max-height:200px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+                    <div class="text-gray-500 text-sm">Loading images...</div>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">Click images to select. Use &#123;&#123;image_1&#125;&#125;, &#123;&#123;image_2&#125;&#125; etc. in your email body to position them.</div>
             </div>
 
             <!-- Human-like delays -->
@@ -221,7 +233,7 @@ function switchTab(btn) {
     if (currentTab === 'mailboxes') loadMailboxes();
     if (currentTab === 'templates') loadTemplates();
     if (currentTab === 'history') loadLogs();
-    if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); }
+    if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); loadCampaignImages(); }
 }
 
 // ─── MAILBOX CRUD ──────────────────────────────────────────────────
@@ -410,6 +422,37 @@ async function loadCampaignTemplates() {
     } catch(e) {}
 }
 
+async function loadCampaignImages() {
+    try {
+        const res = await fetch('/api/campaign/images');
+        const data = await res.json();
+        const gallery = document.getElementById('image-gallery');
+        if (!data.images || data.images.length === 0) {
+            gallery.innerHTML = '<div class="text-gray-500 text-sm" style="grid-column:1/-1">No images found in factory image directory</div>';
+            return;
+        }
+        gallery.innerHTML = data.images.map((img, i) =>
+            `<label class="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-700/50 rounded-lg p-2 transition" style="border:1px solid transparent">
+                <input type="checkbox" value="${img.filename}" class="hidden image-checkbox" onchange="updateImageCount()">
+                <img src="${img.url}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;" loading="lazy" 
+                    onclick="this.closest('label').querySelector('.image-checkbox').click(); this.closest('label').classList.toggle('ring-2'); this.closest('label').classList.toggle('ring-purple-500'); updateImageCount()">
+                <span class="text-xs text-gray-400 truncate w-full text-center">${img.filename.length > 15 ? img.filename.substring(0, 12) + '...' : img.filename}</span>
+            </label>`
+        ).join('');
+    } catch(e) { document.getElementById('image-gallery').innerHTML = '<div class="text-gray-500 text-sm">Failed to load images</div>'; }
+}
+
+function updateImageCount() {
+    const checked = document.querySelectorAll('.image-checkbox:checked').length;
+    document.getElementById('image-count').textContent = checked + ' selected';
+    if (checked > 0) {
+        var n = checked;
+        var ob = String.fromCharCode(123, 123);
+        var cb = String.fromCharCode(125, 125);
+        document.getElementById('image-count').textContent += ' (use ' + ob + 'image_1' + cb + ' to ' + ob + 'image_' + n + cb + ')';
+    }
+}
+
 async function loadTemplateContent() {
     const tplId = document.getElementById('camp-template').value;
     if (!tplId) return;
@@ -471,6 +514,7 @@ async function launchCampaign(e) {
                 max_emails: parseInt(document.getElementById('camp-max').value) || 20,
                 human_delay_min: parseInt(document.getElementById('camp-delay-min').value) || 30,
                 human_delay_max: parseInt(document.getElementById('camp-delay-max').value) || 180,
+                image_filenames: Array.from(document.querySelectorAll('.image-checkbox:checked')).map(cb => cb.value),
             }),
         });
         const data = await res.json();

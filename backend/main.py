@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from backend.config import settings
 from backend.database import init_db
@@ -37,6 +39,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount factory images as static files
+factory_img_dir = Path(__file__).parent.parent / "factory image"
+if factory_img_dir.exists():
+    app.mount("/factory-images", StaticFiles(directory=str(factory_img_dir)), name="factory_images")
 
 app.include_router(content.router)
 app.include_router(customers.router)

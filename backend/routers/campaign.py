@@ -1,8 +1,10 @@
 """Email campaign API — send development emails with human-like behavior."""
 
 import asyncio
+import base64
 import random
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,6 +20,26 @@ from backend.models.email_template import EmailTemplate
 from backend.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/campaign", tags=["campaign"])
+
+FACTORY_IMG_DIR = Path(__file__).parent.parent.parent / "factory image"
+
+
+# ─── Factory Image List ─────────────────────────────────────────────
+
+@router.get("/images")
+async def list_factory_images():
+    """List all available factory images."""
+    if not FACTORY_IMG_DIR.exists():
+        return {"images": []}
+    images = []
+    for f in sorted(FACTORY_IMG_DIR.iterdir()):
+        if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".gif", ".webp") and not f.name.startswith("."):
+            images.append({
+                "filename": f.name,
+                "url": f"/factory-images/{f.name}",
+                "size_kb": round(f.stat().st_size / 1024, 1),
+            })
+    return {"images": images}
 
 
 # ─── AI Template Generator ─────────────────────────────────────────
@@ -49,6 +71,7 @@ class CampaignRequest(BaseModel):
     max_emails: int = 20  # Total cap
     human_delay_min: int = 30  # Seconds between sends (min)
     human_delay_max: int = 180  # Seconds between sends (max)
+    image_filenames: list[str] = []  # Factory image filenames to embed in email
 
 
 class CampaignStatus(BaseModel):
@@ -132,7 +155,7 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
 
     asyncio.create_task(
         _run_campaign(campaign_id, mailboxes, customers, subject, body,
-                      data.human_delay_min, data.human_delay_max, db)
+                      data.human_delay_min, data.human_delay_max, data.image_filenames, db)
     )
 
     return {
@@ -146,9 +169,24 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
 
 async def _run_campaign(campaign_id: str, mailboxes: list[Mailbox], customers: list[Customer],
                          subject_template: str, body_template: str,
-                         delay_min: int, delay_max: int, db: AsyncSession):
+                         delay_min: int, delay_max: int,
+                         image_filenames: list[str] = None, db: AsyncSession = None):
     """Run the campaign in background with human-like delays."""
     print(f"[Campaign {campaign_id}] Starting: {len(customers)} customers, {len(mailboxes)} mailboxes")
+
+    # Pre-load images as base64
+    inline_images = []
+    if image_filenames:
+        from pathlib import Path
+        img_dir = Path(__file__).parent.parent.parent / "factory image"
+        for fname in image_filenames:
+            img_path = img_dir / fname
+            if img_path.exists():
+                ext = img_path.suffix.lower()
+                mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
+                mime_type = mime.get(ext.lstrip("."), "image/jpeg")
+                b64 = base64.b64encode(img_path.read_bytes()).decode()
+                inline_images.append(f'<img src="data:{mime_type};base64,{b64}" alt="{fname}" style="max-width:100%;margin:10px 0;border-radius:4px;">')
 
     sent_count = 0
     failed_count = 0
@@ -196,6 +234,22 @@ async def _run_campaign(campaign_id: str, mailboxes: list[Mailbox], customers: l
         name_variants = [customer.name or "there", customer.name.split()[0] if customer.name else "there"]
         greeting_name = random.choice(name_variants)
         personalized_body = personalized_body.replace("{{greeting_name}}", greeting_name)
+
+        # Embed images: replace {{image_1}}..{{image_N}} placeholders with base64 inline images
+        if inline_images:
+            for idx, img_html in enumerate(inline_images, 1):
+                placeholder = f"{{image_{idx}}}"
+                if placeholder in personalized_body:
+                    personalized_body = personalized_body.replace(placeholder, img_html)
+            # Append any remaining images as gallery at the bottom
+            remaining = [img for idx, img in enumerate(inline_images, 1)
+                         if f"{{image_{idx}}}" not in body_template]
+            if remaining:
+                gal = '<div style="margin-top:20px;text-align:center;"><h3 style="color:#333;margin-bottom:10px;">Our Products</h3></div>'
+                personalized_body = personalized_body.replace("</body>", "") if "</body>" in personalized_body else personalized_body
+                personalized_body += gal + "".join(remaining)
+                if "</body>" in body_template:
+                    personalized_body += "</body>"
 
         # Send
         from_addr = f"{mb.name or 'Sales'} <{mb.email_address}>"
