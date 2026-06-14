@@ -1,91 +1,306 @@
 {% extends "base.html" %}
-{% block title %}Email Management{% endblock %}
+{% block title %}Email Campaign{% endblock %}
 {% block content %}
 <div class="mb-8">
-    <h1 class="text-3xl font-bold">📧 Email Management</h1>
-    <p class="text-gray-500 mt-1">Multi-mailbox configuration and email tracking</p>
+    <h1 class="text-3xl font-bold">📧 Email Campaign</h1>
+    <p class="text-gray-500 mt-1">Mailbox management, email templates, and campaign sending</p>
 </div>
 
-<div class="card mb-6">
-    <h2 class="text-lg font-semibold mb-4">Mailboxes</h2>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="text-gray-400 border-b border-gray-700">
+<!-- Tabs -->
+<div class="flex gap-2 mb-6 border-b border-gray-700 pb-2">
+    <button class="tab-btn active" data-tab="mailboxes" onclick="switchTab(this)">📫 Mailboxes</button>
+    <button class="tab-btn" data-tab="templates" onclick="switchTab(this)">📝 Templates</button>
+    <button class="tab-btn" data-tab="campaign" onclick="switchTab(this)">🚀 Campaign</button>
+    <button class="tab-btn" data-tab="history" onclick="switchTab(this)">📋 History</button>
+</div>
+
+<!-- Tab: Mailboxes -->
+<div id="tab-mailboxes" class="tab-content">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Mailboxes</h2>
+        <button onclick="showMailboxModal()" class="btn-primary text-sm">+ Add Mailbox</button>
+    </div>
+    <div class="card overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-gray-400 border-b border-gray-700">
                 <th class="text-left py-3 px-2">Name</th>
                 <th class="text-left py-3 px-2">Email</th>
-                <th class="text-left py-3 px-2">IMAP</th>
                 <th class="text-left py-3 px-2">SMTP</th>
+                <th class="text-left py-3 px-2">Daily Limit</th>
                 <th class="text-left py-3 px-2">Status</th>
-                <th class="text-left py-3 px-2">Last Checked</th>
-            </tr>
-        </thead>
-        <tbody id="mailbox-table-body">
-            <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
-        </tbody>
-    </table>
+                <th class="text-right py-3 px-2">Actions</th>
+            </tr></thead>
+            <tbody id="mailbox-table-body">
+                <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<div class="card mb-6">
-    <h2 class="text-lg font-semibold mb-4">Email Templates</h2>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="text-gray-400 border-b border-gray-700">
+<!-- Tab: Templates -->
+<div id="tab-templates" class="tab-content hidden">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Email Templates</h2>
+        <button onclick="showTemplateModal()" class="btn-primary text-sm">+ New Template</button>
+    </div>
+    <div class="card overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-gray-400 border-b border-gray-700">
                 <th class="text-left py-3 px-2">Name</th>
                 <th class="text-left py-3 px-2">Category</th>
                 <th class="text-left py-3 px-2">Subject</th>
                 <th class="text-left py-3 px-2">Active</th>
-            </tr>
-        </thead>
-        <tbody id="template-table-body">
-            <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
-        </tbody>
-    </table>
+                <th class="text-right py-3 px-2">Actions</th>
+            </tr></thead>
+            <tbody id="template-table-body">
+                <tr><td colspan="5" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<div class="card">
-    <h2 class="text-lg font-semibold mb-4">Recent Email Activity</h2>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="text-gray-400 border-b border-gray-700">
-                <th class="text-left py-3 px-2">Date</th>
-                <th class="text-left py-3 px-2">Direction</th>
-                <th class="text-left py-3 px-2">Subject</th>
-                <th class="text-left py-3 px-2">Status</th>
-            </tr>
-        </thead>
-        <tbody id="log-table-body">
-            <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
-        </tbody>
-    </table>
+<!-- Tab: Campaign -->
+<div id="tab-campaign" class="tab-content hidden">
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-4">🚀 Send Development Emails</h2>
+        <form id="campaign-form" class="flex flex-col gap-4" onsubmit="launchCampaign(event)">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Mailbox Selection -->
+                <div>
+                    <label class="text-sm text-gray-400">Mailboxes *</label>
+                    <div id="mailbox-checkboxes" class="mt-1 space-y-1 bg-gray-800 rounded-lg p-3 max-h-40 overflow-y-auto">
+                        <div class="text-gray-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+                
+                <!-- Customer Filter -->
+                <div>
+                    <label class="text-sm text-gray-400">Target Customers</label>
+                    <div class="mt-1 space-y-2 bg-gray-800 rounded-lg p-3">
+                        <select id="camp-status" class="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-sm">
+                            <option value="">All Statuses</option>
+                            <option value="lead">Lead (Not Contacted)</option>
+                            <option value="contacted">Contacted (Follow Up)</option>
+                            <option value="interested">Interested</option>
+                        </select>
+                        <select id="camp-source" class="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-sm">
+                            <option value="">All Sources</option>
+                            <option value="auto_crm_search">Auto Search</option>
+                            <option value="market_scan">Market Scan</option>
+                            <option value="website">Website</option>
+                        </select>
+                        <input id="camp-max" type="number" value="20" min="1" max="100" class="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-sm" placeholder="Max emails">
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1" id="camp-count-preview">Click to estimate</div>
+                    <button type="button" onclick="previewCount()" class="text-xs text-blue-400 mt-1">Estimate count</button>
+                </div>
+            </div>
+
+            <!-- Email Content -->
+            <div>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm text-gray-400">Template (optional)</label>
+                    <select id="camp-template" class="bg-gray-800 text-white px-2 py-1 rounded text-sm border border-gray-700" onchange="loadTemplateContent()">
+                        <option value="">No template</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">Subject *</label>
+                <input id="camp-subject" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required>
+            </div>
+            <div>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm text-gray-400">Email Body (HTML) *</label>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="generateWithAI()" class="text-xs px-3 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ AI Generate</button>
+                    </div>
+                </div>
+                <textarea id="camp-body" rows="12" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm" required></textarea>
+                <div class="text-xs text-gray-500 mt-1">Use {{name}}, {{company}}, {{country}} as placeholders. HTML tags supported.</div>
+            </div>
+
+            <!-- Human-like delays -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-gray-400">Min delay between emails (seconds)</label>
+                    <input id="camp-delay-min" type="number" value="30" min="5" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Max delay between emails (seconds)</label>
+                    <input id="camp-delay-max" type="number" value="180" min="10" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="camp-send-btn" style="background:linear-gradient(135deg,#059669,#34d399)">
+                🚀 Start Campaign
+            </button>
+            <div id="camp-result" class="hidden"></div>
+        </form>
+    </div>
 </div>
+
+<!-- Tab: History -->
+<div id="tab-history" class="tab-content hidden">
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-4">Recent Email Activity</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead><tr class="text-gray-400 border-b border-gray-700">
+                    <th class="text-left py-3 px-2">Date</th>
+                    <th class="text-left py-3 px-2">To</th>
+                    <th class="text-left py-3 px-2">Subject</th>
+                    <th class="text-left py-3 px-2">Status</th>
+                </tr></thead>
+                <tbody id="log-table-body">
+                    <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Mailbox Modal -->
+<div id="mailbox-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6"><h2 id="mailbox-modal-title" class="text-xl font-bold">Add Mailbox</h2><button onclick="closeModal('mailbox-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
+        <form id="mailbox-form" class="flex flex-col gap-3" onsubmit="saveMailbox(event)">
+            <input id="mbx-id" type="hidden">
+            <div><label class="text-sm text-gray-400">Name</label><input id="mbx-name" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">Email *</label><input id="mbx-email" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-sm text-gray-400">SMTP Host</label><input id="mbx-smtp-host" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="smtp.qq.com"></div>
+                <div><label class="text-sm text-gray-400">SMTP Port</label><input id="mbx-smtp-port" type="number" value="465" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            </div>
+            <div><label class="text-sm text-gray-400">SMTP Username</label><input id="mbx-smtp-user" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">SMTP Password</label><input id="mbx-smtp-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">Daily Send Limit</label><input id="mbx-limit" type="number" value="50" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">Save</button><button type="button" onclick="closeModal('mailbox-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Template Modal -->
+<div id="template-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6"><h2 id="template-modal-title" class="text-xl font-bold">Email Template</h2><button onclick="closeModal('template-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
+        <form id="template-form" class="flex flex-col gap-3" onsubmit="saveTemplate(event)">
+            <input id="tpl-id" type="hidden">
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-sm text-gray-400">Name *</label><input id="tpl-name" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></div>
+                <div><label class="text-sm text-gray-400">Category</label><select id="tpl-cat" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"><option value="cold">Cold Outreach</option><option value="followup">Follow Up</option><option value="quote">Quote</option></select></div>
+            </div>
+            <div><label class="text-sm text-gray-400">Subject Template</label><input id="tpl-subject" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Introduction from TXD CO., LTD - {{company}}"></div>
+            <div>
+                <div class="flex items-center justify-between"><label class="text-sm text-gray-400">Body Template (HTML)</label><button type="button" onclick="generateTemplateAI()" class="text-xs px-3 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ AI Generate</button></div>
+                <textarea id="tpl-body" rows="10" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm"></textarea>
+            </div>
+            <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">Save</button><button type="button" onclick="closeModal('template-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button></div>
+        </form>
+    </div>
+</div>
+
+<style>
+.tab-btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; cursor: pointer; background: transparent; color: #888; border: none; transition: all 0.2s; }
+.tab-btn.active { background: rgba(108,92,231,0.15); color: #a29bfe; }
+.tab-btn:hover { background: rgba(255,255,255,0.05); }
+.tab-content.hidden { display: none; }
+</style>
 
 <script>
+const STR = {{ _js_t | safe }};
+let currentTab = 'mailboxes';
+
+function switchTab(btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.getElementById('tab-' + currentTab).classList.remove('hidden');
+    if (currentTab === 'mailboxes') loadMailboxes();
+    if (currentTab === 'templates') loadTemplates();
+    if (currentTab === 'history') loadLogs();
+    if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); }
+}
+
+// ─── MAILBOX CRUD ──────────────────────────────────────────────────
+
 async function loadMailboxes() {
     try {
         const res = await fetch('/api/mailboxes');
         const data = await res.json();
         const tbody = document.getElementById('mailbox-table-body');
         if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No mailboxes configured. Add one via the API.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No mailboxes. Add one!</td></tr>';
             return;
         }
-        tbody.innerHTML = data.items.map(m => {
-            const statusBadge = m.active
-                ? '<span class="badge" style="background:#22c55e22;color:#22c55e">Active</span>'
-                : '<span class="badge" style="background:#6b728022;color:#9ca3af">Inactive</span>';
-            return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-white">${m.name || '—'}</td>
-                <td class="py-3 px-2 text-gray-300">${m.email_address}</td>
-                <td class="py-3 px-2 text-gray-400">${m.imap_host ? '✅' : '❌'}</td>
-                <td class="py-3 px-2 text-gray-400">${m.smtp_host ? '✅' : '❌'}</td>
-                <td class="py-3 px-2">${statusBadge}</td>
-                <td class="py-3 px-2 text-gray-400">${m.last_checked ? new Date(m.last_checked).toLocaleString() : '—'}</td>
-            </tr>`;
-        }).join('');
-    } catch (e) {
-        document.getElementById('mailbox-table-body').innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
-    }
+        tbody.innerHTML = data.items.map(m => `<tr class="border-b border-gray-800 hover:bg-white/5">
+            <td class="py-3 px-2 text-white">${m.name || ''}</td>
+            <td class="py-3 px-2 text-gray-300">${m.email_address}</td>
+            <td class="py-3 px-2 text-gray-400">${m.smtp_host}:${m.smtp_port}</td>
+            <td class="py-3 px-2 text-gray-400">${m.daily_send_limit}</td>
+            <td class="py-3 px-2"><span class="badge ${m.active ? 'bg-green-600' : 'bg-gray-600'}">${m.active ? 'Active' : 'Inactive'}</span></td>
+            <td class="py-3 px-2 text-right">
+                <button onclick="editMailbox('${m.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">Edit</button>
+                <button onclick="deleteMailbox('${m.id}')" class="text-red-400 hover:text-red-300 text-xs">Delete</button>
+            </td>
+        </tr>`).join('');
+    } catch(e) { document.getElementById('mailbox-table-body').innerHTML = '<tr><td colspan="6" class="text-red-400 py-8">Failed</td></tr>'; }
 }
+
+function showMailboxModal() {
+    document.getElementById('mailbox-modal-title').textContent = 'Add Mailbox';
+    document.getElementById('mbx-id').value = '';
+    ['mbx-name','mbx-email','mbx-smtp-host','mbx-smtp-user','mbx-smtp-pass'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mbx-smtp-port').value = '465';
+    document.getElementById('mbx-limit').value = '50';
+    document.getElementById('mailbox-modal').classList.remove('hidden');
+}
+
+async function editMailbox(id) {
+    const res = await fetch('/api/mailboxes/' + id);
+    const m = await res.json();
+    document.getElementById('mailbox-modal-title').textContent = 'Edit: ' + (m.name || m.email_address);
+    document.getElementById('mbx-id').value = m.id;
+    document.getElementById('mbx-name').value = m.name || '';
+    document.getElementById('mbx-email').value = m.email_address || '';
+    document.getElementById('mbx-smtp-host').value = m.smtp_host || '';
+    document.getElementById('mbx-smtp-port').value = m.smtp_port || 465;
+    document.getElementById('mbx-smtp-user').value = m.smtp_username || '';
+    document.getElementById('mbx-smtp-pass').value = '';
+    document.getElementById('mbx-limit').value = m.daily_send_limit || 50;
+    document.getElementById('mailbox-modal').classList.remove('hidden');
+}
+
+async function saveMailbox(e) {
+    e.preventDefault();
+    const id = document.getElementById('mbx-id').value;
+    const body = {
+        name: document.getElementById('mbx-name').value,
+        email_address: document.getElementById('mbx-email').value,
+        smtp_host: document.getElementById('mbx-smtp-host').value,
+        smtp_port: parseInt(document.getElementById('mbx-smtp-port').value) || 465,
+        smtp_username: document.getElementById('mbx-smtp-user').value,
+        smtp_password_enc: document.getElementById('mbx-smtp-pass').value,
+        daily_send_limit: parseInt(document.getElementById('mbx-limit').value) || 50,
+    };
+    if (id) {
+        await fetch('/api/mailboxes/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    } else {
+        await fetch('/api/mailboxes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    }
+    closeModal('mailbox-modal');
+    loadMailboxes();
+}
+
+async function deleteMailbox(id) {
+    if (!confirm('Delete this mailbox?')) return;
+    await fetch('/api/mailboxes/' + id, {method:'DELETE'});
+    loadMailboxes();
+}
+
+// ─── TEMPLATE CRUD ──────────────────────────────────────────────────
 
 async function loadTemplates() {
     try {
@@ -93,54 +308,211 @@ async function loadTemplates() {
         const data = await res.json();
         const tbody = document.getElementById('template-table-body');
         if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No templates yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-gray-500 py-8 text-center">No templates. Create one!</td></tr>';
             return;
         }
-        tbody.innerHTML = data.items.map(t => {
-            const activeBadge = t.active
-                ? '<span class="badge" style="background:#22c55e22;color:#22c55e">Active</span>'
-                : '<span class="badge" style="background:#6b728022;color:#9ca3af">Inactive</span>';
-            return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-white">${t.name}</td>
-                <td class="py-3 px-2"><span class="badge" style="background:#6c5ce722;color:#a29bfe">${t.category || 'general'}</span></td>
-                <td class="py-3 px-2 text-gray-400">${t.subject_template ? t.subject_template.substring(0, 50) + '...' : '—'}</td>
-                <td class="py-3 px-2">${activeBadge}</td>
-            </tr>`;
-        }).join('');
-    } catch (e) {
-        document.getElementById('template-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
-    }
+        tbody.innerHTML = data.items.map(t => `<tr class="border-b border-gray-800 hover:bg-white/5">
+            <td class="py-3 px-2 text-white">${t.name}</td>
+            <td class="py-3 px-2 text-gray-400">${t.category || ''}</td>
+            <td class="py-3 px-2 text-gray-300">${(t.subject_template || '').substring(0, 60)}</td>
+            <td class="py-3 px-2"><span class="badge ${t.active ? 'bg-green-600' : 'bg-gray-600'}">${t.active ? 'Yes' : 'No'}</span></td>
+            <td class="py-3 px-2 text-right">
+                <button onclick="editTemplate('${t.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">Edit</button>
+                <button onclick="deleteTemplate('${t.id}')" class="text-red-400 hover:text-red-300 text-xs">Delete</button>
+            </td>
+        </tr>`).join('');
+    } catch(e) { document.getElementById('template-table-body').innerHTML = '<tr><td colspan="5" class="text-red-400 py-8">Failed</td></tr>'; }
 }
 
-async function loadLog() {
+function showTemplateModal() {
+    document.getElementById('template-modal-title').textContent = 'New Template';
+    document.getElementById('tpl-id').value = '';
+    document.getElementById('tpl-name').value = '';
+    document.getElementById('tpl-cat').value = 'cold';
+    document.getElementById('tpl-subject').value = 'Introduction from TXD CO., LTD - {{company}}';
+    document.getElementById('tpl-body').value = '<p>Dear {{name}},</p><p>...</p>';
+    document.getElementById('template-modal').classList.remove('hidden');
+}
+
+async function editTemplate(id) {
+    const res = await fetch('/api/emails/templates/' + id);
+    const t = await res.json();
+    document.getElementById('template-modal-title').textContent = 'Edit: ' + t.name;
+    document.getElementById('tpl-id').value = t.id;
+    document.getElementById('tpl-name').value = t.name || '';
+    document.getElementById('tpl-cat').value = t.category || 'cold';
+    document.getElementById('tpl-subject').value = t.subject_template || '';
+    document.getElementById('tpl-body').value = t.body_template || '';
+    document.getElementById('template-modal').classList.remove('hidden');
+}
+
+async function saveTemplate(e) {
+    e.preventDefault();
+    const id = document.getElementById('tpl-id').value;
+    const body = {
+        name: document.getElementById('tpl-name').value,
+        category: document.getElementById('tpl-cat').value,
+        subject_template: document.getElementById('tpl-subject').value,
+        body_template: document.getElementById('tpl-body').value,
+        variables: JSON.stringify(['name', 'company', 'country']),
+    };
+    if (id) {
+        await fetch('/api/emails/templates/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    } else {
+        await fetch('/api/emails/templates', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    }
+    closeModal('template-modal');
+    loadTemplates();
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('Delete this template?')) return;
+    await fetch('/api/emails/templates/' + id, {method:'DELETE'});
+    loadTemplates();
+}
+
+async function generateTemplateAI() {
+    const btn = event.target;
+    btn.textContent = '⏳ Generating...';
     try {
-        const res = await fetch('/api/emails/log?page_size=20');
+        const res = await fetch('/api/campaign/generate-template', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+        const data = await res.json();
+        document.getElementById('tpl-subject').value = data.subject || '';
+        document.getElementById('tpl-body').value = data.body || '';
+    } catch(e) { alert('AI generation failed'); }
+    btn.textContent = '✨ AI Generate';
+}
+
+// ─── CAMPAIGN ───────────────────────────────────────────────────────
+
+async function loadCampaignMailboxes() {
+    try {
+        const res = await fetch('/api/mailboxes');
+        const data = await res.json();
+        const container = document.getElementById('mailbox-checkboxes');
+        if (data.items.length === 0) {
+            container.innerHTML = '<div class="text-gray-500 text-sm">No mailboxes. Add one in Mailboxes tab.</div>';
+            return;
+        }
+        container.innerHTML = data.items.map(m =>
+            `<label class="flex items-center gap-2 text-sm"><input type="checkbox" value="${m.id}" class="accent-purple-500"> ${m.name || m.email_address} (${m.email_address})</label>`
+        ).join('');
+    } catch(e) { document.getElementById('mailbox-checkboxes').innerHTML = '<div class="text-red-400">Failed</div>'; }
+}
+
+async function loadCampaignTemplates() {
+    try {
+        const res = await fetch('/api/emails/templates');
+        const data = await res.json();
+        const sel = document.getElementById('camp-template');
+        sel.innerHTML = '<option value="">No template (write manually)</option>' +
+            data.items.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    } catch(e) {}
+}
+
+async function loadTemplateContent() {
+    const tplId = document.getElementById('camp-template').value;
+    if (!tplId) return;
+    try {
+        const res = await fetch('/api/emails/templates/' + tplId);
+        const t = await res.json();
+        if (t.subject_template) document.getElementById('camp-subject').value = t.subject_template;
+        if (t.body_template) document.getElementById('camp-body').value = t.body_template;
+    } catch(e) {}
+}
+
+async function generateWithAI() {
+    const btn = event.target;
+    btn.textContent = '⏳ Generating...';
+    try {
+        const res = await fetch('/api/campaign/generate-template', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+        const data = await res.json();
+        if (data.subject) document.getElementById('camp-subject').value = data.subject;
+        if (data.body) document.getElementById('camp-body').value = data.body;
+    } catch(e) { alert('AI generation failed'); }
+    btn.textContent = '✨ AI Generate';
+}
+
+async function previewCount() {
+    const status = document.getElementById('camp-status').value;
+    const source = document.getElementById('camp-source').value;
+    let url = '/api/customers?page_size=1';
+    if (status) url += '&status=' + status;
+    if (source) url += '&source=' + source;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        document.getElementById('camp-count-preview').textContent = `Estimated: ${data.total} customers match`;
+    } catch(e) {}
+}
+
+async function launchCampaign(e) {
+    e.preventDefault();
+    const checked = document.querySelectorAll('#mailbox-checkboxes input:checked');
+    const mailboxIds = Array.from(checked).map(cb => cb.value);
+    if (mailboxIds.length === 0) { alert('Select at least one mailbox'); return; }
+
+    const btn = document.getElementById('camp-send-btn');
+    btn.textContent = '⏳ Starting campaign...'; btn.disabled = true;
+    const result = document.getElementById('camp-result');
+
+    try {
+        const res = await fetch('/api/campaign/send', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                mailbox_ids: mailboxIds,
+                customer_filters: {
+                    status: document.getElementById('camp-status').value,
+                    source: document.getElementById('camp-source').value,
+                },
+                subject: document.getElementById('camp-subject').value,
+                body: document.getElementById('camp-body').value,
+                template_id: document.getElementById('camp-template').value,
+                max_emails: parseInt(document.getElementById('camp-max').value) || 20,
+                human_delay_min: parseInt(document.getElementById('camp-delay-min').value) || 30,
+                human_delay_max: parseInt(document.getElementById('camp-delay-max').value) || 180,
+            }),
+        });
+        const data = await res.json();
+        result.className = 'mt-4 p-3 rounded-lg bg-green-900/30 text-green-300';
+        result.innerHTML = `<strong>Campaign started!</strong><br>
+            ${data.message}<br>
+            <span class="text-sm">Campaign ID: ${data.campaign_id}</span>`;
+        result.classList.remove('hidden');
+    } catch(e) {
+        result.className = 'mt-4 p-3 rounded-lg bg-red-900/30 text-red-300';
+        result.textContent = 'Failed: ' + e.message;
+        result.classList.remove('hidden');
+    }
+    btn.textContent = '🚀 Start Campaign'; btn.disabled = false;
+}
+
+// ─── LOGS ───────────────────────────────────────────────────────────
+
+async function loadLogs() {
+    try {
+        const res = await fetch('/api/emails/log?page_size=50');
         const data = await res.json();
         const tbody = document.getElementById('log-table-body');
         if (data.items.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No email activity yet</td></tr>';
             return;
         }
-        tbody.innerHTML = data.items.map(log => {
-            const dirIcon = log.direction === 'out' ? '📤' : '📥';
-            const statusColors = {
-                'sent': '#22c55e', 'received': '#3b82f6', 'pending': '#eab308', 'failed': '#f43f5e'
-            };
-            const color = statusColors[log.status] || '#6b7280';
+        tbody.innerHTML = data.items.map(l => {
+            const sc = {'sent':'text-green-400','failed':'text-red-400','pending':'text-yellow-400','received':'text-blue-400'};
             return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-gray-400">${log.sent_at ? new Date(log.sent_at).toLocaleDateString() : '—'}</td>
-                <td class="py-3 px-2">${dirIcon}</td>
-                <td class="py-3 px-2 text-gray-300">${log.subject ? log.subject.substring(0, 60) : '(no subject)'}</td>
-                <td class="py-3 px-2"><span class="badge" style="background:${color}22;color:${color}">${log.status}</span></td>
+                <td class="py-3 px-2 text-gray-400 text-xs">${(l.sent_at || '').substring(0, 16)}</td>
+                <td class="py-3 px-2 text-gray-400">${l.customer_id ? (l.customer_id.substring(0, 8) + '...') : ''}</td>
+                <td class="py-3 px-2 text-gray-300">${(l.subject || '').substring(0, 60)}</td>
+                <td class="py-3 px-2"><span class="${sc[l.status] || 'text-gray-400'}">${l.status}</span></td>
             </tr>`;
         }).join('');
-    } catch (e) {
-        document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">Failed to load</td></tr>';
-    }
+    } catch(e) { document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" class="text-red-400 py-8">Failed</td></tr>'; }
 }
 
-loadMailboxes();
-loadTemplates();
-loadLog();
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// Init
+switchTab(document.querySelector('.tab-btn'));
 </script>
 {% endblock %}

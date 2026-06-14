@@ -11,6 +11,8 @@ I18N = {
     "Products": {"en": "Products", "zh": "产品"},
     "SYSTEM": {"en": "SYSTEM", "zh": "系统"},
     "Emails": {"en": "Emails", "zh": "邮件"},
+    "Email": {"en": "Email", "zh": "邮件"},
+    "Email Campaign": {"en": "Email Campaign", "zh": "邮件营销"},
     "Target Markets": {"en": "Target Markets", "zh": "目标市场"},
     "Social Media": {"en": "Social Media", "zh": "自媒体"},
 
