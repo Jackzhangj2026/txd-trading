@@ -9,6 +9,26 @@
     <button onclick="showCustomerModal()" class="btn-primary">+ {{ _t('Add Customer') }}</button>
 </div>
 
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Total Customers') }}</div>
+        <div class="text-3xl font-bold mt-2" id="stat-total">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Today New') }}</div>
+        <div class="text-3xl font-bold mt-2" id="stat-today">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('This Week') }}</div>
+        <div class="text-3xl font-bold mt-2" id="stat-week">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Score: Hot / Warm / Cold') }}</div>
+        <div class="text-3xl font-bold mt-2 text-sm" id="stat-scores">—</div>
+    </div>
+</div>
+
 <div class="mb-4 flex gap-2">
     <input id="search-input" type="text" placeholder="{{ _t('Search name, company, email...') }}" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 flex-1 max-w-xs" onkeyup="debounceLoad()">
     <select id="filter-source" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadCustomers()">
@@ -169,5 +189,20 @@ function closeModal(id) {
 }
 
 loadCustomers();
+loadStats();
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/customer-stats');
+        const s = await res.json();
+        document.getElementById('stat-total').textContent = s.total;
+        document.getElementById('stat-today').textContent = '+' + s.today_new;
+        document.getElementById('stat-week').textContent = '+' + s.week_new;
+        document.getElementById('stat-scores').innerHTML = 
+            `<span style="color:#f43f5e">${s.scores.hot}</span> / <span style="color:#3b82f6">${s.scores.warm}</span> / <span style="color:#eab308">${s.scores.cold}</span>`;
+    } catch(e) {
+        // ignore
+    }
+}
 </script>
 {% endblock %}

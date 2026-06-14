@@ -50,6 +50,8 @@ async def list_customers(
     return CustomerList(items=items, total=total)
 
 
+
+
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
@@ -117,3 +119,5 @@ async def delete_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Customer not found")
     await db.delete(customer)
     await db.commit()
+
+

@@ -109,5 +109,47 @@
       "sent": 10
     },
     "elapsed_seconds": 56.0
+  },
+  {
+    "date": "2026-06-14",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 57.0
+  },
+  {
+    "date": "2026-06-14",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 16
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 41.2
+  },
+  {
+    "date": "2026-06-14",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 15
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 42.0
   }
 ]

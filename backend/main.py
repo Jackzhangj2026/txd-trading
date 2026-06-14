@@ -12,6 +12,7 @@ from backend.routers import content, customers, products, inquiries, mailboxes, 
 from backend.routers import websites as websites_router
 from backend.routers.settings import router as settings_router
 from backend.routers.auto_crm import router as auto_crm_router
+from backend.routers.customer_stats import router as customer_stats_router
 from backend.routers import content_media as content_media_router
 
 
@@ -47,6 +48,7 @@ app.include_router(target_markets.router)
 app.include_router(websites_router.router)
 app.include_router(settings_router)
 app.include_router(auto_crm_router)
+app.include_router(customer_stats_router)
 app.include_router(admin_router)
 app.include_router(content_media_router.router)
 
