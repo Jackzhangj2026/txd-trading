@@ -12,3 +12,4 @@ from backend.models.email_sequence import EmailSequence
 from backend.models.target_market import TargetMarket
 from backend.models.content_piece import ContentPiece
 from backend.models.platform_account import PlatformAccount
+from backend.models.campaign import Campaign

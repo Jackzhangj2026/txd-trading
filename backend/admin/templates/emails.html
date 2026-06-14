@@ -11,6 +11,7 @@
     <button class="tab-btn active" data-tab="mailboxes" onclick="switchTab(this)">📫 Mailboxes</button>
     <button class="tab-btn" data-tab="templates" onclick="switchTab(this)">📝 Templates</button>
     <button class="tab-btn" data-tab="campaign" onclick="switchTab(this)">🚀 Campaign</button>
+    <button class="tab-btn" data-tab="inbox" onclick="switchTab(this)">📥 Inbox</button>
     <button class="tab-btn" data-tab="history" onclick="switchTab(this)">📋 History</button>
 </div>
 
@@ -153,20 +154,40 @@
     </div>
 </div>
 
+<!-- Tab: Inbox -->
+<div id="tab-inbox" class="tab-content hidden">
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-4">📥 Inbox Scanner</h2>
+        <p class="text-gray-500 text-sm mb-4">Scan a mailbox to fetch, analyze, and get handling suggestions for incoming emails.</p>
+        
+        <div class="flex gap-3 mb-4">
+            <select id="inbox-mailbox" class="bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 flex-1">
+                <option value="">Select a mailbox...</option>
+            </select>
+            <button onclick="scanInbox()" class="btn-primary" id="inbox-scan-btn">🔍 Scan Inbox</button>
+        </div>
+        
+        <div id="inbox-loading" class="hidden text-gray-400 text-center py-8">Scanning and analyzing emails... (may take a moment)</div>
+        <div id="inbox-results" class="hidden"></div>
+    </div>
+</div>
+
 <!-- Tab: History -->
 <div id="tab-history" class="tab-content hidden">
     <div class="card">
-        <h2 class="text-lg font-semibold mb-4">Recent Email Activity</h2>
+        <h2 class="text-lg font-semibold mb-4">📋 Campaign History</h2>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead><tr class="text-gray-400 border-b border-gray-700">
                     <th class="text-left py-3 px-2">Date</th>
-                    <th class="text-left py-3 px-2">To</th>
                     <th class="text-left py-3 px-2">Subject</th>
+                    <th class="text-left py-3 px-2">Targets</th>
+                    <th class="text-left py-3 px-2">Sent</th>
+                    <th class="text-left py-3 px-2">Failed</th>
                     <th class="text-left py-3 px-2">Status</th>
                 </tr></thead>
-                <tbody id="log-table-body">
-                    <tr><td colspan="4" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+                <tbody id="campaign-table-body">
+                    <tr><td colspan="6" class="text-gray-500 py-8 text-center">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -234,6 +255,8 @@ function switchTab(btn) {
     if (currentTab === 'templates') loadTemplates();
     if (currentTab === 'history') loadLogs();
     if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); loadCampaignImages(); }
+    if (currentTab === 'inbox') { loadInboxMailboxes(); }
+    if (currentTab === 'history') { loadCampaignHistory(); }
 }
 
 // ─── MAILBOX CRUD ──────────────────────────────────────────────────
@@ -544,27 +567,118 @@ async function launchCampaign(e) {
     btn.textContent = '🚀 Start Campaign'; btn.disabled = false;
 }
 
-// ─── LOGS ───────────────────────────────────────────────────────────
+// ─── CAMPAIGN HISTORY ─────────────────────────────────────────────
 
-async function loadLogs() {
+async function loadCampaignHistory() {
     try {
-        const res = await fetch('/api/emails/log?page_size=50');
+        const res = await fetch('/api/campaign/history');
         const data = await res.json();
-        const tbody = document.getElementById('log-table-body');
+        const tbody = document.getElementById('campaign-table-body');
         if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-gray-500 py-8 text-center">No email activity yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No campaigns yet. Start one in the Campaign tab!</td></tr>';
             return;
         }
-        tbody.innerHTML = data.items.map(l => {
-            const sc = {'sent':'text-green-400','failed':'text-red-400','pending':'text-yellow-400','received':'text-blue-400'};
+        const statusColors = {pending:'text-yellow-400',running:'text-blue-400',completed:'text-green-400',failed:'text-red-400'};
+        tbody.innerHTML = data.items.map(c => {
+            const date = (c.created_at || '').substring(0, 16);
             return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-gray-400 text-xs">${(l.sent_at || '').substring(0, 16)}</td>
-                <td class="py-3 px-2 text-gray-400">${l.customer_id ? (l.customer_id.substring(0, 8) + '...') : ''}</td>
-                <td class="py-3 px-2 text-gray-300">${(l.subject || '').substring(0, 60)}</td>
-                <td class="py-3 px-2"><span class="${sc[l.status] || 'text-gray-400'}">${l.status}</span></td>
+                <td class="py-3 px-2 text-gray-400 text-xs">${date}</td>
+                <td class="py-3 px-2 text-gray-300">${(c.subject_preview || '').substring(0, 50)}</td>
+                <td class="py-3 px-2 text-gray-400">${c.customer_count}</td>
+                <td class="py-3 px-2 text-green-400">${c.sent_count}</td>
+                <td class="py-3 px-2 text-red-400">${c.failed_count}</td>
+                <td class="py-3 px-2"><span class="${statusColors[c.status] || 'text-gray-400'}">${c.status}</span></td>
             </tr>`;
         }).join('');
-    } catch(e) { document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" class="text-red-400 py-8">Failed</td></tr>'; }
+    } catch(e) { document.getElementById('campaign-table-body').innerHTML = '<tr><td colspan="6" class="text-red-400 py-8">Failed</td></tr>'; }
+}
+
+// ─── INBOX ─────────────────────────────────────────────────────────
+
+async function loadInboxMailboxes() {
+    try {
+        const res = await fetch('/api/mailboxes');
+        const data = await res.json();
+        const sel = document.getElementById('inbox-mailbox');
+        sel.innerHTML = '<option value="">Select a mailbox...</option>' +
+            data.items.map(m => `<option value="${m.id}">${m.name || m.email_address} (${m.email_address})</option>`).join('');
+    } catch(e) {}
+}
+
+async function scanInbox() {
+    const mboxId = document.getElementById('inbox-mailbox').value;
+    if (!mboxId) { alert('Select a mailbox first'); return; }
+    const btn = document.getElementById('inbox-scan-btn');
+    btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+    document.getElementById('inbox-loading').classList.remove('hidden');
+    document.getElementById('inbox-results').classList.add('hidden');
+
+    try {
+        const res = await fetch('/api/campaign/inbox/scan', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({mailbox_id: mboxId, max_emails: 20}),
+        });
+        const data = await res.json();
+        document.getElementById('inbox-loading').classList.add('hidden');
+
+        const container = document.getElementById('inbox-results');
+        if (data.emails.length === 0) {
+            container.innerHTML = '<div class="text-gray-400 text-center py-8">No unread emails found.</div>';
+            container.classList.remove('hidden');
+            return;
+        }
+        let html = `<div class="text-sm text-gray-400 mb-3">Found ${data.emails_found} unread, analyzed ${data.emails_analyzed}</div>`;
+        data.emails.forEach(e => {
+            const catColors = {price_inquiry:'text-green-400',negotiation:'text-yellow-400',order_confirmation:'text-blue-400',complaint:'text-red-400',spam:'text-gray-500',general_inquiry:'text-purple-400'};
+            const cc = catColors[e.classification.category] || 'text-gray-400';
+            html += `<div class="card mb-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="font-semibold">${e.subject || '(No subject)'}</div>
+                        <div class="text-xs text-gray-400 mt-1">From: ${e.from || 'Unknown'} | ${e.date || ''}</div>
+                    </div>
+                    <span class="badge ${cc}">${e.classification.category}</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-2 p-2 bg-gray-800/50 rounded-lg max-h-24 overflow-y-auto">${(e.body || '').substring(0, 300)}</div>
+                <div class="text-xs text-gray-400 mt-2">AI: ${e.classification.summary || ''} (urgency: ${e.classification.urgency || ''})</div>
+                <div class="mt-2 flex items-center gap-2 flex-wrap">
+                    <span class="text-xs text-purple-400">Suggested: <strong>${e.suggested_action}</strong> — ${e.suggestion_reason || ''}</span>
+                    ${e.suggested_action === 'create_customer' ? `<button onclick="inboxAction('${e.message_id}','${mboxId}','create_customer','${encodeURIComponent(e.from)}','')" class="text-xs px-2 py-1 rounded bg-green-600/20 text-green-300 hover:bg-green-600/40">+ Create Customer</button>` : ''}
+                    ${e.suggested_action === 'mark_interested' ? `<button onclick="inboxAction('${e.message_id}','${mboxId}','mark_customer_interested','','${encodeURIComponent(e.from.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0] || '')}')" class="text-xs px-2 py-1 rounded bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">Mark Interested</button>` : ''}
+                    <button onclick="inboxAction('${e.message_id}','${mboxId}','mark_spam','','')" class="text-xs px-2 py-1 rounded bg-gray-600/20 text-gray-300 hover:bg-gray-600/40">Mark Spam</button>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    } catch(e) {
+        document.getElementById('inbox-loading').classList.add('hidden');
+        document.getElementById('inbox-results').innerHTML = '<div class="text-red-400 py-8">Scan failed: ' + e.message + '</div>';
+        document.getElementById('inbox-results').classList.remove('hidden');
+    }
+    btn.textContent = '🔍 Scan Inbox'; btn.disabled = false;
+}
+
+async function inboxAction(msgId, mboxId, action, fromName, fromEmail) {
+    const body = {
+        email_id: msgId,
+        mailbox_id: mboxId,
+        action: action,
+        customer_name: decodeURIComponent(fromName).replace(/^.*<|>.*$/g, '').trim() || 'Unknown',
+        customer_email: decodeURIComponent(fromEmail),
+    };
+    try {
+        const res = await fetch('/api/campaign/inbox/action', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            alert('Action completed: ' + data.action);
+            scanInbox(); // Refresh
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch(e) { alert('Failed: ' + e.message); }
 }
 
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
