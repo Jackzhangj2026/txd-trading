@@ -10,27 +10,23 @@
 </div>
 
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="card">
-        <div class="text-gray-400 text-sm">{{ _t('Total Customers') }}</div>
-        <div class="text-3xl font-bold mt-2" id="stat-total">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">{{ _t('Today New') }}</div>
-        <div class="text-3xl font-bold mt-2" id="stat-today">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">{{ _t('This Week') }}</div>
-        <div class="text-3xl font-bold mt-2" id="stat-week">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">{{ _t('Score: Hot / Warm / Cold') }}</div>
-        <div class="text-3xl font-bold mt-2 text-sm" id="stat-scores">—</div>
-    </div>
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div class="card"><div class="text-gray-400 text-sm">{{ _t('Total') }}</div><div class="text-3xl font-bold mt-2" id="stat-total">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">🟢 {{ _t('status_lead') }}</div><div class="text-3xl font-bold mt-2 text-green-400" id="stat-lead">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">🔵 {{ _t('status_contacted') }}</div><div class="text-3xl font-bold mt-2 text-blue-400" id="stat-contacted">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">🟣 {{ _t('status_interested') }}</div><div class="text-3xl font-bold mt-2 text-purple-400" id="stat-interested">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">{{ _t('Today New') }}</div><div class="text-3xl font-bold mt-2" id="stat-today">—</div></div>
 </div>
 
-<div class="mb-4 flex gap-2">
-    <input id="search-input" type="text" placeholder="{{ _t('Search name, company, email...') }}" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 flex-1 max-w-xs" onkeyup="debounceLoad()">
+<div class="mb-4 flex gap-2 items-center">
+    <div class="flex gap-1 bg-gray-800 rounded-lg p-1">
+        <button class="status-tab px-3 py-1.5 rounded-md text-sm font-medium" data-status="" onclick="filterByStatus('')">📋 {{ _t('All') }}</button>
+        <button class="status-tab px-3 py-1.5 rounded-md text-sm font-medium" data-status="lead" onclick="filterByStatus('lead')">🟢 {{ _t('status_lead') }}</button>
+        <button class="status-tab px-3 py-1.5 rounded-md text-sm font-medium" data-status="contacted" onclick="filterByStatus('contacted')">🔵 {{ _t('status_contacted') }}</button>
+        <button class="status-tab px-3 py-1.5 rounded-md text-sm font-medium" data-status="interested" onclick="filterByStatus('interested')">🟣 {{ _t('status_interested') }}</button>
+    </div>
+    <div style="flex:1"></div>
+    <input id="search-input" type="search" placeholder="{{ _t('Search name, company, email...') }}" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 max-w-xs" onkeyup="debounceLoad()">
     <select id="filter-source" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" onchange="loadCustomers()">
         <option value="">{{ _t('All Sources') }}</option>
         <option value="website">Website</option>
@@ -38,7 +34,7 @@
         <option value="alibaba">Alibaba</option>
         <option value="linkedin">LinkedIn</option>
         <option value="import">Import</option>
-        <option value="market_scan">Market Scan</option>
+        <option value="auto_crm_search">Auto Search</option>
     </select>
 </div>
 
@@ -48,9 +44,9 @@
             <tr class="text-gray-400 border-b border-gray-700">
                 <th class="text-left py-3 px-2">{{ _t('Name') }}</th>
                 <th class="text-left py-3 px-2">{{ _t('Company') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Email') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Country') }}</th>
+                <th class="text-left py-3 px-2">{{ _t('Status') }}</th>
                 <th class="text-left py-3 px-2">{{ _t('Score') }}</th>
+                <th class="text-left py-3 px-2">{{ _t('Country') }}</th>
                 <th class="text-left py-3 px-2">{{ _t('Source') }}</th>
                 <th class="text-right py-3 px-2">{{ _t('Actions') }}</th>
             </tr>
@@ -82,7 +78,6 @@
                     <option value="alibaba">Alibaba</option>
                     <option value="linkedin">LinkedIn</option>
                     <option value="import">Import</option>
-                    <option value="market_scan">Market Scan</option>
                 </select>
             </div>
             <div><label class="text-sm text-gray-400">{{ _t('Notes') }}</label><textarea id="cust-notes" rows="3" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></textarea></div>
@@ -94,11 +89,25 @@
     </div>
 </div>
 
+<style>
+.status-tab { background: transparent; color: #888; cursor: pointer; transition: all 0.2s; border: none; }
+.status-tab:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.status-tab.active { background: rgba(108,92,231,0.2); color: #a29bfe; }
+</style>
+
 <script>
 const STR = {{ _js_t | safe }};
 function _t(k) { return STR[k] || k; }
+let currentStatus = '';
 
 function debounceLoad() { clearTimeout(window._dl); window._dl = setTimeout(loadCustomers, 300); }
+
+function filterByStatus(status) {
+    currentStatus = status;
+    document.querySelectorAll('.status-tab').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.status-tab[data-status="${status}"]`).classList.add('active');
+    loadCustomers();
+}
 
 async function loadCustomers() {
     const search = document.getElementById('search-input').value;
@@ -106,6 +115,7 @@ async function loadCustomers() {
     let url = '/api/customers?page_size=50';
     if (search) url += '&search=' + encodeURIComponent(search);
     if (source) url += '&source=' + source;
+    if (currentStatus) url += '&status=' + currentStatus;
     try {
         const res = await fetch(url);
         const data = await res.json();
@@ -116,15 +126,20 @@ async function loadCustomers() {
         }
         tbody.innerHTML = data.items.map(c => {
             const scoreColor = c.score >= 60 ? '#22c55e' : c.score >= 30 ? '#eab308' : '#6b7280';
+            const statusColors = {lead: '#22c55e', contacted: '#3b82f6', interested: '#a855f7'};
+            const statusLabels = {lead: 'Lead', contacted: 'Contacted', interested: 'Interested'};
+            const sc = statusColors[c.status] || '#6b7280';
+            const sl = statusLabels[c.status] || c.status;
             return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-white">${c.name || '—'}</td>
-                <td class="py-3 px-2 text-gray-300">${c.company || '—'}</td>
-                <td class="py-3 px-2 text-gray-400">${c.email || '—'}</td>
-                <td class="py-3 px-2 text-gray-400">${c.country || '—'}</td>
+                <td class="py-3 px-2 text-white">${c.name || ''}</td>
+                <td class="py-3 px-2 text-gray-300">${c.company || ''}</td>
+                <td class="py-3 px-2"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
                 <td class="py-3 px-2"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
-                <td class="py-3 px-2 text-gray-400">${c.source || '—'}</td>
+                <td class="py-3 px-2 text-gray-400">${c.country || ''}</td>
+                <td class="py-3 px-2 text-gray-400">${c.source || ''}</td>
                 <td class="py-3 px-2 text-right">
                     <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
+                    ${c.status !== 'interested' ? `<button onclick="markInterested('${c.id}')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">${_t('Interested')}</button>` : ''}
                     <button onclick="deleteCustomer('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">${_t('Delete')}</button>
                 </td>
             </tr>`;
@@ -132,6 +147,18 @@ async function loadCustomers() {
     } catch(e) {
         document.getElementById('customer-table-body').innerHTML = '<tr><td colspan="7" class="text-red-400 py-8 text-center">' + _t('Failed to load') + '</td></tr>';
     }
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/customers/stats/info');
+        const s = await res.json();
+        document.getElementById('stat-total').textContent = s.total;
+        document.getElementById('stat-lead').textContent = s.statuses ? s.statuses.lead : '—';
+        document.getElementById('stat-contacted').textContent = s.statuses ? s.statuses.contacted : '—';
+        document.getElementById('stat-interested').textContent = s.statuses ? s.statuses.interested : '—';
+        document.getElementById('stat-today').textContent = '+' + s.today_new;
+    } catch(e) {}
 }
 
 function showCustomerModal() {
@@ -157,6 +184,13 @@ async function editCustomer(id) {
     document.getElementById('customer-modal').classList.remove('hidden');
 }
 
+async function markInterested(id) {
+    if (!confirm('Mark this customer as interested?')) return;
+    await fetch('/api/customers/' + id + '/mark-interested', {method:'POST'});
+    loadCustomers();
+    loadStats();
+}
+
 async function saveCustomer(e) {
     e.preventDefault();
     const id = document.getElementById('cust-id').value;
@@ -176,33 +210,20 @@ async function saveCustomer(e) {
     }
     closeModal('customer-modal');
     loadCustomers();
+    loadStats();
 }
 
 async function deleteCustomer(id) {
     if (!confirm('Delete this customer?')) return;
     await fetch('/api/customers/' + id, {method:'DELETE'});
     loadCustomers();
+    loadStats();
 }
 
-function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-loadCustomers();
+// Init
+filterByStatus('');
 loadStats();
-
-async function loadStats() {
-    try {
-        const res = await fetch('/api/customer-stats');
-        const s = await res.json();
-        document.getElementById('stat-total').textContent = s.total;
-        document.getElementById('stat-today').textContent = '+' + s.today_new;
-        document.getElementById('stat-week').textContent = '+' + s.week_new;
-        document.getElementById('stat-scores').innerHTML = 
-            `<span style="color:#f43f5e">${s.scores.hot}</span> / <span style="color:#3b82f6">${s.scores.warm}</span> / <span style="color:#eab308">${s.scores.cold}</span>`;
-    } catch(e) {
-        // ignore
-    }
-}
 </script>
 {% endblock %}

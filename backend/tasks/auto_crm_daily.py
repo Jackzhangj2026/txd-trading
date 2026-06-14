@@ -168,7 +168,7 @@ async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Custom
     )
     new_leads = []
     for c in new_result.scalars().all():
-        if "CRM Status: contacted" not in (c.notes or ""):
+        if c.status not in ("contacted", "interested"):
             new_leads.append(c)
 
     if len(new_leads) < target:
@@ -176,14 +176,14 @@ async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Custom
             select(Customer).where(Customer.email != "").order_by(Customer.score.desc()).limit(target * 2)
         )
         for c in more_result.scalars().all():
-            if "CRM Status: contacted" not in (c.notes or "") and c.id not in {nl.id for nl in new_leads}:
+            if c.status not in ("contacted", "interested") and c.id not in {nl.id for nl in new_leads}:
                 new_leads.append(c)
                 if len(new_leads) >= target:
                     break
 
     followup_result = await db.execute(
         select(Customer).where(
-            Customer.notes.like("%CRM Status: contacted%"), Customer.email != "",
+            Customer.status == "contacted", Customer.email != "",
         ).order_by(Customer.updated_at.asc()).limit(target)
     )
     followup_leads = list(followup_result.scalars().all())
@@ -277,8 +277,7 @@ async def scheduled_auto_crm_task():
                 success = await send_development_email(customer, mailbox, template)
                 if success:
                     sent_count += 1
-                    contact_note = f"CRM Status: contacted, Stage: followup1, Contacted: {datetime.now().strftime('%Y-%m-%d')}"
-                    customer.notes = (customer.notes + " | " + contact_note) if customer.notes else contact_note
+                    customer.status = "contacted"
                     customer.score = LeadScoringEngine.calculate_score(
                         company=customer.company or "", email=customer.email or "",
                         phone=customer.phone or "", country=customer.country or "",

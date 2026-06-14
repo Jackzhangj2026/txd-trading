@@ -9,6 +9,7 @@ class CustomerCreate(BaseModel):
     company: str = ""
     country: str = ""
     source: str = ""
+    status: str = "lead"
     notes: str = ""
 
 
@@ -19,6 +20,7 @@ class CustomerUpdate(BaseModel):
     company: str | None = None
     country: str | None = None
     source: str | None = None
+    status: str | None = None
     score: int | None = None
     matched_market: str | None = None
     notes: str | None = None
@@ -33,6 +35,7 @@ class CustomerResponse(BaseModel):
     company: str
     country: str
     source: str
+    status: str = "lead"
     score: int
     matched_market: str
     notes: str

@@ -14,6 +14,7 @@ class Customer(UUIDMixin, TimestampMixin, Base):
     company: Mapped[str] = mapped_column(String(200), index=True, default="")
     country: Mapped[str] = mapped_column(String(100), default="")
     source: Mapped[str] = mapped_column(String(50), default="")  # website / email / alibaba / linkedin / import
+    status: Mapped[str] = mapped_column(String(20), default="lead")  # lead / contacted / interested
     score: Mapped[int] = mapped_column(Integer, default=0)  # 0-100 lead score
     matched_market: Mapped[str] = mapped_column(String(100), default="")  # Target market name
     notes: Mapped[str] = mapped_column(Text, default="")
