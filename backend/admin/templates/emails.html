@@ -472,6 +472,19 @@ async function generateWithAI() {
         const data = await res.json();
         if (data.subject) document.getElementById('camp-subject').value = data.subject;
         if (data.body) document.getElementById('camp-body').value = data.body;
+
+        // Auto-select images returned by AI
+        if (data.image_filenames && data.image_filenames.length > 0) {
+            const checkboxes = document.querySelectorAll('.image-checkbox');
+            checkboxes.forEach(cb => {
+                if (data.image_filenames.includes(cb.value)) {
+                    cb.checked = true;
+                    var label = cb.closest('label');
+                    if (label) label.classList.add('ring-2', 'ring-purple-500');
+                }
+            });
+            updateImageCount();
+        }
     } catch(e) { alert('AI generation failed'); }
     btn.textContent = '✨ AI Generate';
 }
