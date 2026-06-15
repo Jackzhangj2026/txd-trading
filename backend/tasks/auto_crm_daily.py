@@ -216,7 +216,7 @@ async def send_development_email(customer: Customer, mailbox: Mailbox, template:
                 _mt = _mime.get(_ext.lstrip("."), "image/jpeg")
                 _b64 = base64.b64encode(_ip.read_bytes()).decode()
                 _tag = f'<img src="data:{_mt};base64,{_b64}" alt="Product" style="max-width:100%;border-radius:4px;margin:10px 0;">'
-                for _ph in [f"{{IMAGE_{_i}}}", f"{{image_{_i}}}"]:
+                for _ph in [f"{{{{IMAGE_{_i}}}}}", f"{{IMAGE_{_i}}}", f"{{{{image_{_i}}}}}", f"{{image_{_i}}}"]:
                     if _ph in body:
                         body = body.replace(_ph, _tag)
     try:

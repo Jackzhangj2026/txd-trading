@@ -249,7 +249,10 @@ async def _run_campaign(campaign: Campaign, mailboxes: list[Mailbox], customers:
                             if ph in personalized_body:
                                 personalized_body = personalized_body.replace(ph, img_html)
                     remaining = [img for idx, img in enumerate(inline_images, 1)
-                                 if f"{{image_{idx}}}" not in body_template and f"{{IMAGE_{idx}}}" not in body_template]
+                                 if f"{{image_{idx}}}" not in body_template 
+                                 and f"{{IMAGE_{idx}}}" not in body_template
+                                 and f"{{{{image_{idx}}}}}" not in body_template
+                                 and f"{{{{IMAGE_{idx}}}}}" not in body_template]
                     if remaining:
                         gal = '<div style="margin-top:20px;text-align:center;"><h3>Our Products</h3></div>'
                         personalized_body += gal + "".join(remaining)
@@ -306,7 +309,7 @@ async def _run_campaign(campaign: Campaign, mailboxes: list[Mailbox], customers:
 
 class InboxScanRequest(BaseModel):
     mailbox_id: str
-    max_emails: int = 20
+    max_emails: int = 5  # Small default for local LLM speed
 
 class InboxActionRequest(BaseModel):
     email_id: str  # The mail_message_id from IMAP
@@ -323,59 +326,53 @@ async def scan_inbox(data: InboxScanRequest, db: AsyncSession = Depends(get_db))
     if not mailbox:
         raise HTTPException(status_code=404, detail="Mailbox not found")
 
-    # Fetch emails from IMAP
-    emails = await EmailService.check_inbox(
-        imap_host=mailbox.imap_host, imap_port=mailbox.imap_port,
-        imap_user=mailbox.imap_username, imap_pass=mailbox.imap_password_enc,
-        use_ssl=mailbox.use_ssl,
-    )
+    if not mailbox.imap_host:
+        raise HTTPException(status_code=400, detail="Mailbox has no IMAP configured")
+
+    # Fetch emails from IMAP (with timeout)
+    try:
+        emails = await asyncio.wait_for(
+            EmailService.check_inbox(
+                imap_host=mailbox.imap_host, imap_port=mailbox.imap_port,
+                imap_user=mailbox.imap_username, imap_pass=mailbox.imap_password_enc,
+                use_ssl=mailbox.use_ssl,
+            ),
+            timeout=15.0
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="IMAP connection timed out. Check your IMAP credentials.")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"IMAP connection failed: {str(e)[:100]}")
 
     # Update last_checked
     mailbox.last_checked = datetime.now(timezone.utc).isoformat()
     await db.commit()
 
-    # AI analyze each email
+    # AI analyze each email (with timeout per email)
     from backend.agents import TradeAgent
     agent = TradeAgent(system_prompt="You are an email analyst for a PP hollow board trading company.")
 
     analyzed = []
     for email_data in emails[-data.max_emails:]:
-        classification = await EmailService.classify_email(
-            email_data["subject"], email_data["body"]
-        )
-
-        # Generate handling suggestion
-        suggest_prompt = f"""An incoming email has been classified as: {classification['category']}
-
-Subject: {email_data['subject']}
-From: {email_data['from']}
-Body: {email_data['body'][:500]}
-
-Suggested actions available:
-1. mark_interested — mark the sender as an interested customer
-2. create_customer — create a new customer record from this email
-3. reply_quote — reply with a price quote
-4. mark_spam — mark as spam, no action needed
-5. manual_review — needs human review
-
-Which action do you recommend? Respond with ONE action ID and a brief reason.
-
-RESPONSE:
-ACTION: <action_id>
-REASON: <one-line reason>
-"""
         try:
-            suggestion = await agent.chat(suggest_prompt, temperature=0.1)
-            action = "manual_review"
-            reason = ""
-            for line in suggestion.strip().split("\n"):
-                if line.startswith("ACTION:"):
-                    action = line.split(":", 1)[1].strip()
-                elif line.startswith("REASON:"):
-                    reason = line.split(":", 1)[1].strip()
-        except Exception:
-            action = "manual_review"
-            reason = "AI analysis unavailable"
+            classification = await asyncio.wait_for(
+                EmailService.classify_email(email_data["subject"], email_data["body"]),
+                timeout=20.0
+            )
+        except (asyncio.TimeoutError, Exception) as e:
+            classification = {"category": "general_inquiry", "summary": "Classification timeout", "urgency": "low", "product": "unknown"}
+            print(f"  [Inbox] Classification timeout: {e}")
+
+        # Generate handling suggestion (fast keyword-based fallback)
+        category = classification.get("category", "general_inquiry")
+        action_map = {
+            "price_inquiry": ("reply_quote", "Price inquiry - send quotation"),
+            "order_confirmation": ("mark_interested", "Order confirmation - mark as interested"),
+            "complaint": ("manual_review", "Complaint - needs human review"),
+            "negotiation": ("manual_review", "Negotiation - needs human review"),
+            "spam": ("mark_spam", "Spam detected"),
+        }
+        suggested_action, suggestion_reason = action_map.get(category, ("manual_review", "General inquiry - review manually"))
 
         analyzed.append({
             "message_id": email_data["message_id"],
@@ -384,8 +381,8 @@ REASON: <one-line reason>
             "body": email_data["body"][:1000],
             "date": email_data["date"],
             "classification": classification,
-            "suggested_action": action,
-            "suggestion_reason": reason,
+            "suggested_action": suggested_action,
+            "suggestion_reason": suggestion_reason,
         })
 
     return {

@@ -27,6 +27,7 @@
                 <th class="text-left py-3 px-2">Name</th>
                 <th class="text-left py-3 px-2">Email</th>
                 <th class="text-left py-3 px-2">SMTP</th>
+                <th class="text-left py-3 px-2">IMAP</th>
                 <th class="text-left py-3 px-2">Daily Limit</th>
                 <th class="text-left py-3 px-2">Status</th>
                 <th class="text-right py-3 px-2">Actions</th>
@@ -167,7 +168,14 @@
             <button onclick="scanInbox()" class="btn-primary" id="inbox-scan-btn">🔍 Scan Inbox</button>
         </div>
         
-        <div id="inbox-loading" class="hidden text-gray-400 text-center py-8">Scanning and analyzing emails... (may take a moment)</div>
+        <div id="inbox-loading" class="hidden text-gray-400 text-center py-8">
+    <div class="mb-2">⏳ Scanning and analyzing emails...</div>
+    <div class="text-sm text-gray-500">This may take a while with local LLM (1-2 min per email). Please wait.</div>
+    <div class="mt-4 w-64 h-2 bg-gray-700 rounded-full mx-auto overflow-hidden">
+        <div id="inbox-progress" class="h-full bg-purple-500 rounded-full" style="width:0%;"></div>
+    </div>
+    <div class="text-xs text-gray-600 mt-2" id="inbox-progress-text">Connecting to IMAP...</div>
+</div>
         <div id="inbox-results" class="hidden"></div>
     </div>
 </div>
@@ -202,12 +210,23 @@
             <input id="mbx-id" type="hidden">
             <div><label class="text-sm text-gray-400">Name</label><input id="mbx-name" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">Email *</label><input id="mbx-email" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required></div>
+            <div class="border-b border-gray-700 my-2"></div>
+            <div class="text-xs text-gray-500 font-semibold">SMTP (Sending)</div>
             <div class="grid grid-cols-2 gap-3">
                 <div><label class="text-sm text-gray-400">SMTP Host</label><input id="mbx-smtp-host" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="smtp.qq.com"></div>
-                <div><label class="text-sm text-gray-400">SMTP Port</label><input id="mbx-smtp-port" type="number" value="465" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+                <div><label class="text-sm text-gray-400">Port</label><input id="mbx-smtp-port" type="number" value="465" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             </div>
             <div><label class="text-sm text-gray-400">SMTP Username</label><input id="mbx-smtp-user" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">SMTP Password</label><input id="mbx-smtp-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div class="border-b border-gray-700 my-2"></div>
+            <div class="text-xs text-gray-500 font-semibold">IMAP (Inbox Scanning)</div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-sm text-gray-400">IMAP Host</label><input id="mbx-imap-host" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="imap.qq.com"></div>
+                <div><label class="text-sm text-gray-400">Port</label><input id="mbx-imap-port" type="number" value="993" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            </div>
+            <div><label class="text-sm text-gray-400">IMAP Username</label><input id="mbx-imap-user" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Same as email if not sure"></div>
+            <div><label class="text-sm text-gray-400">IMAP Password</label><input id="mbx-imap-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Same as SMTP password"></div>
+            <div class="border-b border-gray-700 my-2"></div>
             <div><label class="text-sm text-gray-400">Daily Send Limit</label><input id="mbx-limit" type="number" value="50" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">Save</button><button type="button" onclick="closeModal('mailbox-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button></div>
         </form>
@@ -279,25 +298,30 @@ async function loadMailboxes() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 py-8 text-center">No mailboxes. Add one!</td></tr>';
             return;
         }
-        tbody.innerHTML = data.items.map(m => `<tr class="border-b border-gray-800 hover:bg-white/5">
+        tbody.innerHTML = data.items.map(m => {
+            const hasImap = m.imap_host ? 'Yes' : 'No';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
             <td class="py-3 px-2 text-white">${m.name || ''}</td>
             <td class="py-3 px-2 text-gray-300">${m.email_address}</td>
             <td class="py-3 px-2 text-gray-400">${m.smtp_host}:${m.smtp_port}</td>
+            <td class="py-3 px-2"><span class="badge ${hasImap === 'Yes' ? 'bg-green-600' : 'bg-gray-600'}">IMAP: ${hasImap}</span></td>
             <td class="py-3 px-2 text-gray-400">${m.daily_send_limit}</td>
             <td class="py-3 px-2"><span class="badge ${m.active ? 'bg-green-600' : 'bg-gray-600'}">${m.active ? 'Active' : 'Inactive'}</span></td>
             <td class="py-3 px-2 text-right">
                 <button onclick="editMailbox('${m.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">Edit</button>
                 <button onclick="deleteMailbox('${m.id}')" class="text-red-400 hover:text-red-300 text-xs">Delete</button>
             </td>
-        </tr>`).join('');
+        </tr>`;
+        }).join('');
     } catch(e) { document.getElementById('mailbox-table-body').innerHTML = '<tr><td colspan="6" class="text-red-400 py-8">Failed</td></tr>'; }
 }
 
 function showMailboxModal() {
     document.getElementById('mailbox-modal-title').textContent = 'Add Mailbox';
     document.getElementById('mbx-id').value = '';
-    ['mbx-name','mbx-email','mbx-smtp-host','mbx-smtp-user','mbx-smtp-pass'].forEach(id => document.getElementById(id).value = '');
+    ['mbx-name','mbx-email','mbx-smtp-host','mbx-smtp-user','mbx-smtp-pass','mbx-imap-host','mbx-imap-user','mbx-imap-pass'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('mbx-smtp-port').value = '465';
+    document.getElementById('mbx-imap-port').value = '993';
     document.getElementById('mbx-limit').value = '50';
     document.getElementById('mailbox-modal').classList.remove('hidden');
 }
@@ -313,6 +337,10 @@ async function editMailbox(id) {
     document.getElementById('mbx-smtp-port').value = m.smtp_port || 465;
     document.getElementById('mbx-smtp-user').value = m.smtp_username || '';
     document.getElementById('mbx-smtp-pass').value = '';
+    document.getElementById('mbx-imap-host').value = m.imap_host || '';
+    document.getElementById('mbx-imap-port').value = m.imap_port || 993;
+    document.getElementById('mbx-imap-user').value = m.imap_username || '';
+    document.getElementById('mbx-imap-pass').value = '';
     document.getElementById('mbx-limit').value = m.daily_send_limit || 50;
     document.getElementById('mailbox-modal').classList.remove('hidden');
 }
@@ -327,6 +355,10 @@ async function saveMailbox(e) {
         smtp_port: parseInt(document.getElementById('mbx-smtp-port').value) || 465,
         smtp_username: document.getElementById('mbx-smtp-user').value,
         smtp_password_enc: document.getElementById('mbx-smtp-pass').value,
+        imap_host: document.getElementById('mbx-imap-host').value,
+        imap_port: parseInt(document.getElementById('mbx-imap-port').value) || 993,
+        imap_username: document.getElementById('mbx-imap-user').value,
+        imap_password_enc: document.getElementById('mbx-imap-pass').value,
         daily_send_limit: parseInt(document.getElementById('mbx-limit').value) || 50,
     };
     if (id) {
@@ -437,13 +469,14 @@ async function previewTemplate(id) {
         // Replace image placeholders with real factory images
         var ob2 = String.fromCharCode(123, 123);
         var cb2 = String.fromCharCode(125, 125);
-        var baseUrl = window.location.origin;  // Capture BEFORE opening new window
+        var baseUrl = window.location.origin;
         for (let i = 1; i <= 6; i++) {
-            var ph = ob2 + 'image_' + i + cb2;
-            if (body.indexOf(ph) >= 0) {
+            var ph_lower = ob2 + 'image_' + i + cb2;
+            var ph_upper = ob2 + 'IMAGE_' + i + cb2;
+            if (body.indexOf(ph_lower) >= 0 || body.indexOf(ph_upper) >= 0) {
                 var img = images.length > 0 ? images[(i - 1) % images.length] : null;
                 var imgUrl = img ? baseUrl + img.url : '';
-                body = body.replace(ph, imgUrl);
+                body = body.replace(ph_lower, imgUrl).replace(ph_upper, imgUrl);
             }
         }
         
@@ -677,6 +710,17 @@ async function loadInboxMailboxes() {
 async function scanInbox() {
     const mboxId = document.getElementById('inbox-mailbox').value;
     if (!mboxId) { alert('Select a mailbox first'); return; }
+    
+    // Check if mailbox has IMAP configured
+    try {
+        const mbRes = await fetch('/api/mailboxes/' + mboxId);
+        const mb = await mbRes.json();
+        if (!mb.imap_host) {
+            alert('This mailbox has no IMAP configured. Edit the mailbox in the Mailboxes tab to add IMAP host/port/credentials first.');
+            return;
+        }
+    } catch(e) {}
+    
     const btn = document.getElementById('inbox-scan-btn');
     btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     document.getElementById('inbox-loading').classList.remove('hidden');
