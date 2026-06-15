@@ -93,6 +93,8 @@ def mailbox_to_response(m: Mailbox) -> dict:
         "email_address": m.email_address,
         "imap_host": m.imap_host,
         "imap_port": m.imap_port,
+        "imap_username": m.imap_username,
+        "imap_password_enc": m.imap_password_enc,
         "smtp_host": m.smtp_host,
         "smtp_port": m.smtp_port,
         "use_ssl": m.use_ssl,
