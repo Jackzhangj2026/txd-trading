@@ -1,16 +1,17 @@
 {
-  "date": "2026-06-11",
+  "date": "2026-06-15",
   "searched_countries": [
-    "Italy",
-    "Poland",
-    "Egypt",
-    "Australia",
-    "Netherlands"
+    "Mexico",
+    "Vietnam",
+    "Saudi Arabia",
+    "UK",
+    "Germany",
+    "South Africa"
   ],
-  "leads_added": 2,
+  "leads_added": 10,
   "emails_sent": 5,
   "emails_failed": 0,
-  "total_leads": 202,
-  "new": 72,
-  "contacted": 130
+  "total_leads": 219,
+  "new": 75,
+  "contacted": 144
 }
