@@ -139,7 +139,9 @@ class EmailService:
 
             imap.logout()
         except Exception as e:
-            print(f"[EmailService] IMAP check failed: {e}")
+            err_msg = str(e)
+            print(f"[EmailService] IMAP check failed: {err_msg}")
+            return [{"error": True, "message": f"IMAP failed: {err_msg[:200]}"}]  # Return error instead of empty
 
         return results
 

@@ -22,6 +22,12 @@ from backend.routers import content_media as content_media_router
 async def lifespan(app: FastAPI):
     await init_db()
     start_scheduler()
+    # Resume any campaigns that were running before restart
+    try:
+        from backend.routers.campaign import _load_and_resume_campaigns
+        await _load_and_resume_campaigns()
+    except Exception as e:
+        print(f"[Campaign] Resume error: {e}")
     yield
 
 

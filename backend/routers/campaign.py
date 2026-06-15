@@ -1,4 +1,4 @@
-"""Email campaign API — send with persistence + inbox management."""
+"""Email campaign API — send with persistence, stop, resume across restart."""
 
 import asyncio
 import base64
@@ -6,13 +6,14 @@ import json
 import random
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database import get_db
+from backend.database import get_db, async_session
 from backend.models.campaign import Campaign
 from backend.models.customer import Customer
 from backend.models.email_log import EmailLog
@@ -22,6 +23,25 @@ from backend.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/campaign", tags=["campaign"])
 FACTORY_IMG_DIR = Path(__file__).parent.parent.parent / "factory image"
+
+# ─── Running task tracker for stop/resume ──────────────────────────
+
+_running_campaigns: dict[str, asyncio.Event] = {}  # campaign_id -> stop event
+
+
+async def _load_and_resume_campaigns():
+    """On startup, find running campaigns and resume them."""
+    async with async_session() as db:
+        result = await db.execute(
+            select(Campaign).where(Campaign.status == "running")
+        )
+        running = result.scalars().all()
+        for camp in running:
+            print(f"[Campaign] Resuming campaign {camp.id} ({camp.subject_preview[:40]})")
+            camp.status = "pending"  # Reset to pending, will be picked up
+        if running:
+            await db.commit()
+            print(f"[Campaign] Marked {len(running)} campaigns for resume")
 
 # ─── Factory Image List ─────────────────────────────────────────────
 
@@ -68,36 +88,8 @@ class CampaignRequest(BaseModel):
 
 @router.post("/send")
 async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db)):
-    """Send development emails — saves campaign to DB, runs in background."""
-    # Save campaign to DB immediately
-    campaign = Campaign(
-        mailbox_ids=json.dumps(list(set(data.mailbox_ids))),
-        customer_count=0,
-        subject_preview=data.subject[:200] if data.subject else "",
-        status="pending",
-        delay_min=data.human_delay_min,
-        delay_max=data.human_delay_max,
-        image_filenames=json.dumps(data.image_filenames),
-    )
-    db.add(campaign)
-    await db.flush()
-    cid = campaign.id
-
-    # 1. Get mailboxes
-    mailbox_ids = list(set(data.mailbox_ids))
-    mailboxes = []
-    for mid in mailbox_ids:
-        result = await db.execute(select(Mailbox).where(Mailbox.id == mid, Mailbox.active == True))
-        mb = result.scalar_one_or_none()
-        if mb:
-            mailboxes.append(mb)
-    if not mailboxes:
-        campaign.status = "failed"
-        campaign.error_message = "No valid active mailboxes found"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="No valid active mailboxes found")
-
-    # 2. Get customers
+    """Save campaign to DB and start sending."""
+    # 1. Collect customers
     if data.customer_ids:
         customers = []
         for cid in data.customer_ids:
@@ -117,17 +109,11 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
         query = query.order_by(Customer.score.desc()).limit(data.max_emails)
         result = await db.execute(query)
         customers = list(result.scalars().all())
-
     if not customers:
-        campaign.status = "failed"
-        campaign.error_message = "No customers found"
-        await db.commit()
         raise HTTPException(status_code=400, detail="No customers found matching criteria")
-
     customers = customers[:data.max_emails]
-    campaign.customer_count = len(customers)
 
-    # 3. Build content
+    # 2. Build content
     subject = data.subject
     body = data.body
     if data.template_id and not body:
@@ -138,40 +124,126 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
             if not subject:
                 subject = tpl.subject_template
     if not subject or not body:
-        campaign.status = "failed"
-        campaign.error_message = "Subject and body required"
-        await db.commit()
         raise HTTPException(status_code=400, detail="Subject and body required")
 
-    # 4. Mark as running and launch
-    campaign.status = "running"
-    campaign.subject_preview = subject[:200]
-    await db.commit()
-
-    asyncio.create_task(
-        _run_campaign(campaign, mailboxes, customers, subject, body,
-                      data.human_delay_min, data.human_delay_max, data.image_filenames)
+    # 3. Save campaign to DB with full config
+    customer_ids = [c.id for c in customers]
+    campaign = Campaign(
+        mailbox_ids=json.dumps(list(set(data.mailbox_ids))),
+        customer_count=len(customers),
+        subject_preview=subject[:200],
+        status="pending",
+        delay_min=data.human_delay_min,
+        delay_max=data.human_delay_max,
+        image_filenames=json.dumps(data.image_filenames),
+        subject_template=subject,
+        body_template=body,
+        customer_ids=json.dumps(customer_ids),
+        sent_customer_ids="[]",
+        current_email_index=0,
     )
+    db.add(campaign)
+    await db.commit()
+    await db.refresh(campaign)
+
+    # 4. Start sending
+    asyncio.create_task(_run_campaign(campaign.id))
+    await db.commit()
 
     return {
         "campaign_id": campaign.id,
-        "mailboxes": [m.email_address for m in mailboxes],
         "total_target": len(customers),
         "status": "running",
-        "message": f"Campaign started: {len(customers)} emails via {len(mailboxes)} mailbox(es)",
+        "message": f"Campaign started: {len(customers)} emails",
     }
+
+# ─── Campaign Stop ─────────────────────────────────────────────────
+
+@router.post("/{campaign_id}/stop")
+async def stop_campaign(campaign_id: str, db: AsyncSession = Depends(get_db)):
+    """Stop a running campaign. Only this endpoint can stop it."""
+    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
+    camp = result.scalar_one_or_none()
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if camp.status != "running":
+        raise HTTPException(status_code=400, detail="Campaign is not running")
+
+    # Signal stop
+    if campaign_id in _running_campaigns:
+        _running_campaigns[campaign_id].set()
+        camp.status = "stopped"
+        camp.completed_at = datetime.now(timezone.utc).isoformat()
+        await db.commit()
+        # Clean up tracker after a delay
+        asyncio.create_task(_cleanup_tracker(campaign_id))
+        return {"status": "ok", "message": "Campaign stopped"}
+    else:
+        camp.status = "failed"
+        camp.error_message = "Campaign task not found (server may have restarted)"
+        camp.completed_at = datetime.now(timezone.utc).isoformat()
+        await db.commit()
+        return {"status": "ok", "message": "Campaign marked as failed (no running task found)"}
+
+
+@router.get("/{campaign_id}/progress")
+async def get_campaign_progress(campaign_id: str, db: AsyncSession = Depends(get_db)):
+    """Get live campaign progress."""
+    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
+    camp = result.scalar_one_or_none()
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    elapsed = ""
+    if camp.started_at:
+        try:
+            start = datetime.fromisoformat(camp.started_at)
+            elapsed_sec = (datetime.now(timezone.utc) - start).total_seconds()
+            elapsed = f"{int(elapsed_sec // 60)}m {int(elapsed_sec % 60)}s"
+        except:
+            pass
+
+    return {
+        "id": camp.id,
+        "status": camp.status,
+        "sent_count": camp.sent_count,
+        "failed_count": camp.failed_count,
+        "customer_count": camp.customer_count,
+        "current_email_index": camp.current_email_index,
+        "started_at": camp.started_at,
+        "completed_at": camp.completed_at,
+        "elapsed": elapsed,
+        "error_message": camp.error_message,
+    }
+
 
 # ─── Campaign History ──────────────────────────────────────────────
 
 @router.get("/history")
 async def get_campaign_history(db: AsyncSession = Depends(get_db)):
-    """Get all campaigns from DB."""
     result = await db.execute(
         select(Campaign).order_by(Campaign.created_at.desc()).limit(50)
     )
     campaigns = result.scalars().all()
     items = []
     for c in campaigns:
+        elapsed = ""
+        if c.started_at and c.completed_at:
+            try:
+                s = datetime.fromisoformat(c.started_at)
+                e = datetime.fromisoformat(c.completed_at)
+                sec = (e - s).total_seconds()
+                elapsed = f"{int(sec // 60)}m {int(sec % 60)}s"
+            except:
+                pass
+        elif c.started_at and c.status == "running":
+            try:
+                s = datetime.fromisoformat(c.started_at)
+                sec = (datetime.now(timezone.utc) - s).total_seconds()
+                elapsed = f"{int(sec // 60)}m {int(sec % 60)}s (running)"
+            except:
+                pass
+
         items.append({
             "id": c.id,
             "campaign_name": c.campaign_name,
@@ -180,42 +252,76 @@ async def get_campaign_history(db: AsyncSession = Depends(get_db)):
             "status": c.status,
             "sent_count": c.sent_count,
             "failed_count": c.failed_count,
+            "current_email_index": c.current_email_index,
             "error_message": c.error_message,
+            "started_at": c.started_at,
+            "completed_at": c.completed_at,
+            "elapsed": elapsed,
             "created_at": str(c.created_at) if c.created_at else "",
         })
     return {"items": items, "total": len(items)}
 
+# ─── Campaign Runner ───────────────────────────────────────────────
 
-async def _run_campaign(campaign: Campaign, mailboxes: list[Mailbox], customers: list[Customer],
-                         subject_template: str, body_template: str,
-                         delay_min: int, delay_max: int,
-                         image_filenames: list[str] = None):
-    """Run campaign in background (no db param — creates its own session)."""
-    from backend.database import async_session as _get_session
-    print(f"[Campaign {campaign.id}] Starting: {len(customers)} customers, {len(mailboxes)} mailboxes")
-    async with _get_session() as db:
+async def _run_campaign(campaign_id: str):
+    """Run campaign in background with stop support."""
+    stop_event = asyncio.Event()
+    _running_campaigns[campaign_id] = stop_event
+
+    async with async_session() as db:
         try:
-            # Refresh campaign from DB
-            result = await db.execute(select(Campaign).where(Campaign.id == campaign.id))
+            # Load campaign
+            result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
             camp = result.scalar_one_or_none()
             if not camp:
                 return
 
-            # Pre-load images as base64
+            # Load mailboxes
+            mailbox_ids = json.loads(camp.mailbox_ids or "[]")
+            mailboxes = []
+            for mid in mailbox_ids:
+                r = await db.execute(select(Mailbox).where(Mailbox.id == mid, Mailbox.active == True))
+                mb = r.scalar_one_or_none()
+                if mb:
+                    mailboxes.append(mb)
+            if not mailboxes:
+                camp.status = "failed"
+                camp.error_message = "No valid active mailboxes"
+                await db.commit()
+                return
+
+            # Load customers
+            customer_ids = json.loads(camp.customer_ids or "[]")
+            sent_ids = set(json.loads(camp.sent_customer_ids or "[]"))
+            customers = []
+            for cid in customer_ids:
+                r = await db.execute(select(Customer).where(Customer.id == cid))
+                c = r.scalar_one_or_none()
+                if c and c.email:
+                    customers.append(c)
+
+            # Pre-load images
             inline_images = []
+            image_filenames = json.loads(camp.image_filenames or "[]")
             if image_filenames:
-                img_dir = Path(__file__).parent.parent.parent / "factory image"
                 for fname in image_filenames:
-                    img_path = img_dir / fname
+                    img_path = FACTORY_IMG_DIR / fname
                     if img_path.exists():
                         ext = img_path.suffix.lower()
                         mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
-                        mime_type = mime.get(ext.lstrip("."), "image/jpeg")
+                        mt = mime.get(ext.lstrip("."), "image/jpeg")
                         b64 = base64.b64encode(img_path.read_bytes()).decode()
-                        inline_images.append(f'<img src="data:{mime_type};base64,{b64}" alt="{fname}" style="max-width:100%;margin:10px 0;border-radius:4px;">')
+                        inline_images.append(f'<img src="data:{mt};base64,{b64}" alt="" style="max-width:100%;border-radius:4px;margin:10px 0;">')
 
-            sent_count = 0
-            failed_count = 0
+            # Mark running
+            camp.status = "running"
+            camp.started_at = datetime.now(timezone.utc).isoformat()
+            await db.commit()
+
+            subject_template = camp.subject_template or ""
+            body_template = camp.body_template or ""
+            sent_count = camp.sent_count
+            failed_count = camp.failed_count
             mailbox_idx = 0
             today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             today_counts = {m.id: 0 for m in mailboxes}
@@ -229,107 +335,132 @@ async def _run_campaign(campaign: Campaign, mailboxes: list[Mailbox], customers:
                 today_counts[mb.id] = count_result.scalar() or 0
 
             for i, customer in enumerate(customers):
+                # Check stop signal
+                if stop_event.is_set():
+                    print(f"[Campaign {campaign_id}] Stopped by user")
+                    camp.status = "stopped"
+                    camp.completed_at = datetime.now(timezone.utc).isoformat()
+                    await db.commit()
+                    return
+
+                if customer.id in sent_ids:
+                    continue
+
                 if not customer.email:
                     continue
+
                 mb = mailboxes[mailbox_idx % len(mailboxes)]
                 mailbox_idx += 1
                 if today_counts[mb.id] >= (mb.daily_send_limit or 200):
-                    print(f"  [Campaign] {mb.email_address} hit limit, skip")
                     continue
 
-                personalized_subject = subject_template.replace("{{name}}", customer.name or "")\
+                # Personalize
+                p_subj = subject_template.replace("{{name}}", customer.name or "")\
                     .replace("{{company}}", customer.company or "").replace("{{country}}", customer.country or "")
-                personalized_body = body_template.replace("{{name}}", customer.name or "Valued Partner")\
+                p_body = body_template.replace("{{name}}", customer.name or "Valued Partner")\
                     .replace("{{company}}", customer.company or "your company").replace("{{country}}", customer.country or "")
 
                 if inline_images:
                     for idx, img_html in enumerate(inline_images, 1):
-                        # Match both formats: {image_1} (campaign) and {{IMAGE_1}} (auto-crm template)
                         for ph in [f"{{image_{idx}}}", f"{{IMAGE_{idx}}}", f"{{{{image_{idx}}}}}", f"{{{{IMAGE_{idx}}}}}"]:
-                            if ph in personalized_body:
-                                personalized_body = personalized_body.replace(ph, img_html)
+                            if ph in p_body:
+                                p_body = p_body.replace(ph, img_html)
                     remaining = [img for idx, img in enumerate(inline_images, 1)
-                                 if f"{{image_{idx}}}" not in body_template 
-                                 and f"{{IMAGE_{idx}}}" not in body_template
-                                 and f"{{{{image_{idx}}}}}" not in body_template
-                                 and f"{{{{IMAGE_{idx}}}}}" not in body_template]
+                                 if f"{{image_{idx}}}" not in body_template and f"{{IMAGE_{idx}}}" not in body_template
+                                 and f"{{{{image_{idx}}}}}" not in body_template and f"{{{{IMAGE_{idx}}}}}" not in body_template]
                     if remaining:
-                        gal = '<div style="margin-top:20px;text-align:center;"><h3>Our Products</h3></div>'
-                        personalized_body += gal + "".join(remaining)
+                        p_body += '<div style="margin-top:20px;text-align:center;"><h3>Our Products</h3></div>' + "".join(remaining)
 
                 from_addr = f"{mb.name or 'Sales'} <{mb.email_address}>"
                 success = await EmailService.send_email(
                     smtp_host=mb.smtp_host, smtp_port=mb.smtp_port,
                     smtp_user=mb.smtp_username, smtp_pass=mb.smtp_password_enc,
                     from_addr=from_addr, to_addr=customer.email,
-                    subject=personalized_subject, body=personalized_body,
+                    subject=p_subj, body=p_body,
                 )
 
                 now = datetime.now(timezone.utc)
                 log = EmailLog(
                     mailbox_id=mb.id, customer_id=customer.id, direction="out",
-                    subject=personalized_subject,
-                    body=f"[Campaign {campaign.id}] {personalized_body[:200]}",
+                    subject=p_subj, body=f"[Campaign {campaign_id}] {p_body[:200]}",
                     status="sent" if success else "failed",
                     sent_at=now.isoformat(),
                 )
                 db.add(log)
                 today_counts[mb.id] += 1
+
                 if success:
                     sent_count += 1
                     customer.status = "contacted"
                 else:
                     failed_count += 1
+
+                sent_ids.add(customer.id)
+                camp.sent_count = sent_count
+                camp.failed_count = failed_count
+                camp.sent_customer_ids = json.dumps(list(sent_ids))
+                camp.current_email_index = i + 1
                 await db.commit()
 
-                if i < len(customers) - 1:
-                    delay = random.randint(delay_min, delay_max)
-                    print(f"  [Campaign] {i+1}/{len(customers)} to {customer.email}. Wait {delay}s")
-                    await asyncio.sleep(delay)
+                if i < len(customers) - 1 and not stop_event.is_set():
+                    delay = random.randint(camp.delay_min, camp.delay_max)
+                    print(f"[Campaign {campaign_id}] {i+1}/{len(customers)}. Waiting {delay}s...")
+                    # Check stop signal every second during delay
+                    for _ in range(delay):
+                        if stop_event.is_set():
+                            print(f"[Campaign {campaign_id}] Stopped during delay")
+                            camp.status = "stopped"
+                            camp.completed_at = datetime.now(timezone.utc).isoformat()
+                            await db.commit()
+                            return
+                        await asyncio.sleep(1)
 
-            # Update campaign status
             camp.status = "completed"
-            camp.sent_count = sent_count
-            camp.failed_count = failed_count
+            camp.completed_at = datetime.now(timezone.utc).isoformat()
             await db.commit()
-            print(f"[Campaign {campaign.id}] Done: {sent_count} sent, {failed_count} failed")
+            print(f"[Campaign {campaign_id}] Completed: {sent_count} sent, {failed_count} failed")
 
         except Exception as e:
-            print(f"[Campaign {campaign.id}] Error: {e}")
+            print(f"[Campaign {campaign_id}] Error: {e}")
             import traceback
             traceback.print_exc()
             try:
                 camp.status = "failed"
                 camp.error_message = str(e)[:200]
+                camp.completed_at = datetime.now(timezone.utc).isoformat()
                 await db.commit()
             except:
                 pass
+        finally:
+            _running_campaigns.pop(campaign_id, None)
+
+
+async def _cleanup_tracker(campaign_id: str):
+    await asyncio.sleep(30)
+    _running_campaigns.pop(campaign_id, None)
 
 # ─── Inbox Management ──────────────────────────────────────────────
 
 class InboxScanRequest(BaseModel):
     mailbox_id: str
-    max_emails: int = 5  # Small default for local LLM speed
+    max_emails: int = 5
 
 class InboxActionRequest(BaseModel):
-    email_id: str  # The mail_message_id from IMAP
+    email_id: str
     mailbox_id: str
-    action: str  # mark_customer_interested / create_customer / mark_read / delete
+    action: str
     customer_name: str = ""
     customer_email: str = ""
 
 @router.post("/inbox/scan")
 async def scan_inbox(data: InboxScanRequest, db: AsyncSession = Depends(get_db)):
-    """Scan a mailbox's inbox, fetch unseen emails, AI analyze each."""
     result = await db.execute(select(Mailbox).where(Mailbox.id == data.mailbox_id))
     mailbox = result.scalar_one_or_none()
     if not mailbox:
         raise HTTPException(status_code=404, detail="Mailbox not found")
-
     if not mailbox.imap_host:
         raise HTTPException(status_code=400, detail="Mailbox has no IMAP configured")
 
-    # Fetch emails from IMAP (with timeout)
     try:
         emails = await asyncio.wait_for(
             EmailService.check_inbox(
@@ -340,30 +471,28 @@ async def scan_inbox(data: InboxScanRequest, db: AsyncSession = Depends(get_db))
             timeout=15.0
         )
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="IMAP connection timed out. Check your IMAP credentials.")
+        raise HTTPException(status_code=504, detail="IMAP connection timed out")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"IMAP connection failed: {str(e)[:100]}")
+        raise HTTPException(status_code=502, detail=f"IMAP failed: {str(e)[:200]}")
 
-    # Update last_checked
     mailbox.last_checked = datetime.now(timezone.utc).isoformat()
     await db.commit()
 
-    # AI analyze each email (with timeout per email)
-    from backend.agents import TradeAgent
-    agent = TradeAgent(system_prompt="You are an email analyst for a PP hollow board trading company.")
+    error_emails = [e for e in emails if e.get("error")]
+    real_emails = [e for e in emails if not e.get("error")]
+    if error_emails:
+        return {"error": True, "message": error_emails[0].get("message", "IMAP error")}
 
     analyzed = []
-    for email_data in emails[-data.max_emails:]:
+    for email_data in real_emails[-data.max_emails:]:
         try:
             classification = await asyncio.wait_for(
                 EmailService.classify_email(email_data["subject"], email_data["body"]),
                 timeout=20.0
             )
-        except (asyncio.TimeoutError, Exception) as e:
+        except (asyncio.TimeoutError, Exception):
             classification = {"category": "general_inquiry", "summary": "Classification timeout", "urgency": "low", "product": "unknown"}
-            print(f"  [Inbox] Classification timeout: {e}")
 
-        # Generate handling suggestion (fast keyword-based fallback)
         category = classification.get("category", "general_inquiry")
         action_map = {
             "price_inquiry": ("reply_quote", "Price inquiry - send quotation"),
@@ -372,7 +501,7 @@ async def scan_inbox(data: InboxScanRequest, db: AsyncSession = Depends(get_db))
             "negotiation": ("manual_review", "Negotiation - needs human review"),
             "spam": ("mark_spam", "Spam detected"),
         }
-        suggested_action, suggestion_reason = action_map.get(category, ("manual_review", "General inquiry - review manually"))
+        suggested_action, suggestion_reason = action_map.get(category, ("manual_review", "General inquiry - review"))
 
         analyzed.append({
             "message_id": email_data["message_id"],
@@ -396,20 +525,15 @@ async def scan_inbox(data: InboxScanRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/inbox/action")
 async def inbox_action(data: InboxActionRequest, db: AsyncSession = Depends(get_db)):
-    """Execute an action on an inbox email."""
     if data.action == "mark_customer_interested":
-        # Find customer by email or name
         if data.customer_email:
-            result = await db.execute(
-                select(Customer).where(Customer.email == data.customer_email)
-            )
+            result = await db.execute(select(Customer).where(Customer.email == data.customer_email))
             customer = result.scalar_one_or_none()
             if customer:
                 customer.status = "interested"
                 await db.commit()
                 return {"status": "ok", "action": "marked_interested", "customer_id": customer.id}
         return {"status": "error", "message": "Customer not found"}
-
     elif data.action == "create_customer":
         customer = Customer(
             name=data.customer_name or data.customer_email.split("@")[0] if data.customer_email else "Unknown",
@@ -420,17 +544,12 @@ async def inbox_action(data: InboxActionRequest, db: AsyncSession = Depends(get_
         db.add(customer)
         await db.commit()
         return {"status": "ok", "action": "customer_created", "customer_id": customer.id}
-
     elif data.action == "mark_spam":
-        # Log it as spam
         log = EmailLog(
-            mailbox_id=data.mailbox_id,
-            direction="in",
-            subject=f"[SPAM] {data.email_id[:50]}",
-            status="received",
+            mailbox_id=data.mailbox_id, direction="in",
+            subject=f"[SPAM] {data.email_id[:50]}", status="received",
         )
         db.add(log)
         await db.commit()
         return {"status": "ok", "action": "marked_spam"}
-
     return {"status": "ok", "action": data.action, "message": "Action noted"}
