@@ -62,12 +62,18 @@ async def import_all(db: AsyncSession) -> dict:
                 source=f"auto_crm_{source}",
             )
 
+            # Determine customer status from auto-crm lead status
+            crm_status = "lead"
+            if lead.get("status") == "contacted":
+                crm_status = "contacted"
+            
             customer = Customer(
                 name=name,
                 email=email,
                 company=company,
                 country=country,
                 source=f"auto_crm_{source}",
+                status=crm_status,
                 score=score,
                 notes=combined_notes,
                 tags=json.dumps(["imported_from_auto_crm"]),

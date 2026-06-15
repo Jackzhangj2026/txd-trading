@@ -296,6 +296,30 @@ async def scheduled_auto_crm_task():
             report["elapsed_seconds"] = round(elapsed, 1)
             print(f"  [Auto-CRM] Done: sent {sent_count}, searched {search_result['saved']} new leads, {elapsed:.0f}s")
 
+            # Sync auto-crm lead statuses into customers
+            from pathlib import Path as _Path
+            leads_file = _Path(__file__).parent.parent.parent / "auto-crm" / "data" / "leads.json"
+            if leads_file.exists():
+                try:
+                    all_leads = json.loads(leads_file.read_text(encoding="utf-8"))
+                    synced = 0
+                    for lead in all_leads:
+                        if lead.get("status") != "contacted":
+                            continue
+                        email = (lead.get("email") or "").strip().lower()
+                        if not email:
+                            continue
+                        r = await db.execute(select(Customer).where(Customer.email == email))
+                        c = r.scalar_one_or_none()
+                        if c and c.status != "contacted":
+                            c.status = "contacted"
+                            synced += 1
+                    if synced > 0:
+                        await db.commit()
+                        print(f"  [Auto-CRM] Synced {synced} customer statuses to contacted")
+                except Exception as e:
+                    print(f"  [Auto-CRM] Status sync error: {e}")
+
         except Exception as e:
             print(f"[Auto-CRM] Error: {e}")
             import traceback

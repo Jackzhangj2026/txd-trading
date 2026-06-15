@@ -146,13 +146,26 @@ async def update_customer(customer_id: str, data: CustomerUpdate, db: AsyncSessi
 
 @router.post("/{customer_id}/mark-interested")
 async def mark_customer_interested(customer_id: str, db: AsyncSession = Depends(get_db)):
-    """Mark a customer as interested (has replied or engaged)."""
+    """Mark a customer as interested."""
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     customer.status = "interested"
     await db.commit()
+    return {"status": "ok", "message": "Customer marked as interested"}
+
+
+@router.post("/{customer_id}/unmark-interested")
+async def unmark_customer_interested(customer_id: str, db: AsyncSession = Depends(get_db)):
+    """Revert a customer from interested back to lead."""
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    customer.status = "lead"
+    await db.commit()
+    return {"status": "ok", "message": "Customer reverted to lead"}
     return {"status": "ok", "message": "Customer marked as interested"}
 
 

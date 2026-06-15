@@ -38,21 +38,22 @@
     </select>
 </div>
 
-<div class="card overflow-x-auto">
-    <table class="w-full text-sm">
+<div class="card overflow-x-auto" style="padding:0;">
+    <table class="w-full text-sm" style="table-layout:fixed;min-width:900px;">
         <thead>
             <tr class="text-gray-400 border-b border-gray-700">
-                <th class="text-left py-3 px-2">{{ _t('Name') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Company') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Status') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Score') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Country') }}</th>
-                <th class="text-left py-3 px-2">{{ _t('Source') }}</th>
-                <th class="text-right py-3 px-2">{{ _t('Actions') }}</th>
+                <th class="text-left py-3 px-3" style="width:14%">{{ _t('Name') }}</th>
+                <th class="text-left py-3 px-3" style="width:18%">{{ _t('Email') }}</th>
+                <th class="text-left py-3 px-3" style="width:15%">{{ _t('Company') }}</th>
+                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Status') }}</th>
+                <th class="text-left py-3 px-3" style="width:8%">{{ _t('Score') }}</th>
+                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Country') }}</th>
+                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Source') }}</th>
+                <th class="text-right py-3 px-3" style="width:15%">{{ _t('Actions') }}</th>
             </tr>
         </thead>
         <tbody id="customer-table-body">
-            <tr><td colspan="7" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
+            <tr><td colspan="8" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
         </tbody>
     </table>
 </div>
@@ -121,7 +122,7 @@ async function loadCustomers() {
         const data = await res.json();
         const tbody = document.getElementById('customer-table-body');
         if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-gray-500 py-8 text-center">' + _t('No customers found') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-gray-500 py-8 text-center">' + _t('No customers found') + '</td></tr>';
             return;
         }
         tbody.innerHTML = data.items.map(c => {
@@ -131,21 +132,24 @@ async function loadCustomers() {
             const sc = statusColors[c.status] || '#6b7280';
             const sl = statusLabels[c.status] || c.status;
             return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-2 text-white">${c.name || ''}</td>
-                <td class="py-3 px-2 text-gray-300">${c.company || ''}</td>
-                <td class="py-3 px-2"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
-                <td class="py-3 px-2"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
-                <td class="py-3 px-2 text-gray-400">${c.country || ''}</td>
-                <td class="py-3 px-2 text-gray-400">${c.source || ''}</td>
-                <td class="py-3 px-2 text-right">
+                <td class="py-3 px-3 text-white truncate">${c.name || ''}</td>
+                <td class="py-3 px-3 text-blue-400 text-xs truncate">${c.email || ''}</td>
+                <td class="py-3 px-3 text-gray-300 truncate">${c.company || ''}</td>
+                <td class="py-3 px-3"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
+                <td class="py-3 px-3"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
+                <td class="py-3 px-3 text-gray-400 truncate">${c.country || ''}</td>
+                <td class="py-3 px-3 text-gray-400 truncate">${c.source || ''}</td>
+                <td class="py-3 px-3 text-right whitespace-nowrap">
                     <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
-                    ${c.status !== 'interested' ? `<button onclick="markInterested('${c.id}')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">${_t('Interested')}</button>` : ''}
+                    ${c.status === 'interested' 
+                        ? `<button onclick="unmarkInterested('${c.id}')" class="text-gray-400 hover:text-gray-300 text-xs mr-2">${_t('Unmark')}</button>`
+                        : `<button onclick="markInterested('${c.id}')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">${_t('Interested')}</button>`}
                     <button onclick="deleteCustomer('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">${_t('Delete')}</button>
                 </td>
             </tr>`;
         }).join('');
     } catch(e) {
-        document.getElementById('customer-table-body').innerHTML = '<tr><td colspan="7" class="text-red-400 py-8 text-center">' + _t('Failed to load') + '</td></tr>';
+        document.getElementById('customer-table-body').innerHTML = '<tr><td colspan="8" class="text-red-400 py-8 text-center">' + _t('Failed to load') + '</td></tr>';
     }
 }
 
@@ -187,6 +191,13 @@ async function editCustomer(id) {
 async function markInterested(id) {
     if (!confirm('Mark this customer as interested?')) return;
     await fetch('/api/customers/' + id + '/mark-interested', {method:'POST'});
+    loadCustomers();
+    loadStats();
+}
+
+async function unmarkInterested(id) {
+    if (!confirm('Revert to lead?')) return;
+    await fetch('/api/customers/' + id + '/unmark-interested', {method:'POST'});
     loadCustomers();
     loadStats();
 }

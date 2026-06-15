@@ -437,14 +437,13 @@ async function previewTemplate(id) {
         // Replace image placeholders with real factory images
         var ob2 = String.fromCharCode(123, 123);
         var cb2 = String.fromCharCode(125, 125);
+        var baseUrl = window.location.origin;  // Capture BEFORE opening new window
         for (let i = 1; i <= 6; i++) {
             var ph = ob2 + 'image_' + i + cb2;
             if (body.indexOf(ph) >= 0) {
                 var img = images.length > 0 ? images[(i - 1) % images.length] : null;
-                var imgHtml = img
-                    ? '<img src="' + img.url + '" style="max-width:100%;border-radius:8px;margin:12px 0;" alt="Product Image">'
-                    : '<div style="padding:30px;background:#f0f0f0;border-radius:8px;text-align:center;color:#999;font-size:14px;">Product Image ' + i + '</div>';
-                body = body.replace(ph, imgHtml);
+                var imgUrl = img ? baseUrl + img.url : '';
+                body = body.replace(ph, imgUrl);
             }
         }
         
@@ -621,10 +620,13 @@ async function launchCampaign(e) {
             }),
         });
         const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || 'Request failed (status ' + res.status + ')');
+        }
         result.className = 'mt-4 p-3 rounded-lg bg-green-900/30 text-green-300';
         result.innerHTML = `<strong>Campaign started!</strong><br>
-            ${data.message}<br>
-            <span class="text-sm">Campaign ID: ${data.campaign_id}</span>`;
+            ${data.message || ''}<br>
+            <span class="text-sm">Campaign ID: ${data.campaign_id || ''}</span>`;
         result.classList.remove('hidden');
     } catch(e) {
         result.className = 'mt-4 p-3 rounded-lg bg-red-900/30 text-red-300';

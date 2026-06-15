@@ -28,3 +28,18 @@ async def init_db():
         result = await seed_templates(session)
         if result["seeded"] > 0:
             print(f"  [OK] Seeded {result['seeded']} website templates")
+
+    # Auto-import auto-crm leads if customers table is empty
+    from backend.models.customer import Customer
+    from sqlalchemy import select, func
+    async with async_session() as session:
+        count = (await session.execute(select(func.count()).select_from(select(Customer).subquery()))).scalar() or 0
+        if count == 0:
+            from backend.tasks.import_auto_crm import import_all
+            result = await import_all(session)
+            print(f"  [OK] Auto-imported {result['customers_imported']} auto-crm customers, {result['logs_imported']} email logs")
+            
+            # Mark contacted leads
+            from backend.tasks.update_crm_status import update_contacted_status
+            update_result = await update_contacted_status(session)
+            print(f"  [OK] Marked {update_result['updated']} customers as contacted from auto-crm history")

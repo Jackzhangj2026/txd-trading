@@ -44,6 +44,14 @@ async def get_auto_crm_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.post("/mark-sent-contacted")
+async def mark_sent_contacted(db: AsyncSession = Depends(get_db)):
+    """Mark customers as contacted if they have auto-crm sent logs."""
+    from backend.tasks.update_crm_status import update_contacted_status
+    result = await update_contacted_status(db)
+    return result
+
+
 @router.post("/run-daily")
 async def run_auto_crm_daily():
     """Trigger the daily auto-crm task manually."""
