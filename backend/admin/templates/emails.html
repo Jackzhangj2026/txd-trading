@@ -420,26 +420,51 @@ async function previewTemplate(id) {
     try {
         const res = await fetch('/api/emails/templates/' + id);
         const t = await res.json();
-        const subject = (t.subject_template || '').replace(/\{\{name\}\}/g, 'John')
+        
+        // Get real factory images
+        const imgRes = await fetch('/api/campaign/images');
+        const imgData = await imgRes.json();
+        const images = imgData.images || [];
+        
+        let subject = (t.subject_template || '').replace(/\{\{name\}\}/g, 'John')
             .replace(/\{\{company\}\}/g, 'ABC Trading Co.')
             .replace(/\{\{country\}\}/g, 'Germany');
         let body = (t.body_template || '').replace(/\{\{name\}\}/g, 'John')
             .replace(/\{\{company\}\}/g, 'ABC Trading Co.')
             .replace(/\{\{country\}\}/g, 'Germany')
             .replace(/\{\{greeting_name\}\}/g, 'John');
+        
+        // Replace image placeholders with real factory images
         var ob2 = String.fromCharCode(123, 123);
         var cb2 = String.fromCharCode(125, 125);
         for (let i = 1; i <= 6; i++) {
-            body = body.replace(ob2 + 'image_' + i + cb2, '<div style="padding:20px;background:#f0f0f0;border-radius:8px;text-align:center;color:#999;margin:10px 0;">[Image ' + i + ' placeholder]</div>');
+            var ph = ob2 + 'image_' + i + cb2;
+            if (body.indexOf(ph) >= 0) {
+                var img = images.length > 0 ? images[(i - 1) % images.length] : null;
+                var imgHtml = img
+                    ? '<img src="' + img.url + '" style="max-width:100%;border-radius:8px;margin:12px 0;" alt="Product Image">'
+                    : '<div style="padding:30px;background:#f0f0f0;border-radius:8px;text-align:center;color:#999;font-size:14px;">Product Image ' + i + '</div>';
+                body = body.replace(ph, imgHtml);
+            }
         }
-        const html = '<div style="font-family:sans-serif;max-width:600px;margin:20px auto;padding:20px;">'
-            + '<div style="border-bottom:2px solid #6c5ce7;padding-bottom:10px;margin-bottom:20px;"><strong style="color:#6c5ce7;">Subject:</strong> '
-            + escapeHtml(subject) + '</div>'
-            + body + '</div>';
-        document.getElementById('preview-frame').srcdoc = html;
-        document.getElementById('preview-title').textContent = t.name || 'Preview';
-        document.getElementById('preview-modal').classList.remove('hidden');
-    } catch(e) { alert('Failed to load template'); }
+        
+        // Open in a new window for full rendering
+        var win = window.open('', '_blank');
+        if (!win) {
+            alert('Please allow popups for preview');
+            return;
+        }
+        win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + t.name + ' - Preview</title></head><body>');
+        win.document.write('<div style="font-family:sans-serif;max-width:700px;margin:30px auto;padding:20px;">');
+        win.document.write('<div style="border-bottom:3px solid #6c5ce7;padding-bottom:12px;margin-bottom:24px;">');
+        win.document.write('<div style="font-size:12px;color:#999;text-transform:uppercase;margin-bottom:4px;">SUBJECT</div>');
+        win.document.write('<div style="font-size:18px;color:#333;font-weight:600;">' + escapeHtml(subject) + '</div></div>');
+        win.document.write(body);
+        win.document.write('</div></body></html>');
+        win.document.close();
+    } catch(e) {
+        alert('Failed to load template: ' + e.message);
+    }
 }
 
 function escapeHtml(text) {
