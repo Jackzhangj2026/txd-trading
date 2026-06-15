@@ -244,10 +244,12 @@ async def _run_campaign(campaign: Campaign, mailboxes: list[Mailbox], customers:
 
                 if inline_images:
                     for idx, img_html in enumerate(inline_images, 1):
-                        placeholder = f"{{image_{idx}}}"
-                        if placeholder in personalized_body:
-                            personalized_body = personalized_body.replace(placeholder, img_html)
-                    remaining = [img for idx, img in enumerate(inline_images, 1) if f"{{image_{idx}}}" not in body_template]
+                        # Match both formats: {image_1} (campaign) and {{IMAGE_1}} (auto-crm template)
+                        for ph in [f"{{image_{idx}}}", f"{{IMAGE_{idx}}}", f"{{{{image_{idx}}}}}", f"{{{{IMAGE_{idx}}}}}"]:
+                            if ph in personalized_body:
+                                personalized_body = personalized_body.replace(ph, img_html)
+                    remaining = [img for idx, img in enumerate(inline_images, 1)
+                                 if f"{{image_{idx}}}" not in body_template and f"{{IMAGE_{idx}}}" not in body_template]
                     if remaining:
                         gal = '<div style="margin-top:20px;text-align:center;"><h3>Our Products</h3></div>'
                         personalized_body += gal + "".join(remaining)

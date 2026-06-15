@@ -202,8 +202,23 @@ async def send_development_email(customer: Customer, mailbox: Mailbox, template:
     body = template.body_template or ""
     body = body.replace("{{CONTACT_NAME}}", customer.name or "Valued Partner")
     body = body.replace("{{COMPANY_NAME}}", customer.company or "your company")
-    for i in range(1, 5):
-        body = body.replace("{{IMAGE_" + str(i) + "}}", "")
+    # Embed factory images into image placeholders
+    import base64, random
+    from pathlib import Path as _Path
+    _img_dir = _Path(__file__).parent.parent.parent / "factory image"
+    if _img_dir.exists():
+        _images = sorted([f for f in _img_dir.iterdir() if f.suffix.lower() in (".jpg",".jpeg",".png",".gif") and not f.name.startswith(".")])
+        if _images:
+            _selected = random.sample(_images, min(4, len(_images)))
+            for _i, _ip in enumerate(_selected, 1):
+                _ext = _ip.suffix.lower()
+                _mime = {"jpg":"image/jpeg","jpeg":"image/jpeg","png":"image/png","gif":"image/gif"}
+                _mt = _mime.get(_ext.lstrip("."), "image/jpeg")
+                _b64 = base64.b64encode(_ip.read_bytes()).decode()
+                _tag = f'<img src="data:{_mt};base64,{_b64}" alt="Product" style="max-width:100%;border-radius:4px;margin:10px 0;">'
+                for _ph in [f"{{IMAGE_{_i}}}", f"{{image_{_i}}}"]:
+                    if _ph in body:
+                        body = body.replace(_ph, _tag)
     try:
         success = await EmailService.send_email(
             smtp_host=mailbox.smtp_host, smtp_port=mailbox.smtp_port,
