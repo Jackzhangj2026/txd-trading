@@ -97,6 +97,8 @@ def mailbox_to_response(m: Mailbox) -> dict:
         "imap_password_enc": m.imap_password_enc,
         "smtp_host": m.smtp_host,
         "smtp_port": m.smtp_port,
+        "smtp_username": m.smtp_username,
+        "smtp_password_enc": m.smtp_password_enc,
         "use_ssl": m.use_ssl,
         "routing_rules": m.routing_rules,
         "assigned_to": m.assigned_to,

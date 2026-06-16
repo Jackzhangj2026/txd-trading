@@ -25,5 +25,19 @@
       "leads_selected": 0,
       "sent": 0
     }
+  },
+  {
+    "date": "2026-06-16",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 16
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 45.5
   }
 ]

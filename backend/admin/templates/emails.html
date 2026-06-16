@@ -150,34 +150,8 @@
             <button type="submit" class="btn-primary" id="camp-send-btn" style="background:linear-gradient(135deg,#059669,#34d399)">
                 🚀 Start Campaign
             </button>
-            <div id="camp-result" class="hidden"></div>
+            <div id="camp-result" class="flex flex-col gap-2 mt-4"></div>
         </form>
-    </div>
-
-    <!-- Running Campaign Status -->
-    <div id="campaign-status-panel" class="hidden mt-4">
-        <div class="card">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold" id="camp-status-title">⏳ Campaign Running</h2>
-                <button onclick="stopCampaign()" class="btn-primary" style="background:linear-gradient(135deg,#ef4444,#dc2626)" id="camp-stop-btn">
-                    ⏹ Stop Campaign
-                </button>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div><span class="text-gray-400">Status:</span> <span id="cstat-status" class="text-green-400 font-semibold">running</span></div>
-                <div><span class="text-gray-400">Sent:</span> <span id="cstat-sent" class="text-white font-semibold">0</span></div>
-                <div><span class="text-gray-400">Failed:</span> <span id="cstat-failed" class="text-white font-semibold">0</span></div>
-                <div><span class="text-gray-400">Total:</span> <span id="cstat-total" class="text-white font-semibold">0</span></div>
-                <div><span class="text-gray-400">Progress:</span> <span id="cstat-progress" class="text-white font-semibold">0 / 0</span></div>
-                <div><span class="text-gray-400">Started:</span> <span id="cstat-started" class="text-gray-300">—</span></div>
-                <div><span class="text-gray-400">Elapsed:</span> <span id="cstat-elapsed" class="text-gray-300">—</span></div>
-                <div><span class="text-gray-400">Campaign ID:</span> <span id="cstat-id" class="text-gray-400 text-xs">—</span></div>
-            </div>
-            <div class="mt-3 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div id="cstat-bar" class="h-full bg-green-500 rounded-full" style="width:0%;"></div>
-            </div>
-            <div id="cstat-error" class="mt-2 text-red-400 text-sm hidden"></div>
-        </div>
     </div>
 </div>
 
@@ -245,7 +219,13 @@
                 <div><label class="text-sm text-gray-400">Port</label><input id="mbx-smtp-port" type="number" value="465" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             </div>
             <div><label class="text-sm text-gray-400">SMTP Username</label><input id="mbx-smtp-user" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
-            <div><label class="text-sm text-gray-400">SMTP Password</label><input id="mbx-smtp-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div class="relative">
+                <label class="text-sm text-gray-400">SMTP Password</label>
+                <div class="relative mt-1">
+                    <input id="mbx-smtp-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 pr-10">
+                    <button type="button" onclick="togglePwd('mbx-smtp-pass', this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm">👁</button>
+                </div>
+            </div>
             <div class="border-b border-gray-700 my-2"></div>
             <div class="text-xs text-gray-500 font-semibold">IMAP (Inbox Scanning)</div>
             <div class="grid grid-cols-2 gap-3">
@@ -253,7 +233,13 @@
                 <div><label class="text-sm text-gray-400">Port</label><input id="mbx-imap-port" type="number" value="993" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             </div>
             <div><label class="text-sm text-gray-400">IMAP Username</label><input id="mbx-imap-user" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Same as email if not sure"></div>
-            <div><label class="text-sm text-gray-400">IMAP Password</label><input id="mbx-imap-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Same as SMTP password"></div>
+            <div class="relative">
+                <label class="text-sm text-gray-400">IMAP Password</label>
+                <div class="relative mt-1">
+                    <input id="mbx-imap-pass" type="password" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 pr-10" placeholder="Same as SMTP password">
+                    <button type="button" onclick="togglePwd('mbx-imap-pass', this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm">👁</button>
+                </div>
+            </div>
             <div class="border-b border-gray-700 my-2"></div>
             <div><label class="text-sm text-gray-400">Daily Send Limit</label><input id="mbx-limit" type="number" value="50" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">Save</button><button type="button" onclick="closeModal('mailbox-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button></div>
@@ -364,22 +350,31 @@ async function editMailbox(id) {
     document.getElementById('mbx-smtp-host').value = m.smtp_host || '';
     document.getElementById('mbx-smtp-port').value = m.smtp_port || 465;
     document.getElementById('mbx-smtp-user').value = m.smtp_username || '';
-    document.getElementById('mbx-smtp-pass').value = '';
-    // Show asterisks matching password length
-    if (m.smtp_password_enc) {
-        document.getElementById('mbx-smtp-pass').value = '*'.repeat(m.smtp_password_enc.length);
-    }
-    document.getElementById('mbx-smtp-pass').placeholder = m.smtp_password_enc ? '' : 'Enter SMTP password';
+    document.getElementById('mbx-smtp-pass').value = m.smtp_password_enc || '';
+    document.getElementById('mbx-smtp-pass').type = 'password';
+    document.getElementById('mbx-smtp-pass').dataset.original = m.smtp_password_enc || '';
+    document.getElementById('mbx-smtp-pass').placeholder = m.smtp_password_enc ? 'Password saved' : 'Enter SMTP password';
     document.getElementById('mbx-imap-host').value = m.imap_host || '';
     document.getElementById('mbx-imap-port').value = m.imap_port || 993;
     document.getElementById('mbx-imap-user').value = m.imap_username || '';
-    document.getElementById('mbx-imap-pass').value = '';
-    if (m.imap_password_enc) {
-        document.getElementById('mbx-imap-pass').value = '*'.repeat(m.imap_password_enc.length);
-    }
-    document.getElementById('mbx-imap-pass').placeholder = m.imap_password_enc ? '' : 'Enter IMAP password';
+    document.getElementById('mbx-imap-pass').value = m.imap_password_enc || '';
+    document.getElementById('mbx-imap-pass').type = 'password';
+    document.getElementById('mbx-imap-pass').dataset.original = m.imap_password_enc || '';
+    document.getElementById('mbx-imap-pass').placeholder = m.imap_password_enc ? 'Password saved' : 'Enter IMAP password';
     document.getElementById('mbx-limit').value = m.daily_send_limit || 50;
     document.getElementById('mailbox-modal').classList.remove('hidden');
+}
+
+// Toggle password visibility
+function togglePwd(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
 }
 
 async function saveMailbox(e) {
@@ -396,11 +391,13 @@ async function saveMailbox(e) {
         imap_username: document.getElementById('mbx-imap-user').value,
         daily_send_limit: parseInt(document.getElementById('mbx-limit').value) || 50,
     };
-    // Detect if user changed password: if value is all asterisks, keep existing
+    // Detect if user changed password: compare with original value
     var smtpPass = document.getElementById('mbx-smtp-pass').value;
     var imapPass = document.getElementById('mbx-imap-pass').value;
-    if (smtpPass && !/^\*+$/.test(smtpPass)) body.smtp_password_enc = smtpPass;
-    if (imapPass && !/^\*+$/.test(imapPass)) body.imap_password_enc = imapPass;
+    var smtpOrig = document.getElementById('mbx-smtp-pass').dataset.original || '';
+    var imapOrig = document.getElementById('mbx-imap-pass').dataset.original || '';
+    if (smtpPass && smtpPass !== smtpOrig) body.smtp_password_enc = smtpPass;
+    if (imapPass && imapPass !== imapOrig) body.imap_password_enc = imapPass;
 
     if (id) {
         await fetch('/api/mailboxes/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
@@ -538,12 +535,6 @@ async function previewTemplate(id) {
     } catch(e) {
         alert('Failed to load template: ' + e.message);
     }
-}
-
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 async function generateTemplateAI() {
@@ -697,98 +688,104 @@ async function launchCampaign(e) {
         if (!res.ok) {
             throw new Error(data.detail || 'Request failed (status ' + res.status + ')');
         }
-        result.className = 'mt-4 p-3 rounded-lg bg-green-900/30 text-green-300';
-        result.innerHTML = `<strong>Campaign started!</strong><br>
-            ${data.message || ''}<br>
-            <span class="text-sm">Campaign ID: ${data.campaign_id || ''}</span>`;
-        result.classList.remove('hidden');
         
-        // Show progress panel and start polling
         if (data.campaign_id) {
-            showCampaignProgress(data.campaign_id);
+            createCampaignCard(data.campaign_id, data.message || 'Campaign started');
+            // Start polling right away for the new card
+            setTimeout(function() {
+                updateCampaignCard(data.campaign_id);
+            }, 2000);
         }
     } catch(e) {
-        result.className = 'mt-4 p-3 rounded-lg bg-red-900/30 text-red-300';
-        result.textContent = 'Failed: ' + e.message;
-        result.classList.remove('hidden');
+        // Show error in a card too
+        var errId = 'err-' + Date.now();
+        document.getElementById('camp-result').innerHTML = '<div id="' + errId + '" class="p-3 rounded-lg bg-red-900/30 text-red-300 text-sm flex items-center justify-between">'
+            + '<span>' + escapeHtml(e.message) + '</span>'
+            + '<button onclick="this.parentElement.remove()" class="text-red-400 hover:text-white ml-2">✕</button></div>'
+            + document.getElementById('camp-result').innerHTML;
     }
     btn.textContent = '🚀 Start Campaign'; btn.disabled = false;
 }
 
-// ─── CAMPAIGN PROGRESS ─────────────────────────────────────────
+// ─── CAMPAIGN CARD ─────────────────────────────────────────────
 
-let _campaignPollTimer = null;
-let _currentCampaignId = null;
-
-function showCampaignProgress(campaignId) {
-    _currentCampaignId = campaignId;
-    document.getElementById('campaign-status-panel').classList.remove('hidden');
-    document.getElementById('cstat-id').textContent = campaignId;
-    pollCampaignProgress();
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-async function pollCampaignProgress() {
-    if (!_currentCampaignId) return;
+function createCampaignCard(campaignId, message) {
+    var container = document.getElementById('camp-result');
+    var html = '<div id="camp-card-' + campaignId + '" class="p-3 rounded-lg bg-green-900/30 text-green-300 text-sm">'
+        + '<div class="flex items-center justify-between">'
+        + '<div><strong>Campaign started!</strong> ' + escapeHtml(message || '') + '</div>'
+        + '<button onclick="stopCampaignCard(\'' + campaignId + '\')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background:#ef4444;color:white;border:none;cursor:pointer">⏹ Stop</button>'
+        + '</div>'
+        + '<div class="grid grid-cols-4 gap-2 mt-2 text-xs" id="camp-info-' + campaignId + '">'
+        + '<div><span class="text-gray-400">Status:</span> <span class="font-semibold">pending</span></div>'
+        + '<div><span class="text-gray-400">Sent:</span> <span class="font-semibold">0</span></div>'
+        + '<div><span class="text-gray-400">Failed:</span> <span class="font-semibold">0</span></div>'
+        + '<div><span class="text-gray-400">Progress:</span> <span class="font-semibold">0 / 0</span></div>'
+        + '</div>'
+        + '<div class="mt-2 w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">'
+        + '<div id="camp-bar-' + campaignId + '" class="h-full bg-green-500 rounded-full" style="width:0%;"></div>'
+        + '</div>'
+        + '<div class="flex gap-4 mt-1 text-xs text-gray-500">'
+        + '<span id="camp-elapsed-' + campaignId + '"></span>'
+        + '<span id="camp-error-' + campaignId + '" class="text-red-400 hidden"></span>'
+        + '</div>'
+        + '</div>';
+    container.innerHTML = html + container.innerHTML;
+}
+
+async function updateCampaignCard(campaignId) {
     try {
-        const res = await fetch('/api/campaign/' + _currentCampaignId + '/progress');
-        const p = await res.json();
+        var res = await fetch('/api/campaign/' + campaignId + '/progress');
+        var p = await res.json();
         
-        document.getElementById('cstat-status').textContent = p.status;
-        document.getElementById('cstat-status').className = {
-            running: 'text-green-400 font-semibold',
-            completed: 'text-blue-400 font-semibold',
-            failed: 'text-red-400 font-semibold',
-            stopped: 'text-yellow-400 font-semibold',
-        }[p.status] || 'text-gray-400 font-semibold';
+        var card = document.getElementById('camp-card-' + campaignId);
+        if (!card) return;
         
-        document.getElementById('cstat-sent').textContent = p.sent_count || 0;
-        document.getElementById('cstat-failed').textContent = p.failed_count || 0;
-        document.getElementById('cstat-total').textContent = p.customer_count || 0;
-        document.getElementById('cstat-progress').textContent = (p.current_email_index || 0) + ' / ' + (p.customer_count || 0);
-        document.getElementById('cstat-started').textContent = p.started_at ? p.started_at.substring(0, 16).replace('T', ' ') : '—';
-        document.getElementById('cstat-elapsed').textContent = p.elapsed || '—';
+        var infoHtml = '<div><span class="text-gray-400">Status:</span> <span class="font-semibold">' + p.status + '</span></div>'
+            + '<div><span class="text-gray-400">Sent:</span> <span class="font-semibold">' + (p.sent_count || 0) + '</span></div>'
+            + '<div><span class="text-gray-400">Failed:</span> <span class="font-semibold">' + (p.failed_count || 0) + '</span></div>'
+            + '<div><span class="text-gray-400">Progress:</span> <span class="font-semibold">' + ((p.current_email_index || 0) + ' / ' + (p.customer_count || 0)) + '</span></div>';
+        document.getElementById('camp-info-' + campaignId).innerHTML = infoHtml;
         
-        // Progress bar
         var total = p.customer_count || 1;
-        var done = p.sent_count + p.failed_count;
+        var done = (p.sent_count || 0) + (p.failed_count || 0);
         var pct = Math.min(100, Math.round((done / total) * 100));
-        document.getElementById('cstat-bar').style.width = pct + '%';
+        document.getElementById('camp-bar-' + campaignId).style.width = pct + '%';
         
-        // Error
-        if (p.error_message) {
-            document.getElementById('cstat-error').textContent = 'Error: ' + p.error_message;
-            document.getElementById('cstat-error').classList.remove('hidden');
-        } else {
-            document.getElementById('cstat-error').classList.add('hidden');
+        var elapsedEl = document.getElementById('camp-elapsed-' + campaignId);
+        if (elapsedEl) elapsedEl.textContent = p.elapsed ? 'Elapsed: ' + p.elapsed : '';
+        
+        var errEl = document.getElementById('camp-error-' + campaignId);
+        if (p.error_message && errEl) {
+            errEl.textContent = 'Error: ' + p.error_message;
+            errEl.classList.remove('hidden');
         }
         
-        // Show/hide stop button
-        document.getElementById('camp-stop-btn').style.display = (p.status === 'running') ? 'inline-block' : 'none';
-        
-        // Continue polling if still running
+        // Continue polling if running
         if (p.status === 'running') {
-            _campaignPollTimer = setTimeout(pollCampaignProgress, 5000);
+            setTimeout(function() { updateCampaignCard(campaignId); }, 5000);
         } else {
-            loadCampaignHistory(); // Refresh history
+            card.style.opacity = '0.7';
+            loadCampaignHistory();
         }
     } catch(e) {
-        _campaignPollTimer = setTimeout(pollCampaignProgress, 10000);
+        setTimeout(function() { updateCampaignCard(campaignId); }, 10000);
     }
 }
 
-async function stopCampaign() {
-    if (!_currentCampaignId) return;
+async function stopCampaignCard(campaignId) {
     if (!confirm('Stop this campaign?')) return;
     try {
-        const res = await fetch('/api/campaign/' + _currentCampaignId + '/stop', {
+        await fetch('/api/campaign/' + campaignId + '/stop', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
         });
-        const data = await res.json();
-        if (data.status === 'ok') {
-            pollCampaignProgress();
-        } else {
-            alert('Failed: ' + (data.detail || 'Unknown'));
-        }
+        updateCampaignCard(campaignId);
     } catch(e) {
         alert('Failed: ' + e.message);
     }
@@ -817,8 +814,8 @@ async function loadCampaignHistory() {
                 <td class="py-3 px-2 text-gray-400 text-xs">${c.elapsed || ''}</td>
                 <td class="py-3 px-2"><span class="${statusColors[c.status] || 'text-gray-400'}">${c.status}</span></td>
                 <td class="py-3 px-2 text-right">
-                    ${c.status === 'running' ? `<button onclick="showCampaignProgress('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">View</button><button onclick="stopCampaignId('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">Stop</button>` : ''}
-                    ${c.status === 'completed' || c.status === 'failed' || c.status === 'stopped' ? `<button onclick="showCampaignProgress('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs">View</button>` : ''}
+                    ${c.status === 'running' ? `<button onclick="createCampaignCard('${c.id}','');updateCampaignCard('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">View</button><button onclick="stopCampaignCard('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">Stop</button>` : ''}
+                    ${c.status === 'completed' || c.status === 'failed' || c.status === 'stopped' ? `<button onclick="createCampaignCard('${c.id}','');updateCampaignCard('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs">View</button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -827,8 +824,7 @@ async function loadCampaignHistory() {
 
 // Stop from history
 async function stopCampaignId(id) {
-    _currentCampaignId = id;
-    await stopCampaign();
+    await stopCampaignCard(id);
 }
 
 // ─── INBOX ─────────────────────────────────────────────────────────
