@@ -564,6 +564,7 @@ async function generateTemplateAI() {
 
 var _imgUploadPrefix = '';
 var _imgUploadNum = 0;
+var _imgUploadId = ''; // unique img-id for replacement
 
 function refreshPreview(prefix) {
     var textarea = document.getElementById(prefix + '-body');
@@ -574,8 +575,7 @@ function refreshPreview(prefix) {
     var ob2 = String.fromCharCode(123, 123);
     var cb2 = String.fromCharCode(125, 125);
 
-    // Step 1: Replace <img src="{{image_N}}"> (whole tag) with upload slot
-    // This handles cases where AI generated <img src="{{image_N}}">
+    // Step 1: Replace <img src="{{image_N}}"> with upload slot
     var imgPhRegex = /<img\b[^>]*src\s*=\s*["']?\{\{image_(\d+)\}\}["']?[^>]*>/gi;
     var html = body.replace(imgPhRegex, function(match, num) {
         return _makeUploadSlot(prefix, num);
@@ -587,48 +587,78 @@ function refreshPreview(prefix) {
         return _makeUploadSlot(prefix, num);
     });
 
-    // Step 3: Keep all valid <img> tags as-is (they render naturally)
-    preview.innerHTML = html;
+    // Step 3: Tag every <img> with unique data-img-id (same ID for preview + textarea)
+    var imgIdCounter = 0;
+    var imgIds = []; // store generated IDs for textarea sync
+    
+    html = html.replace(/<img\b[^>]*\/?>/gi, function(match) {
+        imgIdCounter++;
+        var id = 'img_' + imgIdCounter;
+        imgIds.push(id);
+        return match.replace(/\/?>$/, ' data-img-id="' + id + '"$&');
+    });
+    // Tag img tags in textarea with the SAME IDs
+    var tc = 0;
+    textarea.value = textarea.value.replace(/<img\b[^>]*\/?>/gi, function(match) {
+        var clean = match.replace(/\s*data-img-id\s*=\s*["'][^"']*["']/gi, '');
+        var id = imgIds[tc] || ('img_' + (tc + 1));
+        tc++;
+        return clean.replace(/\/?>$/, ' data-img-id="' + id + '"$&');
+    });
 
-    // Step 4: Use event delegation on preview for all upload slots
-    // (handles slots added later by setTimeout image replacement)
+    preview.innerHTML = html;
+    
+    // Make all images clickable, hide broken alt text
+    var allImgs = preview.querySelectorAll('img');
+    for (var j = 0; j < allImgs.length; j++) {
+        allImgs[j].style.cursor = 'pointer';
+        allImgs[j].title = 'Click to replace image';
+        allImgs[j].onerror = function() { this.style.visibility = 'hidden'; };
+        if (allImgs[j].complete && allImgs[j].naturalWidth === 0) {
+            allImgs[j].style.visibility = 'hidden';
+        }
+    }
+
+    // Cancel previous timer
+    if (preview._failTimer) clearTimeout(preview._failTimer);
+
+    // Event delegation
     if (!preview._delegated) {
         preview._delegated = true;
         preview.addEventListener('click', function(e) {
             var slot = e.target.closest('[data-trigger-upload="1"]');
-            if (!slot) return;
-            var p = slot.getAttribute('data-prefix');
-            var n = parseInt(slot.getAttribute('data-num'), 10);
-            triggerImageUpload(p, n);
+            if (slot) {
+                triggerImageUpload(slot.getAttribute('data-prefix'), parseInt(slot.getAttribute('data-num')));
+                return;
+            }
+            var img = e.target.closest('img');
+            if (img) {
+                _imgUploadId = img.getAttribute('data-img-id') || '';
+                triggerImageUpload(prefix, 0);
+                return;
+            }
         });
     }
     
-    // After a short delay, detect images that failed to load (AI fake base64)
-    // Sync both DOM and textarea so uploads target the right placeholder
-    setTimeout(function() {
+    // Detect failed images after longer delay (large base64 may load slowly)
+    preview._failTimer = setTimeout(function() {
         var imgs = preview.querySelectorAll('img');
         if (imgs.length === 0) return;
         var textarea2 = document.getElementById(prefix + '-body');
         var ob = String.fromCharCode(123);
         var cb = String.fromCharCode(125);
-        // Process in reverse so textarea index positions stay stable
         for (var i = imgs.length - 1; i >= 0; i--) {
             var img = imgs[i];
             if (img.naturalWidth === 0 && img.complete) {
                 var num = i + 1;
-                // Replace the i-th img tag in textarea (0-indexed, reverse order safe)
-                if (textarea2) {
-                    var targetIdx = i;
-                    var imgCount = 0;
-                    textarea2.value = textarea2.value.replace(/<img\b[^>]*\/?>/gi, function(match) {
-                        if (imgCount === targetIdx) {
-                            return ob + ob + 'image_' + num + cb + cb;
-                        }
-                        imgCount++;
-                        return match;
-                    });
+                var imgId = img.getAttribute('data-img-id') || '';
+                // Replace in textarea by data-img-id
+                if (textarea2 && imgId) {
+                    var escapedId = imgId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    var re = new RegExp('<img\\b[^>]*data-img-id\\s*=\\s*["\']' + escapedId + '["\'][^>]*>', 'gi');
+                    textarea2.value = textarea2.value.replace(re, ob + ob + 'image_' + num + cb + cb);
                 }
-                // Replace in DOM preview
+                // Replace in DOM
                 var slotHtml = _makeUploadSlot(prefix, num);
                 var temp = document.createElement('div');
                 temp.innerHTML = slotHtml;
@@ -637,7 +667,7 @@ function refreshPreview(prefix) {
                 }
             }
         }
-    }, 400);
+    }, 2000);
 }
 
 function _makeUploadSlot(prefix, num) {
@@ -696,26 +726,65 @@ function handleImageUpload(event, prefix) {
     
     var capturedPrefix = prefix;
     var capturedNum = _imgUploadNum;
+    var capturedImgId = _imgUploadId;
+    _imgUploadId = '';
+    
+    // For small files (< 200KB), use directly; otherwise compress
+    var MAX_RAW = 200 * 1024;
     
     var reader = new FileReader();
     reader.onload = function(e) {
-        var base64 = e.target.result;
-        var textarea = document.getElementById(capturedPrefix + '-body');
-        if (!textarea) return;
-        var ob = String.fromCharCode(123);
-        var cb = String.fromCharCode(125);
-        var ph = ob + ob + 'image_' + capturedNum + cb + cb;
-        var phUp = ob + ob + 'IMAGE_' + capturedNum + cb + cb;
-        var imgTag = '<img src="' + base64 + '" alt="Product Image ' + capturedNum + '" style="max-width:100%;border-radius:4px;margin:10px 0;">';
+        var rawBase64 = e.target.result;
         
-        var val = textarea.value;
-        if (val.indexOf(ph) >= 0 || val.indexOf(phUp) >= 0) {
-            textarea.value = val.split(ph).join(imgTag).split(phUp).join(imgTag);
-        } else {
-            // Fallback: replace first <img> tag with data: src (shouldn't happen after sync)
-            textarea.value = val.replace(/<img\b[^>]*src\s*=\s*["']data:[^"']*["'][^>]*\/?>/i, imgTag);
+        function insertImage(finalBase64) {
+            var textarea = document.getElementById(capturedPrefix + '-body');
+            if (!textarea) return;
+            var ob = String.fromCharCode(123);
+            var cb = String.fromCharCode(125);
+            var imgTag = '<img src="' + finalBase64 + '" alt="Product Image" style="max-width:100%;border-radius:4px;margin:10px 0;">';
+            var val = textarea.value;
+            var ph = ob + ob + 'image_' + capturedNum + cb + cb;
+            var phUp = ob + ob + 'IMAGE_' + capturedNum + cb + cb;
+            if (capturedNum > 0 && (val.indexOf(ph) >= 0 || val.indexOf(phUp) >= 0)) {
+                textarea.value = val.split(ph).join(imgTag).split(phUp).join(imgTag);
+            } else if (capturedImgId) {
+                var escapedId = capturedImgId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var re = new RegExp('<img\\b[^>]*data-img-id\\s*=\\s*["\']' + escapedId + '["\'][^>]*>', 'gi');
+                if (re.test(val)) {
+                    textarea.value = val.replace(re, imgTag);
+                } else {
+                    textarea.value = val.replace(/<img\b[^>]*\/?>/i, imgTag);
+                }
+            } else {
+                textarea.value = val.replace(/<img\b[^>]*\/?>/i, imgTag);
+            }
+            refreshPreview(capturedPrefix);
         }
-        refreshPreview(capturedPrefix);
+        
+        // If file is small enough, use as-is
+        if (file.size <= MAX_RAW) {
+            insertImage(rawBase64);
+            return;
+        }
+        
+        // Compress via Canvas
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var MAX_W = 600;
+            var scale = Math.min(1, MAX_W / img.width);
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            var compressed = canvas.toDataURL('image/jpeg', 0.7);
+            insertImage(compressed);
+        };
+        img.onerror = function() {
+            // Can't decode, use original
+            insertImage(rawBase64);
+        };
+        img.src = rawBase64;
     };
     reader.onerror = function() {
         alert('Failed to read image file. Please try another image.');
