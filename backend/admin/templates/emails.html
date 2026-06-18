@@ -93,9 +93,9 @@
                             <option value="website">Website</option>
                         </select>
                         <input id="camp-max" type="number" value="20" min="1" max="100" class="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-sm" placeholder="Max emails">
+                        <input id="camp-daily-limit" type="number" value="20" min="1" max="100" class="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-sm mt-2" placeholder="Daily limit (per day)">
                     </div>
-                    <div class="text-xs text-gray-500 mt-1" id="camp-count-preview">Click to estimate</div>
-                    <button type="button" onclick="previewCount()" class="text-xs text-blue-400 mt-1">Estimate count</button>
+                    <div class="text-xs text-gray-500 mt-1">Daily limit: sends this many per day. Campaign pauses after reaching limit, resumes next day automatically.</div>
                 </div>
             </div>
 
@@ -114,25 +114,17 @@
             </div>
             <div>
                 <div class="flex items-center justify-between">
-                    <label class="text-sm text-gray-400">Email Body (HTML) *</label>
+                    <label class="text-sm text-gray-400">Email Body *</label>
                     <div class="flex gap-2">
+                        <button type="button" onclick="toggleCodeView('camp')" id="camp-code-btn" class="text-xs px-3 py-1 rounded-lg bg-gray-600/20 text-gray-300 hover:bg-gray-600/40">&lt;/&gt; Code</button>
+                        <button type="button" onclick="insertImagePlaceholder('camp')" class="text-xs px-3 py-1 rounded-lg bg-green-600/20 text-green-300 hover:bg-green-600/40">📷 Add Image</button>
                         <button type="button" onclick="generateWithAI()" class="text-xs px-3 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ AI Generate</button>
                     </div>
                 </div>
-                <textarea id="camp-body" rows="12" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm" required></textarea>
-                <div class="text-xs text-gray-500 mt-1">Use &#123;&#123;name&#125;&#125;, &#123;&#123;company&#125;&#125;, &#123;&#123;country&#125;&#125; as placeholders. Use &#123;&#123;image_1&#125;&#125;, &#123;&#123;image_2&#125;&#125; etc. to embed images inline.</div>
+                <textarea id="camp-body" rows="12" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm hidden"></textarea>
+                <div id="camp-preview" class="w-full bg-white rounded-lg border border-gray-700 mt-1 p-4 min-h-[200px] max-h-[500px] overflow-y-auto" style="color:#333;font-family:system-ui,sans-serif;font-size:14px;"></div>
+                <div class="text-xs text-gray-500 mt-1">Click <span style="color:#a29bfe">📷 image placeholders</span> or use <span style="color:#34d399">📷 Add Image</span> to upload product photos. Use &#123;&#123;name&#125;&#125;, &#123;&#123;company&#125;&#125;, &#123;&#123;country&#125;&#125; for personalization.</div>
             </div>
-
-            <!-- Factory Image Picker -->
-            <div>
-                <div class="flex items-center justify-between">
-                    <label class="text-sm text-gray-400">Embed Factory Images (optional)</label>
-                    <span class="text-xs text-gray-500" id="image-count">0 selected</span>
-                </div>
-                <div id="image-gallery" class="mt-1 bg-gray-800 rounded-lg p-3" style="max-height:200px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
-                    <div class="text-gray-500 text-sm">Loading images...</div>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">Click images to select. Use &#123;&#123;image_1&#125;&#125;, &#123;&#123;image_2&#125;&#125; etc. in your email body to position them.</div>
             </div>
 
             <!-- Human-like delays -->
@@ -259,8 +251,17 @@
             </div>
             <div><label class="text-sm text-gray-400">Subject Template</label><input id="tpl-subject" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="Introduction from TXD CO., LTD - &#123;&#123;company&#125;&#125;"></div>
             <div>
-                <div class="flex items-center justify-between"><label class="text-sm text-gray-400">Body Template (HTML)</label><button type="button" onclick="generateTemplateAI()" class="text-xs px-3 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ AI Generate</button></div>
-                <textarea id="tpl-body" rows="10" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm"></textarea>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm text-gray-400">Body Template</label>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="toggleCodeView('tpl')" id="tpl-code-btn" class="text-xs px-3 py-1 rounded-lg bg-gray-600/20 text-gray-300 hover:bg-gray-600/40">&lt;/&gt; Code</button>
+                        <button type="button" onclick="insertImagePlaceholder('tpl')" class="text-xs px-3 py-1 rounded-lg bg-green-600/20 text-green-300 hover:bg-green-600/40">📷 Add Image</button>
+                        <button type="button" onclick="generateTemplateAI()" class="text-xs px-3 py-1 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/40">✨ AI Generate</button>
+                    </div>
+                </div>
+                <textarea id="tpl-body" rows="12" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 font-mono text-sm hidden"></textarea>
+                <div id="tpl-preview" class="w-full bg-white rounded-lg border border-gray-700 mt-1 p-4 min-h-[200px] max-h-[500px] overflow-y-auto" style="color:#333;font-family:system-ui,sans-serif;font-size:14px;"></div>
+                <div class="text-xs text-gray-500 mt-1">Click <span style="color:#a29bfe">📷 image placeholders</span> or use <span style="color:#34d399">📷 Add Image</span> to upload product photos. Use &#123;&#123;name&#125;&#125;, &#123;&#123;company&#125;&#125;, &#123;&#123;country&#125;&#125; for personalization.</div>
             </div>
             <div class="flex gap-3 mt-2"><button type="submit" class="btn-primary flex-1">Save</button><button type="button" onclick="closeModal('template-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">Cancel</button></div>
         </form>
@@ -295,8 +296,7 @@ function switchTab(btn) {
     document.getElementById('tab-' + currentTab).classList.remove('hidden');
     if (currentTab === 'mailboxes') loadMailboxes();
     if (currentTab === 'templates') loadTemplates();
-    if (currentTab === 'history') loadLogs();
-    if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); loadCampaignImages(); }
+    if (currentTab === 'campaign') { loadCampaignMailboxes(); loadCampaignTemplates(); loadActiveCampaigns(); refreshPreview('camp'); }
     if (currentTab === 'inbox') { loadInboxMailboxes(); }
     if (currentTab === 'history') { loadCampaignHistory(); }
 }
@@ -446,6 +446,11 @@ function showTemplateModal() {
     document.getElementById('tpl-cat').value = 'cold';
     document.getElementById('tpl-subject').value = 'Introduction from TXD CO., LTD - {{company}}';
     document.getElementById('tpl-body').value = '<p>Dear {{name}},</p><p>...</p>';
+    // Reset code view to preview mode
+    document.getElementById('tpl-body').classList.add('hidden');
+    document.getElementById('tpl-preview').classList.remove('hidden');
+    document.getElementById('tpl-code-btn').textContent = '</> Code';
+    refreshPreview('tpl');
     document.getElementById('template-modal').classList.remove('hidden');
 }
 
@@ -458,6 +463,11 @@ async function editTemplate(id) {
     document.getElementById('tpl-cat').value = t.category || 'cold';
     document.getElementById('tpl-subject').value = t.subject_template || '';
     document.getElementById('tpl-body').value = t.body_template || '';
+    // Reset to preview mode
+    document.getElementById('tpl-body').classList.add('hidden');
+    document.getElementById('tpl-preview').classList.remove('hidden');
+    document.getElementById('tpl-code-btn').textContent = '</> Code';
+    refreshPreview('tpl');
     document.getElementById('template-modal').classList.remove('hidden');
 }
 
@@ -545,8 +555,192 @@ async function generateTemplateAI() {
         const data = await res.json();
         document.getElementById('tpl-subject').value = data.subject || '';
         document.getElementById('tpl-body').value = data.body || '';
+        refreshPreview('tpl');
     } catch(e) { alert('AI generation failed'); }
     btn.textContent = '✨ AI Generate';
+}
+
+// ─── WYSIWYG PREVIEW & IMAGE UPLOAD ──────────────────────────────
+
+var _imgUploadPrefix = '';
+var _imgUploadNum = 0;
+
+function refreshPreview(prefix) {
+    var textarea = document.getElementById(prefix + '-body');
+    var preview = document.getElementById(prefix + '-preview');
+    if (!textarea || !preview) return;
+
+    var body = textarea.value || '';
+    var ob2 = String.fromCharCode(123, 123);
+    var cb2 = String.fromCharCode(125, 125);
+
+    // Step 1: Replace <img src="{{image_N}}"> (whole tag) with upload slot
+    // This handles cases where AI generated <img src="{{image_N}}">
+    var imgPhRegex = /<img\b[^>]*src\s*=\s*["']?\{\{image_(\d+)\}\}["']?[^>]*>/gi;
+    var html = body.replace(imgPhRegex, function(match, num) {
+        return _makeUploadSlot(prefix, num);
+    });
+
+    // Step 2: Replace standalone {{image_N}} placeholders with upload slots
+    var phRegex = new RegExp(ob2 + 'image_(\\d+)' + cb2, 'gi');
+    html = html.replace(phRegex, function(match, num) {
+        return _makeUploadSlot(prefix, num);
+    });
+
+    // Step 3: Keep all valid <img> tags as-is (they render naturally)
+    preview.innerHTML = html;
+
+    // Step 4: Use event delegation on preview for all upload slots
+    // (handles slots added later by setTimeout image replacement)
+    if (!preview._delegated) {
+        preview._delegated = true;
+        preview.addEventListener('click', function(e) {
+            var slot = e.target.closest('[data-trigger-upload="1"]');
+            if (!slot) return;
+            var p = slot.getAttribute('data-prefix');
+            var n = parseInt(slot.getAttribute('data-num'), 10);
+            triggerImageUpload(p, n);
+        });
+    }
+    
+    // After a short delay, detect images that failed to load (AI fake base64)
+    // Sync both DOM and textarea so uploads target the right placeholder
+    setTimeout(function() {
+        var imgs = preview.querySelectorAll('img');
+        if (imgs.length === 0) return;
+        var textarea2 = document.getElementById(prefix + '-body');
+        var ob = String.fromCharCode(123);
+        var cb = String.fromCharCode(125);
+        // Process in reverse so textarea index positions stay stable
+        for (var i = imgs.length - 1; i >= 0; i--) {
+            var img = imgs[i];
+            if (img.naturalWidth === 0 && img.complete) {
+                var num = i + 1;
+                // Replace the i-th img tag in textarea (0-indexed, reverse order safe)
+                if (textarea2) {
+                    var targetIdx = i;
+                    var imgCount = 0;
+                    textarea2.value = textarea2.value.replace(/<img\b[^>]*\/?>/gi, function(match) {
+                        if (imgCount === targetIdx) {
+                            return ob + ob + 'image_' + num + cb + cb;
+                        }
+                        imgCount++;
+                        return match;
+                    });
+                }
+                // Replace in DOM preview
+                var slotHtml = _makeUploadSlot(prefix, num);
+                var temp = document.createElement('div');
+                temp.innerHTML = slotHtml;
+                if (img.parentNode) {
+                    img.parentNode.replaceChild(temp.firstChild, img);
+                }
+            }
+        }
+    }, 400);
+}
+
+function _makeUploadSlot(prefix, num) {
+    return '<div class="img-placeholder" '
+        + 'data-trigger-upload="1" '
+        + 'data-prefix="' + prefix + '" '
+        + 'data-num="' + num + '" '
+        + 'style="border:2px dashed #a29bfe;border-radius:8px;padding:30px 20px;text-align:center;'
+        + 'cursor:pointer;margin:10px 0;background:#f8f7ff;transition:all 0.2s;'
+        + 'user-select:none;-webkit-user-select:none;" '
+        + 'onmouseover="this.style.background=\'#ede9fe\'" onmouseout="this.style.background=\'#f8f7ff\'">'
+        + '<div style="font-size:32px;margin-bottom:8px;pointer-events:none;">📷</div>'
+        + '<div style="color:#6c5ce7;font-weight:600;pointer-events:none;">Click to upload Image ' + num + '</div>'
+        + '<div style="color:#999;font-size:11px;margin-top:4px;pointer-events:none;">&#123;&#123;image_' + num + '&#125;&#125;</div>'
+        + '</div>';
+}
+
+function triggerImageUpload(prefix, num) {
+    _imgUploadPrefix = prefix;
+    _imgUploadNum = num;
+    // Create a fresh temp file input each time (avoids all CSS/display:none click issues)
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function() {
+        handleImageUpload({target: input}, prefix);
+        setTimeout(function() { document.body.removeChild(input); }, 100);
+    };
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.click();
+}
+
+function insertImagePlaceholder(prefix) {
+    var textarea = document.getElementById(prefix + '-body');
+    var body = textarea.value || '';
+    // Find the next available image number
+    var maxNum = 0;
+    var matches = body.match(/\{\{image_(\d+)\}\}/gi) || [];
+    matches.forEach(function(m) { var n = parseInt(m.match(/\d+/)[0]); if (n > maxNum) maxNum = n; });
+    var nextNum = maxNum + 1;
+    var ph = String.fromCharCode(123,123) + 'image_' + nextNum + String.fromCharCode(125,125);
+    textarea.value = body + '\n<p style="text-align:center;margin-top:20px;">' + ph + '</p>';
+    // Ensure preview mode
+    textarea.classList.add('hidden');
+    var preview = document.getElementById(prefix + '-preview');
+    if (preview) preview.classList.remove('hidden');
+    var btn = document.getElementById(prefix + '-code-btn');
+    if (btn) btn.textContent = '</> Code';
+    refreshPreview(prefix);
+}
+
+function handleImageUpload(event, prefix) {
+    var file = event.target && event.target.files ? event.target.files[0] : null;
+    if (!file) return;
+    
+    var capturedPrefix = prefix;
+    var capturedNum = _imgUploadNum;
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var base64 = e.target.result;
+        var textarea = document.getElementById(capturedPrefix + '-body');
+        if (!textarea) return;
+        var ob = String.fromCharCode(123);
+        var cb = String.fromCharCode(125);
+        var ph = ob + ob + 'image_' + capturedNum + cb + cb;
+        var phUp = ob + ob + 'IMAGE_' + capturedNum + cb + cb;
+        var imgTag = '<img src="' + base64 + '" alt="Product Image ' + capturedNum + '" style="max-width:100%;border-radius:4px;margin:10px 0;">';
+        
+        var val = textarea.value;
+        if (val.indexOf(ph) >= 0 || val.indexOf(phUp) >= 0) {
+            textarea.value = val.split(ph).join(imgTag).split(phUp).join(imgTag);
+        } else {
+            // Fallback: replace first <img> tag with data: src (shouldn't happen after sync)
+            textarea.value = val.replace(/<img\b[^>]*src\s*=\s*["']data:[^"']*["'][^>]*\/?>/i, imgTag);
+        }
+        refreshPreview(capturedPrefix);
+    };
+    reader.onerror = function() {
+        alert('Failed to read image file. Please try another image.');
+    };
+    reader.readAsDataURL(file);
+}
+
+function toggleCodeView(prefix) {
+    var textarea = document.getElementById(prefix + '-body');
+    var preview = document.getElementById(prefix + '-preview');
+    var btn = document.getElementById(prefix + '-code-btn');
+    
+    if (textarea.classList.contains('hidden')) {
+        // Switch to code view
+        textarea.classList.remove('hidden');
+        preview.classList.add('hidden');
+        btn.textContent = '👁 Preview';
+        // Sync latest preview edits back to textarea not needed since we write to textarea first
+    } else {
+        // Switch to preview
+        textarea.classList.add('hidden');
+        preview.classList.remove('hidden');
+        btn.textContent = '</> Code';
+        refreshPreview(prefix);
+    }
 }
 
 // ─── CAMPAIGN ───────────────────────────────────────────────────────
@@ -576,37 +770,6 @@ async function loadCampaignTemplates() {
     } catch(e) {}
 }
 
-async function loadCampaignImages() {
-    try {
-        const res = await fetch('/api/campaign/images');
-        const data = await res.json();
-        const gallery = document.getElementById('image-gallery');
-        if (!data.images || data.images.length === 0) {
-            gallery.innerHTML = '<div class="text-gray-500 text-sm" style="grid-column:1/-1">No images found in factory image directory</div>';
-            return;
-        }
-        gallery.innerHTML = data.images.map((img, i) =>
-            `<label class="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-700/50 rounded-lg p-2 transition" style="border:1px solid transparent">
-                <input type="checkbox" value="${img.filename}" class="hidden image-checkbox" onchange="updateImageCount()">
-                <img src="${img.url}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;" loading="lazy" 
-                    onclick="this.closest('label').querySelector('.image-checkbox').click(); this.closest('label').classList.toggle('ring-2'); this.closest('label').classList.toggle('ring-purple-500'); updateImageCount()">
-                <span class="text-xs text-gray-400 truncate w-full text-center">${img.filename.length > 15 ? img.filename.substring(0, 12) + '...' : img.filename}</span>
-            </label>`
-        ).join('');
-    } catch(e) { document.getElementById('image-gallery').innerHTML = '<div class="text-gray-500 text-sm">Failed to load images</div>'; }
-}
-
-function updateImageCount() {
-    const checked = document.querySelectorAll('.image-checkbox:checked').length;
-    document.getElementById('image-count').textContent = checked + ' selected';
-    if (checked > 0) {
-        var n = checked;
-        var ob = String.fromCharCode(123, 123);
-        var cb = String.fromCharCode(125, 125);
-        document.getElementById('image-count').textContent += ' (use ' + ob + 'image_1' + cb + ' to ' + ob + 'image_' + n + cb + ')';
-    }
-}
-
 async function loadTemplateContent() {
     const tplId = document.getElementById('camp-template').value;
     if (!tplId) return;
@@ -615,6 +778,7 @@ async function loadTemplateContent() {
         const t = await res.json();
         if (t.subject_template) document.getElementById('camp-subject').value = t.subject_template;
         if (t.body_template) document.getElementById('camp-body').value = t.body_template;
+        refreshPreview('camp');
     } catch(e) {}
 }
 
@@ -626,19 +790,7 @@ async function generateWithAI() {
         const data = await res.json();
         if (data.subject) document.getElementById('camp-subject').value = data.subject;
         if (data.body) document.getElementById('camp-body').value = data.body;
-
-        // Auto-select images returned by AI
-        if (data.image_filenames && data.image_filenames.length > 0) {
-            const checkboxes = document.querySelectorAll('.image-checkbox');
-            checkboxes.forEach(cb => {
-                if (data.image_filenames.includes(cb.value)) {
-                    cb.checked = true;
-                    var label = cb.closest('label');
-                    if (label) label.classList.add('ring-2', 'ring-purple-500');
-                }
-            });
-            updateImageCount();
-        }
+        refreshPreview('camp');
     } catch(e) { alert('AI generation failed'); }
     btn.textContent = '✨ AI Generate';
 }
@@ -679,9 +831,9 @@ async function launchCampaign(e) {
                 body: document.getElementById('camp-body').value,
                 template_id: document.getElementById('camp-template').value,
                 max_emails: parseInt(document.getElementById('camp-max').value) || 20,
+                daily_limit: parseInt(document.getElementById('camp-daily-limit').value) || 20,
                 human_delay_min: parseInt(document.getElementById('camp-delay-min').value) || 30,
                 human_delay_max: parseInt(document.getElementById('camp-delay-max').value) || 180,
-                image_filenames: Array.from(document.querySelectorAll('.image-checkbox:checked')).map(cb => cb.value),
             }),
         });
         const data = await res.json();
@@ -717,15 +869,21 @@ function escapeHtml(text) {
 
 function createCampaignCard(campaignId, message) {
     var container = document.getElementById('camp-result');
+    // Don't create duplicate cards
+    if (document.getElementById('camp-card-' + campaignId)) return;
     var html = '<div id="camp-card-' + campaignId + '" class="p-3 rounded-lg bg-green-900/30 text-green-300 text-sm">'
         + '<div class="flex items-center justify-between">'
-        + '<div><strong>Campaign started!</strong> ' + escapeHtml(message || '') + '</div>'
-        + '<button onclick="stopCampaignCard(\'' + campaignId + '\')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background:#ef4444;color:white;border:none;cursor:pointer">⏹ Stop</button>'
+        + '<div><strong>🚀 Campaign</strong> <span class="text-gray-400 text-xs ml-2">' + escapeHtml(message || '') + '</span></div>'
+        + '<div class="flex gap-2">'
+        + '<button onclick="viewRecipients(\'' + campaignId + '\')" class="px-2 py-1 rounded-lg text-xs font-semibold" style="background:#3b82f6;color:white;border:none;cursor:pointer">👁 View</button>'
+        + '<button onclick="stopCampaignCard(\'' + campaignId + '\')" class="px-2 py-1 rounded-lg text-xs font-semibold" style="background:#ef4444;color:white;border:none;cursor:pointer">⏹ Stop</button>'
         + '</div>'
-        + '<div class="grid grid-cols-4 gap-2 mt-2 text-xs" id="camp-info-' + campaignId + '">'
+        + '</div>'
+        + '<div class="grid grid-cols-5 gap-2 mt-2 text-xs" id="camp-info-' + campaignId + '">'
         + '<div><span class="text-gray-400">Status:</span> <span class="font-semibold">pending</span></div>'
         + '<div><span class="text-gray-400">Sent:</span> <span class="font-semibold">0</span></div>'
         + '<div><span class="text-gray-400">Failed:</span> <span class="font-semibold">0</span></div>'
+        + '<div><span class="text-gray-400">Daily:</span> <span class="font-semibold">-</span></div>'
         + '<div><span class="text-gray-400">Progress:</span> <span class="font-semibold">0 / 0</span></div>'
         + '</div>'
         + '<div class="mt-2 w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">'
@@ -747,9 +905,10 @@ async function updateCampaignCard(campaignId) {
         var card = document.getElementById('camp-card-' + campaignId);
         if (!card) return;
         
-        var infoHtml = '<div><span class="text-gray-400">Status:</span> <span class="font-semibold">' + p.status + '</span></div>'
+        var infoHtml = '<div><span class="text-gray-400">Status:</span> <span class="font-semibold" style="color:' + (p.status==='running'?'#60a5fa':p.status==='completed'?'#34d399':p.status==='failed'?'#f87171':'#fbbf24') + '">' + p.status + '</span></div>'
             + '<div><span class="text-gray-400">Sent:</span> <span class="font-semibold">' + (p.sent_count || 0) + '</span></div>'
             + '<div><span class="text-gray-400">Failed:</span> <span class="font-semibold">' + (p.failed_count || 0) + '</span></div>'
+            + '<div><span class="text-gray-400">Daily:</span> <span class="font-semibold">' + (p.daily_limit || '-') + (p.last_run_date ? ' (last: ' + p.last_run_date + ')' : '') + '</span></div>'
             + '<div><span class="text-gray-400">Progress:</span> <span class="font-semibold">' + ((p.current_email_index || 0) + ' / ' + (p.customer_count || 0)) + '</span></div>';
         document.getElementById('camp-info-' + campaignId).innerHTML = infoHtml;
         
@@ -802,20 +961,22 @@ async function loadCampaignHistory() {
             tbody.innerHTML = '<tr><td colspan="8" class="text-gray-500 py-8 text-center">No campaigns yet. Start one in the Campaign tab!</td></tr>';
             return;
         }
-        const statusColors = {pending:'text-yellow-400',running:'text-blue-400',completed:'text-green-400',failed:'text-red-400',stopped:'text-yellow-400'};
+        const statusColors = {pending:'text-yellow-400',running:'text-blue-400',completed:'text-green-400',failed:'text-red-400',stopped:'text-gray-400'};
         tbody.innerHTML = data.items.map(c => {
             const date = (c.created_at || '').substring(0, 16);
+            const daily = c.daily_limit ? ' (' + c.daily_limit + '/day)' : '';
             return `<tr class="border-b border-gray-800 hover:bg-white/5">
                 <td class="py-3 px-2 text-gray-400 text-xs">${date}</td>
                 <td class="py-3 px-2 text-gray-300">${(c.subject_preview || '').substring(0, 50)}</td>
-                <td class="py-3 px-2 text-gray-400">${c.customer_count}</td>
+                <td class="py-3 px-2 text-gray-400">${c.customer_count}${daily}</td>
                 <td class="py-3 px-2 text-green-400">${c.sent_count}</td>
                 <td class="py-3 px-2 text-red-400">${c.failed_count}</td>
                 <td class="py-3 px-2 text-gray-400 text-xs">${c.elapsed || ''}</td>
                 <td class="py-3 px-2"><span class="${statusColors[c.status] || 'text-gray-400'}">${c.status}</span></td>
                 <td class="py-3 px-2 text-right">
-                    ${c.status === 'running' ? `<button onclick="createCampaignCard('${c.id}','');updateCampaignCard('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">View</button><button onclick="stopCampaignCard('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">Stop</button>` : ''}
-                    ${c.status === 'completed' || c.status === 'failed' || c.status === 'stopped' ? `<button onclick="createCampaignCard('${c.id}','');updateCampaignCard('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs">View</button>` : ''}
+                    <button onclick="viewRecipients('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">👁 View</button>
+                    ${c.status === 'running' ? `<button onclick="stopCampaignCard('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">⏹ Stop</button>` : ''}
+                    ${c.status === 'pending' ? `<button onclick="stopCampaignId('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">⏹ Stop</button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -939,7 +1100,72 @@ async function inboxAction(msgId, mboxId, action, fromName, fromEmail) {
 
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+// ─── ACTIVE CAMPAIGNS
+
+async function loadActiveCampaigns() {
+    try {
+        const res = await fetch('/api/campaign/history');
+        const data = await res.json();
+        const active = data.items.filter(c => c.status === 'pending' || c.status === 'running');
+        const container = document.getElementById('camp-result');
+        // Keep only cards for active campaigns (remove stale ones)
+        const existingCards = container.querySelectorAll('[id^="camp-card-"]');
+        const activeIds = new Set(active.map(c => c.id));
+        existingCards.forEach(card => {
+            const cardId = card.id.replace('camp-card-', '');
+            if (!activeIds.has(cardId)) card.remove();
+        });
+        // Create cards for active campaigns not yet shown
+        active.forEach(c => {
+            if (!document.getElementById('camp-card-' + c.id)) {
+                createCampaignCard(c.id, c.subject_preview || 'Campaign');
+                updateCampaignCard(c.id);
+            }
+        });
+    } catch(e) {}
+}
+
+// ─── VIEW RECIPIENTS MODAL ──────────────────────────────────────
+
+async function viewRecipients(campaignId) {
+    document.getElementById('recipients-modal').classList.remove('hidden');
+    document.getElementById('recipients-body').innerHTML = '<div class="text-gray-400 text-center py-8">Loading...</div>';
+    try {
+        const res = await fetch('/api/campaign/' + campaignId + '/recipients');
+        const data = await res.json();
+        let html = '<div class="text-sm text-gray-400 mb-3">Sent ' + data.sent_count + ' / ' + data.total + ' recipients</div>';
+        html += '<table class="w-full text-sm"><thead><tr class="text-gray-400 border-b border-gray-700">'
+            + '<th class="text-left py-2 px-2">Company</th><th class="text-left py-2 px-2">Name</th>'
+            + '<th class="text-left py-2 px-2">Email</th><th class="text-left py-2 px-2">Country</th>'
+            + '<th class="text-left py-2 px-2">Status</th></tr></thead><tbody>';
+        data.recipients.forEach(r => {
+            const sc = r.sent ? 'text-green-400' : 'text-gray-500';
+            html += '<tr class="border-b border-gray-800"><td class="py-2 px-2">' + (r.company || '-') + '</td>'
+                + '<td class="py-2 px-2">' + (r.name || '-') + '</td>'
+                + '<td class="py-2 px-2 text-gray-400 text-xs">' + (r.email || '-') + '</td>'
+                + '<td class="py-2 px-2 text-gray-400">' + (r.country || '-') + '</td>'
+                + '<td class="py-2 px-2 ' + sc + '">' + (r.sent ? '✓ Sent ' + (r.sent_at || '').substring(0, 16) : '⏳ Pending') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('recipients-body').innerHTML = html;
+    } catch(e) {
+        document.getElementById('recipients-body').innerHTML = '<div class="text-red-400 py-8 text-center">Failed to load: ' + e.message + '</div>';
+    }
+}
+
 // Init
 switchTab(document.querySelector('.tab-btn'));
+// Load active campaigns + history on init
+loadActiveCampaigns();
+loadCampaignHistory();
 </script>
+
+<!-- Recipients Modal -->
+<div id="recipients-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">📋 Campaign Recipients</h2><button onclick="closeModal('recipients-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button></div>
+        <div id="recipients-body"><div class="text-gray-400 text-center py-8">Loading...</div></div>
+    </div>
+</div>
+
 {% endblock %}

@@ -30,18 +30,28 @@ _running_campaigns: dict[str, asyncio.Event] = {}  # campaign_id -> stop event
 
 
 async def _load_and_resume_campaigns():
-    """On startup, find running campaigns and resume them."""
+    """On startup, resume pending campaigns that haven't run today."""
     async with async_session() as db:
         result = await db.execute(
-            select(Campaign).where(Campaign.status == "running")
+            select(Campaign).where(Campaign.status.in_(["running", "pending"]))
         )
-        running = result.scalars().all()
-        for camp in running:
+        campaigns = result.scalars().all()
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        resumed = 0
+        for camp in campaigns:
+            if camp.status == "running":
+                # Was interrupted — reset to pending
+                camp.status = "pending"
+            if camp.last_run_date == today:
+                # Already ran today, skip
+                continue
             print(f"[Campaign] Resuming campaign {camp.id} ({camp.subject_preview[:40]})")
-            camp.status = "pending"  # Reset to pending, will be picked up
-        if running:
+            asyncio.create_task(_run_campaign(camp.id))
+            resumed += 1
+        if campaigns:
             await db.commit()
-            print(f"[Campaign] Marked {len(running)} campaigns for resume")
+        if resumed:
+            print(f"[Campaign] Resumed {resumed} campaigns")
 
 # ─── Factory Image List ─────────────────────────────────────────────
 
@@ -81,18 +91,38 @@ class CampaignRequest(BaseModel):
     subject: str = ""
     body: str = ""
     template_id: str = ""
-    max_emails: int = 20
+    max_emails: int = 20  # total customers to select
+    daily_limit: int = 20  # max emails per day, 0 = no limit
     human_delay_min: int = 30
     human_delay_max: int = 180
     image_filenames: list[str] = []
 
 @router.post("/send")
 async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db)):
-    """Save campaign to DB and start sending."""
-    # 1. Collect customers
+    """Save campaign to DB and start sending.
+
+    Deduplication: skips customers already sent by any campaign,
+    and contacted customers (unless a specific status filter is set).
+    """
+    # ── 1. Collect all customers ever sent by any campaign ──
+    # Build exclusion set from all campaigns' sent_customer_ids + customer_ids
+    all_campaigns = (await db.execute(select(Campaign))).scalars().all()
+    exclude_ids: set[str] = set()
+    for c in all_campaigns:
+        if c.status not in ("completed", "stopped", "failed"):
+            # For active campaigns, exclude ALL their customers (prevent overlap)
+            cids = json.loads(c.customer_ids or "[]")
+            exclude_ids.update(cids)
+        # Always exclude customers already sent by any campaign
+        sids = json.loads(c.sent_customer_ids or "[]")
+        exclude_ids.update(sids)
+
+    # ── 2. Collect customers ──
     if data.customer_ids:
         customers = []
         for cid in data.customer_ids:
+            if cid in exclude_ids:
+                continue
             result = await db.execute(select(Customer).where(Customer.id == cid))
             c = result.scalar_one_or_none()
             if c and c.email:
@@ -100,17 +130,22 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
     else:
         filters = data.customer_filters
         query = select(Customer).where(Customer.email != "")
+        # Default: exclude already-contacted customers (unless user picks a specific status)
+        if not filters.get("status"):
+            query = query.where(Customer.status != "contacted")
         if filters.get("status"):
             query = query.where(Customer.status == filters["status"])
         if filters.get("source"):
             query = query.where(Customer.source.like(f"%{filters['source']}%"))
         if filters.get("score_min") is not None:
             query = query.where(Customer.score >= filters["score_min"])
-        query = query.order_by(Customer.score.desc()).limit(data.max_emails)
+        query = query.order_by(Customer.score.desc()).limit(data.max_emails * 2)  # fetch extra to compensate for excludes
         result = await db.execute(query)
-        customers = list(result.scalars().all())
+        all_customers = list(result.scalars().all())
+        customers = [c for c in all_customers if c.id not in exclude_ids]
+
     if not customers:
-        raise HTTPException(status_code=400, detail="No customers found matching criteria")
+        raise HTTPException(status_code=400, detail="No customers found matching criteria (all already sent or contacted)")
     customers = customers[:data.max_emails]
 
     # 2. Build content
@@ -136,6 +171,7 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
         delay_min=data.human_delay_min,
         delay_max=data.human_delay_max,
         image_filenames=json.dumps(data.image_filenames),
+        daily_limit=data.daily_limit,
         subject_template=subject,
         body_template=body,
         customer_ids=json.dumps(customer_ids),
@@ -161,29 +197,23 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
 
 @router.post("/{campaign_id}/stop")
 async def stop_campaign(campaign_id: str, db: AsyncSession = Depends(get_db)):
-    """Stop a running campaign. Only this endpoint can stop it."""
+    """Stop a running or pending campaign."""
     result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
     camp = result.scalar_one_or_none()
     if not camp:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    if camp.status != "running":
-        raise HTTPException(status_code=400, detail="Campaign is not running")
+    if camp.status not in ("running", "pending"):
+        raise HTTPException(status_code=400, detail=f"Campaign is {camp.status}, not running/pending")
 
-    # Signal stop
+    # Signal stop if running
     if campaign_id in _running_campaigns:
         _running_campaigns[campaign_id].set()
-        camp.status = "stopped"
-        camp.completed_at = datetime.now(timezone.utc).isoformat()
-        await db.commit()
-        # Clean up tracker after a delay
         asyncio.create_task(_cleanup_tracker(campaign_id))
-        return {"status": "ok", "message": "Campaign stopped"}
-    else:
-        camp.status = "failed"
-        camp.error_message = "Campaign task not found (server may have restarted)"
-        camp.completed_at = datetime.now(timezone.utc).isoformat()
-        await db.commit()
-        return {"status": "ok", "message": "Campaign marked as failed (no running task found)"}
+
+    camp.status = "stopped"
+    camp.completed_at = datetime.now(timezone.utc).isoformat()
+    await db.commit()
+    return {"status": "ok", "message": f"Campaign stopped (was {camp.status})"}
 
 
 @router.get("/{campaign_id}/progress")
@@ -210,10 +240,58 @@ async def get_campaign_progress(campaign_id: str, db: AsyncSession = Depends(get
         "failed_count": camp.failed_count,
         "customer_count": camp.customer_count,
         "current_email_index": camp.current_email_index,
+        "daily_limit": camp.daily_limit,
+        "last_run_date": camp.last_run_date,
         "started_at": camp.started_at,
         "completed_at": camp.completed_at,
         "elapsed": elapsed,
         "error_message": camp.error_message,
+    }
+
+
+@router.get("/{campaign_id}/recipients")
+async def get_campaign_recipients(campaign_id: str, db: AsyncSession = Depends(get_db)):
+    """Get recipient list with send status for a campaign."""
+    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
+    camp = result.scalar_one_or_none()
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    all_cids = json.loads(camp.customer_ids or "[]")
+    sent_ids = set(json.loads(camp.sent_customer_ids or "[]"))
+
+    recipients = []
+    for cid in all_cids:
+        r = await db.execute(select(Customer).where(Customer.id == cid))
+        c = r.scalar_one_or_none()
+        if not c:
+            continue
+        # Find email log for this customer in this campaign
+        log_result = await db.execute(
+            select(EmailLog).where(
+                EmailLog.customer_id == cid,
+                EmailLog.direction == "out",
+                EmailLog.subject.like(f"%Campaign {campaign_id}%"),
+            ).order_by(EmailLog.sent_at.desc()).limit(1)
+        )
+        log = log_result.scalar_one_or_none()
+
+        recipients.append({
+            "customer_id": cid,
+            "name": c.name or "",
+            "company": c.company or "",
+            "email": c.email or "",
+            "country": c.country or "",
+            "sent": cid in sent_ids,
+            "sent_at": log.sent_at if log else "",
+            "status": log.status if log else ("sent" if cid in sent_ids else "pending"),
+        })
+
+    return {
+        "campaign_id": campaign_id,
+        "total": len(all_cids),
+        "sent_count": camp.sent_count,
+        "recipients": recipients,
     }
 
 
@@ -264,9 +342,15 @@ async def get_campaign_history(db: AsyncSession = Depends(get_db)):
 # ─── Campaign Runner ───────────────────────────────────────────────
 
 async def _run_campaign(campaign_id: str):
-    """Run campaign in background with stop support."""
+    """Run campaign batch — respects daily_limit, survives restarts.
+
+    Sends up to `daily_limit` emails per run. If more customers remain,
+    stays in "pending" status for the next day's scheduler to pick up.
+    Safe to call multiple times per day — skips if already ran today.
+    """
     stop_event = asyncio.Event()
     _running_campaigns[campaign_id] = stop_event
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     async with async_session() as db:
         try:
@@ -274,6 +358,11 @@ async def _run_campaign(campaign_id: str):
             result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
             camp = result.scalar_one_or_none()
             if not camp:
+                return
+
+            # Skip if already ran today (from scheduler + lifespan race)
+            if camp.last_run_date == today_str and camp.status == "pending":
+                print(f"[Campaign {campaign_id}] Already ran today, skipping")
                 return
 
             # Load mailboxes
@@ -293,6 +382,14 @@ async def _run_campaign(campaign_id: str):
             # Load customers
             customer_ids = json.loads(camp.customer_ids or "[]")
             sent_ids = set(json.loads(camp.sent_customer_ids or "[]"))
+
+            # ── Cross-campaign dedup: also skip customers sent by ANY other campaign ──
+            all_camps = (await db.execute(
+                select(Campaign).where(Campaign.id != campaign_id)
+            )).scalars().all()
+            for oc in all_camps:
+                sent_ids.update(json.loads(oc.sent_customer_ids or "[]"))
+
             customers = []
             for cid in customer_ids:
                 r = await db.execute(select(Customer).where(Customer.id == cid))
@@ -308,28 +405,32 @@ async def _run_campaign(campaign_id: str):
                     img_path = FACTORY_IMG_DIR / fname
                     if img_path.exists():
                         ext = img_path.suffix.lower()
-                        mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
+                        mime = {"jpg":"image/jpeg","jpeg":"image/jpeg","png":"image/png","gif":"image/gif","webp":"image/webp"}
                         mt = mime.get(ext.lstrip("."), "image/jpeg")
                         b64 = base64.b64encode(img_path.read_bytes()).decode()
                         inline_images.append(f'<img src="data:{mt};base64,{b64}" alt="" style="max-width:100%;border-radius:4px;margin:10px 0;">')
 
             # Mark running
             camp.status = "running"
-            camp.started_at = datetime.now(timezone.utc).isoformat()
+            camp.started_at = camp.started_at or datetime.now(timezone.utc).isoformat()
             await db.commit()
 
             subject_template = camp.subject_template or ""
             body_template = camp.body_template or ""
-            sent_count = camp.sent_count
-            failed_count = camp.failed_count
+            daily_limit = camp.daily_limit or 20
             mailbox_idx = 0
+            sent_today = 0
             today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             today_counts = {m.id: 0 for m in mailboxes}
 
+            # Count today's sends per mailbox (for mailbox-level limits)
             for mb in mailboxes:
                 count_result = await db.execute(
                     select(sa_func.count()).select_from(
-                        select(EmailLog).where(EmailLog.mailbox_id == mb.id, EmailLog.sent_at >= today_start.isoformat()).subquery()
+                        select(EmailLog).where(
+                            EmailLog.mailbox_id == mb.id,
+                            EmailLog.sent_at >= today_start.isoformat()
+                        ).subquery()
                     )
                 )
                 today_counts[mb.id] = count_result.scalar() or 0
@@ -343,22 +444,35 @@ async def _run_campaign(campaign_id: str):
                     await db.commit()
                     return
 
+                # Check daily campaign limit
+                if daily_limit > 0 and sent_today >= daily_limit:
+                    print(f"[Campaign {campaign_id}] Daily limit reached ({daily_limit}), pausing")
+                    break
+
                 if customer.id in sent_ids:
                     continue
-
                 if not customer.email:
                     continue
 
+                # Check mailbox daily limit
                 mb = mailboxes[mailbox_idx % len(mailboxes)]
                 mailbox_idx += 1
                 if today_counts[mb.id] >= (mb.daily_send_limit or 200):
                     continue
 
-                # Personalize
+                # Personalize — support all template variable variants
                 p_subj = subject_template.replace("{{name}}", customer.name or "")\
-                    .replace("{{company}}", customer.company or "").replace("{{country}}", customer.country or "")
+                    .replace("{{CONTACT_NAME}}", customer.name or "")\
+                    .replace("{{company}}", customer.company or "")\
+                    .replace("{{company_name}}", customer.company or "")\
+                    .replace("{{COMPANY_NAME}}", customer.company or "")\
+                    .replace("{{country}}", customer.country or "")
                 p_body = body_template.replace("{{name}}", customer.name or "Valued Partner")\
-                    .replace("{{company}}", customer.company or "your company").replace("{{country}}", customer.country or "")
+                    .replace("{{CONTACT_NAME}}", customer.name or "Valued Partner")\
+                    .replace("{{company}}", customer.company or "your company")\
+                    .replace("{{company_name}}", customer.company or "your company")\
+                    .replace("{{COMPANY_NAME}}", customer.company or "your company")\
+                    .replace("{{country}}", customer.country or "")
 
                 if inline_images:
                     for idx, img_html in enumerate(inline_images, 1):
@@ -388,37 +502,42 @@ async def _run_campaign(campaign_id: str):
                 )
                 db.add(log)
                 today_counts[mb.id] += 1
+                sent_today += 1
 
                 if success:
-                    sent_count += 1
+                    camp.sent_count += 1
                     customer.status = "contacted"
                 else:
-                    failed_count += 1
+                    camp.failed_count += 1
 
                 sent_ids.add(customer.id)
-                camp.sent_count = sent_count
-                camp.failed_count = failed_count
                 camp.sent_customer_ids = json.dumps(list(sent_ids))
                 camp.current_email_index = i + 1
                 await db.commit()
 
-                if i < len(customers) - 1 and not stop_event.is_set():
+                if not stop_event.is_set() and sent_today < daily_limit:
                     delay = random.randint(camp.delay_min, camp.delay_max)
-                    print(f"[Campaign {campaign_id}] {i+1}/{len(customers)}. Waiting {delay}s...")
-                    # Check stop signal every second during delay
+                    print(f"[Campaign {campaign_id}] {camp.sent_count}/{camp.customer_count} sent. Waiting {delay}s...")
                     for _ in range(delay):
                         if stop_event.is_set():
-                            print(f"[Campaign {campaign_id}] Stopped during delay")
                             camp.status = "stopped"
                             camp.completed_at = datetime.now(timezone.utc).isoformat()
                             await db.commit()
                             return
                         await asyncio.sleep(1)
 
-            camp.status = "completed"
-            camp.completed_at = datetime.now(timezone.utc).isoformat()
+            # Determine final status
+            remaining = len([c for c in customers if c.id not in sent_ids and c.email])
+            if remaining == 0:
+                camp.status = "completed"
+                camp.completed_at = datetime.now(timezone.utc).isoformat()
+                print(f"[Campaign {campaign_id}] Completed: {camp.sent_count} sent")
+            else:
+                camp.status = "pending"
+                camp.last_run_date = today_str
+                print(f"[Campaign {campaign_id}] Paused: {camp.sent_count} sent, {remaining} remaining (next run tomorrow)")
+
             await db.commit()
-            print(f"[Campaign {campaign_id}] Completed: {sent_count} sent, {failed_count} failed")
 
         except Exception as e:
             print(f"[Campaign {campaign_id}] Error: {e}")
@@ -433,6 +552,40 @@ async def _run_campaign(campaign_id: str):
                 pass
         finally:
             _running_campaigns.pop(campaign_id, None)
+
+
+@router.post("/{campaign_id}/resume")
+async def resume_campaign(campaign_id: str, db: AsyncSession = Depends(get_db)):
+    """Resume a paused/stopped campaign."""
+    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id))
+    camp = result.scalar_one_or_none()
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if camp.status not in ("pending", "stopped"):
+        raise HTTPException(status_code=400, detail=f"Campaign is {camp.status}")
+    camp.status = "pending"
+    await db.commit()
+    asyncio.create_task(_run_campaign(campaign_id))
+    return {"status": "ok", "message": "Campaign resumed"}
+
+
+async def run_pending_campaigns():
+    """Called by scheduler daily — run all pending campaigns that haven't run today."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    async with async_session() as db:
+        result = await db.execute(
+            select(Campaign).where(
+                Campaign.status == "pending",
+                Campaign.last_run_date != today,
+            )
+        )
+        campaigns = result.scalars().all()
+    for camp in campaigns:
+        print(f"[Scheduler] Running campaign {camp.id}")
+        asyncio.create_task(_run_campaign(camp.id))
+    if campaigns:
+        print(f"[Scheduler] Started {len(campaigns)} campaigns")
+    return len(campaigns)
 
 
 async def _cleanup_tracker(campaign_id: str):

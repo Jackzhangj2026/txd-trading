@@ -197,11 +197,21 @@ async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Custom
 async def send_development_email(customer: Customer, mailbox: Mailbox, template: EmailTemplate) -> bool:
     from_addr = f"{mailbox.name or 'Sales'} <{mailbox.email_address}>"
     subject = (template.subject_template or "Introduction from TXD CO., LTD")
-    subject = subject.replace("{{company_name}}", customer.company or "TXD CO., LTD")
+    # Subject — support all template variable variants
+    subject = subject.replace("{{name}}", customer.name or "Valued Partner")
     subject = subject.replace("{{CONTACT_NAME}}", customer.name or "Valued Partner")
+    subject = subject.replace("{{company}}", customer.company or "TXD CO., LTD")
+    subject = subject.replace("{{company_name}}", customer.company or "TXD CO., LTD")
+    subject = subject.replace("{{COMPANY_NAME}}", customer.company or "TXD CO., LTD")
+    subject = subject.replace("{{country}}", customer.country or "")
     body = template.body_template or ""
+    # Body — support all template variable variants
+    body = body.replace("{{name}}", customer.name or "Valued Partner")
     body = body.replace("{{CONTACT_NAME}}", customer.name or "Valued Partner")
+    body = body.replace("{{company}}", customer.company or "your company")
+    body = body.replace("{{company_name}}", customer.company or "your company")
     body = body.replace("{{COMPANY_NAME}}", customer.company or "your company")
+    body = body.replace("{{country}}", customer.country or "")
     # Embed factory images into image placeholders
     import base64, random
     from pathlib import Path as _Path
