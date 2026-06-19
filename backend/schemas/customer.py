@@ -8,6 +8,7 @@ class CustomerCreate(BaseModel):
     phone: str = ""
     company: str = ""
     country: str = ""
+    website: str = ""
     source: str = ""
     status: str = "lead"
     notes: str = ""
@@ -19,6 +20,7 @@ class CustomerUpdate(BaseModel):
     phone: str | None = None
     company: str | None = None
     country: str | None = None
+    website: str | None = None
     source: str | None = None
     status: str | None = None
     score: int | None = None
@@ -34,6 +36,7 @@ class CustomerResponse(BaseModel):
     phone: str
     company: str
     country: str
+    website: str = ""
     source: str
     status: str = "lead"
     score: int

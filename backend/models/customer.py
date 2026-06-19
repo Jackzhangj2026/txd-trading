@@ -13,6 +13,7 @@ class Customer(UUIDMixin, TimestampMixin, Base):
     phone: Mapped[str] = mapped_column(String(50), default="")
     company: Mapped[str] = mapped_column(String(200), index=True, default="")
     country: Mapped[str] = mapped_column(String(100), default="")
+    website: Mapped[str] = mapped_column(String(500), default="")  # Official website URL
     source: Mapped[str] = mapped_column(String(50), default="")  # website / email / alibaba / linkedin / import
     status: Mapped[str] = mapped_column(String(20), default="lead")  # lead / contacted / interested
     score: Mapped[int] = mapped_column(Integer, default=0)  # 0-100 lead score

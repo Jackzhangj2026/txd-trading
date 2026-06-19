@@ -242,6 +242,7 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
         country = lead.get("country", "Unknown")
         product = lead.get("product_interest", "")
         email = lead.get("email", "")
+        website = lead.get("website", "")
 
         # Skip if no useful data
         if company in ("Unknown", "") and not email:
@@ -293,6 +294,7 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
                 name=company,
                 company=company,
                 email=email,
+                website=website,
                 country=country,
                 source=f"market_scan_{m.name}",
                 score=min(final_score, 100),

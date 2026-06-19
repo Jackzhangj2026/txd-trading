@@ -43,17 +43,17 @@
         <thead>
             <tr class="text-gray-400 border-b border-gray-700">
                 <th class="text-left py-3 px-3" style="width:14%">{{ _t('Name') }}</th>
-                <th class="text-left py-3 px-3" style="width:18%">{{ _t('Email') }}</th>
-                <th class="text-left py-3 px-3" style="width:15%">{{ _t('Company') }}</th>
-                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Status') }}</th>
-                <th class="text-left py-3 px-3" style="width:8%">{{ _t('Score') }}</th>
-                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Country') }}</th>
-                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Source') }}</th>
-                <th class="text-right py-3 px-3" style="width:15%">{{ _t('Actions') }}</th>
+                <th class="text-left py-3 px-3" style="width:16%">{{ _t('Email') }}</th>
+                <th class="text-left py-3 px-3" style="width:13%">{{ _t('Company') }}</th>
+                <th class="text-left py-3 px-3" style="width:12%">{{ _t('Website') }}</th>
+                <th class="text-left py-3 px-3" style="width:8%">{{ _t('Status') }}</th>
+                <th class="text-left py-3 px-3" style="width:6%">{{ _t('Score') }}</th>
+                <th class="text-left py-3 px-3" style="width:8%">{{ _t('Country') }}</th>
+                <th class="text-right py-3 px-3" style="width:13%">{{ _t('Actions') }}</th>
             </tr>
         </thead>
         <tbody id="customer-table-body">
-            <tr><td colspan="8" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
+            <tr><td colspan="7" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
         </tbody>
     </table>
 </div>
@@ -70,6 +70,7 @@
             <div><label class="text-sm text-gray-400">{{ _t('Name') }}</label><input id="cust-name" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">{{ _t('Email') }}</label><input id="cust-email" type="email" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">{{ _t('Company') }}</label><input id="cust-company" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
+            <div><label class="text-sm text-gray-400">{{ _t('Website') }}</label><input id="cust-website" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="https://"></div>
             <div><label class="text-sm text-gray-400">{{ _t('Phone') }}</label><input id="cust-phone" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">{{ _t('Country') }}</label><input id="cust-country" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1"></div>
             <div><label class="text-sm text-gray-400">{{ _t('Source') }}</label>
@@ -135,10 +136,10 @@ async function loadCustomers() {
                 <td class="py-3 px-3 text-white truncate">${c.name || ''}</td>
                 <td class="py-3 px-3 text-blue-400 text-xs truncate">${c.email || ''}</td>
                 <td class="py-3 px-3 text-gray-300 truncate">${c.company || ''}</td>
+                <td class="py-3 px-3 text-xs truncate">${c.website ? '<a href="' + c.website + '" target="_blank" class="text-green-400 hover:text-green-300">' + (c.website.replace(/^https?:\/\//,'').replace(/\/$/,'').substring(0,25)) + '</a>' : ''}</td>
                 <td class="py-3 px-3"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
                 <td class="py-3 px-3"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
                 <td class="py-3 px-3 text-gray-400 truncate">${c.country || ''}</td>
-                <td class="py-3 px-3 text-gray-400 truncate">${c.source || ''}</td>
                 <td class="py-3 px-3 text-right whitespace-nowrap">
                     <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
                     ${c.status === 'interested' 
@@ -168,7 +169,7 @@ async function loadStats() {
 function showCustomerModal() {
     document.getElementById('customer-modal-title').textContent = _t('Add Customer');
     document.getElementById('cust-id').value = '';
-    ['cust-name','cust-email','cust-company','cust-phone','cust-country','cust-notes'].forEach(id => document.getElementById(id).value = '');
+    ['cust-name','cust-email','cust-company','cust-website','cust-phone','cust-country','cust-notes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('cust-source').value = 'website';
     document.getElementById('customer-modal').classList.remove('hidden');
 }
@@ -181,6 +182,7 @@ async function editCustomer(id) {
     document.getElementById('cust-name').value = c.name || '';
     document.getElementById('cust-email').value = c.email || '';
     document.getElementById('cust-company').value = c.company || '';
+    document.getElementById('cust-website').value = c.website || '';
     document.getElementById('cust-phone').value = c.phone || '';
     document.getElementById('cust-country').value = c.country || '';
     document.getElementById('cust-source').value = c.source || 'website';
@@ -209,6 +211,7 @@ async function saveCustomer(e) {
         name: document.getElementById('cust-name').value,
         email: document.getElementById('cust-email').value,
         company: document.getElementById('cust-company').value,
+        website: document.getElementById('cust-website').value,
         phone: document.getElementById('cust-phone').value,
         country: document.getElementById('cust-country').value,
         source: document.getElementById('cust-source').value,

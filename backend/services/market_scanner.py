@@ -341,7 +341,8 @@ If no leads, output []."""
     # ─── Full Scan Orchestrator ─────────────────────────────────────────
 
     async def scan_market(self, market: dict) -> dict:
-        """Multi-lane scan for one target market. Returns leads with emails extracted."""
+        """Multi-lane scan for one target market. Resilient with timeouts for local LLM."""
+        import asyncio as aio
         name = market.get("name", "Unknown")
 
         # Generate diverse queries across 6 lanes
@@ -351,47 +352,108 @@ If no leads, output []."""
         all_results = []
         lane_stats = {}
 
-        # Search all queries (limit to 8 to stay within Google API daily quota)
-        for q in query_lanes[:8]:
-            results = await self.google_search(q["query"], num_results=5)
+        # Search: use only 3 queries to stay fast with local LLM
+        for q in query_lanes[:3]:
+            try:
+                results = await aio.wait_for(
+                    self.google_search(q["query"], num_results=3), timeout=25.0
+                )
+            except aio.TimeoutError:
+                print(f"[MarketScanner] Timeout on: {q['query'][:50]}")
+                results = []
             lane = q["lane"]
             lane_stats[lane] = lane_stats.get(lane, 0) + len(results)
             all_results.extend(results)
 
         print(f"[MarketScanner] {name}: {len(all_results)} total results")
 
-        # Extract emails from all snippets
+        # Extract emails from all snippets (regex, no LLM needed)
         all_snippets = " ".join([r.get("snippet", "") + " " + r.get("title", "") for r in all_results])
         extracted_emails = self.extract_emails(all_snippets)
 
-        # LLM-based lead extraction
-        leads = await self.extract_leads(all_results, name)
+        # Simple lead extraction from titles (no LLM, fast and reliable)
+        leads = []
+        seen_companies = set()
+        for r in all_results:
+            title = r.get("title", "")
+            snippet = r.get("snippet", "")
+            url = r.get("url", "")
+            # Extract company name from title (before " - " or first 3 words)
+            company = title.split(" - ")[0].strip() if " - " in title else " ".join(title.split()[:3])
+            if not company or len(company) < 3 or company.lower() in ("results", "search", "the", "page", "home"):
+                continue
+            if company.lower() in seen_companies:
+                continue
+            seen_companies.add(company.lower())
+
+            # Extract website URL from result or snippet
+            website = ""
+            if url and not any(skip in url.lower() for skip in ("google.com", "youtube.com", "facebook.com", "linkedin.com", "twitter.com", "instagram.com")):
+                website = url.split("?")[0].rstrip("/")
+            # Also try to find domain-style URLs in snippet
+            if not website:
+                url_match = re.search(r'(?:https?://)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2})?(?:/[^\s,.!?]*)?)', snippet)
+                if url_match:
+                    candidate = url_match.group(1)
+                    if not any(skip in candidate.lower() for skip in ("google", "youtube", "facebook", "linkedin", "twitter", "instagram")):
+                        website = "https://" + candidate.rstrip("/")
+
+            # Guess country from snippet
+            country_hints = {
+                "Germany": ["germany", "gmbh", "deutschland"],
+                "UK": ["united kingdom", "england", "london", "ltd"],
+                "France": ["france", "paris", "sarl"],
+                "Italy": ["italy", "italia", "srl", "milano"],
+                "Spain": ["spain", "españa", "barcelona", "madrid"],
+                "Netherlands": ["netherlands", "holland", "amsterdam", "bv"],
+                "Poland": ["poland", "polska", "warsaw"],
+                "USA": ["usa", "united states", "america", "inc"],
+            }
+            country = ""
+            text_lower = (snippet + " " + title).lower()
+            for cname, hints in country_hints.items():
+                if any(h in text_lower for h in hints):
+                    country = cname
+                    break
+
+            leads.append({
+                "company": company,
+                "country": country,
+                "website": website,
+                "product_interest": r.get("query", ""),
+                "confidence": 0.5,
+                "source_text": snippet[:200],
+            })
 
         # Attach extracted emails to matching leads
         for lead in leads:
-            company = lead.get("company", "").lower()
+            company = lead.get("company", "").lower().replace(" ", "")
             lead_emails = []
             for em in extracted_emails:
-                # Simple heuristic: if email domain matches company name
                 email_domain = em["email"].rsplit("@", 1)[-1]
-                if company.replace(" ", "") in email_domain or email_domain in company.replace(" ", ""):
+                if company in email_domain or email_domain.replace(".com", "") in company:
                     lead_emails.append(em)
             lead["emails_found"] = lead_emails
             if lead_emails:
                 lead["email"] = lead_emails[0]["email"]
 
-        # LinkedIn DM discovery for top leads (first 3)
-        for lead in leads[:3]:
+        # LinkedIn DM discovery via Tavily (for top 2 leads, with timeout)
+        for lead in leads[:2]:
             company = lead.get("company", "")
-            if company and company != "Unknown":
-                dm_results = await self.search_linkedin_dm(company)
+            if company and company != "Unknown" and settings.tavily_api_key:
+                try:
+                    dm_results = await aio.wait_for(
+                        self.search_linkedin_dm(company), timeout=10.0
+                    )
+                except aio.TimeoutError:
+                    dm_results = []
                 if dm_results:
                     lead["linkedin_dms"] = dm_results[:3]
 
         return {
             "market_name": name,
-            "query_lanes": list(set(q["lane"] for q in query_lanes)),
-            "queries_run": len(query_lanes[:8]),
+            "query_lanes": list(set(q["lane"] for q in query_lanes[:3])),
+            "queries_run": len(query_lanes[:3]),
             "results_found": len(all_results),
             "results_by_lane": lane_stats,
             "emails_extracted": len(extracted_emails),
