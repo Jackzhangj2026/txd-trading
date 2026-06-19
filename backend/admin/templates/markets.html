@@ -2,13 +2,79 @@
 {% block title %}Target Markets{% endblock %}
 {% block content %}
 <div class="mb-8">
-    <h1 class="text-3xl font-bold">🎯 Target Markets</h1>
-    <p class="text-gray-500 mt-1">Define markets to scan for leads and intelligence</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold">🎯 {{ _t('Target Markets') }}</h1>
+            <p class="text-gray-500 mt-1">Define markets to scan for leads and intelligence</p>
+        </div>
+        <button onclick="showMarketModal()" class="btn-primary text-sm">+ {{ _t('Add Market') }}</button>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 gap-6 mb-8" id="markets-grid">
     <!-- Markets loaded by JS -->
 </div>
+
+<!-- Market Modal -->
+<div id="market-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
+    <div class="card max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 id="market-modal-title" class="text-xl font-bold">{{ _t('Add Market') }}</h2>
+            <button onclick="closeModal('market-modal')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="market-form" class="flex flex-col gap-3" onsubmit="saveMarket(event)">
+            <input id="mkt-id" type="hidden">
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Name') }} *</label>
+                <input id="mkt-name" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" required placeholder="e.g. PP Packaging Europe">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Keywords') }}</label>
+                <input id="mkt-keywords" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="packaging, corrugated, plastic">
+                <div class="text-xs text-gray-500 mt-1">Comma-separated search keywords</div>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">{{ _t('Products') }}</label>
+                <input id="mkt-products" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="PP hollow board, plastic box">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm text-gray-400">{{ _t('Industries') }}</label>
+                    <input id="mkt-industries" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="logistics, packaging">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">{{ _t('Customer Types') }}</label>
+                    <input id="mkt-types" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1" placeholder="importer, distributor">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm text-gray-400">{{ _t('Priority') }} (1-10)</label>
+                    <input id="mkt-priority" type="number" value="5" min="1" max="10" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">{{ _t('Scan Frequency') }}</label>
+                    <select id="mkt-frequency" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="mkt-active" checked class="accent-purple-500">
+                <label class="text-sm text-gray-400">{{ _t('Active') }}</label>
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button type="submit" class="btn-primary flex-1">{{ _t('Save') }}</button>
+                <button type="button" onclick="closeModal('market-modal')" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white">{{ _t('Cancel') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+#market-modal .card { background: #1a1a24; border: 1px solid #2a2a35; }
+</style>
 
 <script>
 async function loadMarkets() {
@@ -26,6 +92,9 @@ async function loadMarkets() {
             let statusColor = m.active ? '#22c55e' : '#6b7280';
             let statusText = m.active ? 'Active' : 'Inactive';
             let priorityDots = '●'.repeat(m.priority) + '○'.repeat(10 - m.priority);
+            let keywords = JSON.parse(m.keywords || '[]');
+            let products = JSON.parse(m.products || '[]');
+            let searchKw = JSON.parse(m.search_keywords || '[]');
             
             return `<div class="card">
                 <div class="flex justify-between items-start mb-4">
@@ -33,20 +102,22 @@ async function loadMarkets() {
                         <h3 class="text-xl font-bold">${m.name}</h3>
                         <div class="text-xs text-gray-500 mt-1">Priority: ${priorityDots}</div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
                         <span class="badge" style="background:${statusColor}22;color:${statusColor}">${statusText}</span>
                         <span class="text-xs text-gray-500">${m.scan_frequency}</span>
+                        <button onclick="editMarket('${m.id}')" class="text-blue-400 hover:text-blue-300 text-xs">✏️</button>
+                        <button onclick="deleteMarket('${m.id}')" class="text-red-400 hover:text-red-300 text-xs">🗑</button>
                     </div>
                 </div>
                 
                 <div class="grid grid-cols-4 gap-4 mb-4 text-sm">
                     <div>
                         <div class="text-gray-500 text-xs">Keywords</div>
-                        <div class="text-gray-300 mt-1">${JSON.parse(m.keywords || '[]').join(', ') || '—'}</div>
+                        <div class="text-gray-300 mt-1">${keywords.join(', ') || '—'}</div>
                     </div>
                     <div>
                         <div class="text-gray-500 text-xs">Products</div>
-                        <div class="text-gray-300 mt-1">${JSON.parse(m.products || '[]').join(', ') || '—'}</div>
+                        <div class="text-gray-300 mt-1">${products.join(', ') || '—'}</div>
                     </div>
                     <div>
                         <div class="text-gray-500 text-xs">Leads Found</div>
@@ -57,6 +128,8 @@ async function loadMarkets() {
                         <div class="text-gray-300 mt-1">${m.last_scanned ? new Date(m.last_scanned).toLocaleDateString() : 'Never'}</div>
                     </div>
                 </div>
+                
+                ${searchKw.length > 0 ? `<div class="mb-3 text-xs"><span class="text-gray-500">Search Queries: </span><span class="text-purple-300">${searchKw.join(', ')}</span></div>` : ''}
                 
                 <div class="flex gap-2 mt-4">
                     <button onclick="scanMarket('${m.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
@@ -159,5 +232,72 @@ async function generateKeywords(id) {
 }
 
 loadMarkets();
+
+// ─── CRUD ─────────────────────────────────────────────────────────────
+
+function showMarketModal() {
+    document.getElementById('market-modal-title').textContent = 'Add Market';
+    document.getElementById('mkt-id').value = '';
+    document.getElementById('mkt-name').value = '';
+    document.getElementById('mkt-keywords').value = '';
+    document.getElementById('mkt-products').value = '';
+    document.getElementById('mkt-industries').value = '';
+    document.getElementById('mkt-types').value = '';
+    document.getElementById('mkt-priority').value = '5';
+    document.getElementById('mkt-frequency').value = 'daily';
+    document.getElementById('mkt-active').checked = true;
+    document.getElementById('market-modal').classList.remove('hidden');
+}
+
+async function editMarket(id) {
+    try {
+        const res = await fetch('/api/target-markets/' + id);
+        const m = await res.json();
+        document.getElementById('market-modal-title').textContent = 'Edit: ' + m.name;
+        document.getElementById('mkt-id').value = m.id;
+        document.getElementById('mkt-name').value = m.name || '';
+        document.getElementById('mkt-keywords').value = JSON.parse(m.keywords || '[]').join(', ');
+        document.getElementById('mkt-products').value = JSON.parse(m.products || '[]').join(', ');
+        document.getElementById('mkt-industries').value = JSON.parse(m.industries || '[]').join(', ');
+        document.getElementById('mkt-types').value = JSON.parse(m.customer_types || '[]').join(', ');
+        document.getElementById('mkt-priority').value = m.priority || 5;
+        document.getElementById('mkt-frequency').value = m.scan_frequency || 'daily';
+        document.getElementById('mkt-active').checked = m.active;
+        document.getElementById('market-modal').classList.remove('hidden');
+    } catch(e) { alert('Failed to load market'); }
+}
+
+async function saveMarket(e) {
+    e.preventDefault();
+    const id = document.getElementById('mkt-id').value;
+    const body = {
+        name: document.getElementById('mkt-name').value,
+        keywords: JSON.stringify(document.getElementById('mkt-keywords').value.split(',').map(s => s.trim()).filter(Boolean)),
+        products: JSON.stringify(document.getElementById('mkt-products').value.split(',').map(s => s.trim()).filter(Boolean)),
+        industries: JSON.stringify(document.getElementById('mkt-industries').value.split(',').map(s => s.trim()).filter(Boolean)),
+        customer_types: JSON.stringify(document.getElementById('mkt-types').value.split(',').map(s => s.trim()).filter(Boolean)),
+        priority: parseInt(document.getElementById('mkt-priority').value) || 5,
+        scan_frequency: document.getElementById('mkt-frequency').value,
+        active: document.getElementById('mkt-active').checked,
+    };
+    const url = id ? '/api/target-markets/' + id : '/api/target-markets';
+    const method = id ? 'PUT' : 'POST';
+    try {
+        const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
+        closeModal('market-modal');
+        loadMarkets();
+    } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+async function deleteMarket(id) {
+    if (!confirm('Delete this market?')) return;
+    try {
+        await fetch('/api/target-markets/' + id, { method: 'DELETE' });
+        loadMarkets();
+    } catch(e) { alert('Delete failed'); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 </script>
 {% endblock %}

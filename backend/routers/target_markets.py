@@ -241,6 +241,11 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
         company = lead.get("company", "Unknown")
         country = lead.get("country", "Unknown")
         product = lead.get("product_interest", "")
+        email = lead.get("email", "")
+
+        # Skip if no useful data
+        if company in ("Unknown", "") and not email:
+            continue
 
         # Try to match market
         all_markets_result = await db.execute(select(TargetMarket).where(TargetMarket.active == True))
@@ -250,42 +255,49 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
         from backend.services.market_scanner import MarketScanner
         matched = await MarketScanner.match_market(company + " " + product, market_list)
 
+        # Build notes with enriched info
+        notes_parts = []
+        if lead.get("source_text"):
+            notes_parts.append(f"Source: {lead['source_text'][:200]}")
+        if lead.get("linkedin_dms"):
+            dm_names = [dm.get("title", "").split(" - ")[0] for dm in lead["linkedin_dms"][:3]]
+            notes_parts.append(f"LinkedIn DMs: {', '.join(dm_names)}")
+
         # Score the lead
-        score = 0
-        if lead.get("confidence", 0) > 0.7:
-            score += 30
-        if country not in ("Unknown", ""):
-            score += 20
-        if company not in ("Unknown", ""):
-            score += 20
-        if product:
-            score += 15
-        
-        # Use proper scoring engine
         from backend.services.lead_scoring import LeadScoringEngine
-        proper_score = LeadScoringEngine.calculate_score(
-            company=company, country=country,
+        final_score = LeadScoringEngine.calculate_score(
+            company=company, email=email, country=country,
             intent_text=str(lead.get("source_text", "")),
             source=f"market_scan_{m.name}",
             matched_market=matched,
         )
-        final_score = max(score, proper_score)  # Take the higher of both
+        # Boost score if email found
+        if email:
+            final_score = min(final_score + 15, 100)
 
-        # Check if customer already exists (by company name)
-        existing = await db.execute(
-            select(Customer).where(Customer.company.ilike(f"%{company[:50]}%"))
-        )
-        existing_customer = existing.scalar_one_or_none()
+        # Check if customer already exists (by company name or email)
+        existing = None
+        if email:
+            existing_result = await db.execute(
+                select(Customer).where(Customer.email == email)
+            )
+            existing = existing_result.scalar_one_or_none()
+        if not existing and company not in ("Unknown", ""):
+            existing_result = await db.execute(
+                select(Customer).where(Customer.company.ilike(f"%{company[:50]}%"))
+            )
+            existing = existing_result.scalar_one_or_none()
 
-        if not existing_customer and company not in ("Unknown", ""):
+        if not existing:
             customer = Customer(
                 name=company,
                 company=company,
+                email=email,
                 country=country,
                 source=f"market_scan_{m.name}",
                 score=min(final_score, 100),
                 matched_market=matched,
-                notes=lead.get("source_text", ""),
+                notes=" | ".join(notes_parts) if notes_parts else lead.get("source_text", ""),
             )
             db.add(customer)
             saved_count += 1

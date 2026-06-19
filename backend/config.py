@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
 
+    # Google Custom Search (for market scanner)
+    google_api_key: str = ""
+    google_cse_id: str = ""
+
+    # Tavily Search (for LinkedIn decision-maker discovery)
+    tavily_api_key: str = ""
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./trade_agent.db"
 

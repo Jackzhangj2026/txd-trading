@@ -1,184 +1,336 @@
-"""Market scanner — search Google, RSS, B2B platforms for leads."""
+"""Market scanner — multi-lane B2B lead discovery with email extraction."""
 
 import json
 import re
 from typing import Optional
 from datetime import datetime, timezone
 
+import httpx
 from backend.agents import TradeAgent
+from backend.config import settings
+
+# ─── Email Extraction (ported from b2b-lead-hunter extract_contacts.py) ───
+
+EMAIL_RE = re.compile(r"\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b", re.IGNORECASE)
+
+GENERIC_LOCAL_PARTS = {
+    "info", "sales", "contact", "support", "office", "hello", "admin",
+    "marketing", "service", "team", "enquiry", "enquiries", "inquiry",
+    "inquiries", "export", "exports", "import", "imports", "customerservice",
+}
+
+FREE_MAIL_DOMAINS = {
+    "gmail.com", "googlemail.com", "yahoo.com", "hotmail.com", "outlook.com",
+    "live.com", "icloud.com", "aol.com", "proton.me", "protonmail.com",
+    "qq.com", "163.com", "126.com", "mail.ru", "yandex.ru", "gmx.de",
+    "web.de", "orange.fr", "libero.it", "naver.com", "daum.net",
+}
+
+INVALID_EMAIL_DOMAINS = {
+    "example.com", "example.org", "example.net", "test.com", "localhost",
+    "domain.com", "email.com", "yourdomain.com",
+}
+
+INVALID_EMAIL_LOCALS = {
+    "example", "test", "demo", "noreply", "no-reply", "donotreply",
+}
+
+# ─── 6-Lane Query Templates ───
+
+# Product categories for TXD
+PRODUCT_TERMS = [
+    "PP hollow board", "PP hollow sheet", "corrugated plastic sheet",
+    "plastic packaging sheet", "PP corrugated box", "polypropylene twinwall sheet",
+    "ESD packaging material", "reusable plastic container",
+]
+
+# Countries commonly importing packaging
+IMPORT_COUNTRIES = [
+    "Germany", "UK", "France", "Italy", "Spain", "Netherlands",
+    "Poland", "USA", "Brazil", "Mexico", "UAE", "Saudi Arabia",
+    "South Africa", "Australia", "Turkey", "India", "Belgium", "Sweden",
+]
+
+# B2B directories
+B2B_DIRECTORIES = [
+    "europages.com", "kompass.com", "wlw.de", "thomasnet.com",
+    "tradeindia.com", "alibaba.com", "made-in-china.com",
+]
+
+# Competitor brands in PP hollow board space
+COMPETITOR_BRANDS = [
+    "Coroplast", "Inteplast", "Primex Plastics", "DS Smith",
+    "SIMONA", "Protoplast", "Twinplast",
+]
+
+# Trade fairs
+TRADE_FAIRS = [
+    "Interpack", "FachPack", "PackExpo", "Empack", "Packaging Innovations",
+    "K Show Düsseldorf", "Chinaplas",
+]
 
 
 class MarketScanner:
-    """Scan public web sources for potential buyer leads based on target markets."""
+    """Multi-lane B2B market scanner with email extraction and decision-maker discovery."""
 
     def __init__(self):
-        self.agent = TradeAgent(system_prompt="You are a B2B lead generation analyst for a packaging materials exporter.")
+        self.agent = TradeAgent(
+            system_prompt="You are a B2B lead generation analyst for a PP hollow board packaging exporter."
+        )
+
+    # ─── Query Lane Generator ───────────────────────────────────────────
+
+    @staticmethod
+    def generate_query_lanes(market: dict) -> list[dict]:
+        """Generate diverse search queries across 6 lanes for a target market."""
+        name = market.get("name", "")
+        try:
+            keywords = json.loads(market.get("search_keywords", "[]"))
+        except (json.JSONDecodeError, TypeError):
+            keywords = []
+        if not keywords:
+            try:
+                keywords = json.loads(market.get("keywords", "[]"))
+            except (json.JSONDecodeError, TypeError):
+                keywords = [name]
+        try:
+            products = json.loads(market.get("products", "[]"))
+        except (json.JSONDecodeError, TypeError):
+            products = PRODUCT_TERMS[:3]
+
+        # Pick representative terms
+        product = products[0] if products else keywords[0] if keywords else name
+        kw_sample = keywords[:3] if keywords else [product]
+
+        queries = []
+        lanes_used = set()
+
+        def add(lane: str, query: str):
+            if lane not in lanes_used:
+                lanes_used.add(lane)
+            queries.append({"lane": lane, "query": query})
+
+        # Use first 3 countries rotated
+        country1 = IMPORT_COUNTRIES[hash(name) % len(IMPORT_COUNTRIES)]
+        country2 = IMPORT_COUNTRIES[(hash(name) + 3) % len(IMPORT_COUNTRIES)]
+        country3 = IMPORT_COUNTRIES[(hash(name) + 7) % len(IMPORT_COUNTRIES)]
+
+        # Lane 1: Organic buyer search
+        for country in [country1, country2]:
+            add("organic", f'"{product}" importer {country}')
+            add("organic", f'"{product}" distributor {country}')
+        add("organic", f'"{product}" wholesaler buyer')
+
+        # Lane 2: B2B directory search
+        for directory in B2B_DIRECTORIES[:3]:
+            add("b2b_directory", f'site:{directory} "{product}" importer')
+
+        # Lane 3: Local/maps-style search
+        for country in [country1, country3]:
+            add("local", f'"{product}" packaging company {country} contact')
+
+        # Lane 4: Competitor channel
+        competitor = COMPETITOR_BRANDS[hash(name) % len(COMPETITOR_BRANDS)]
+        add("competitor", f'"{competitor}" distributor {country1}')
+        add("competitor", f'"{competitor}" authorized distributor')
+
+        # Lane 5: Trade fair / association
+        fair = TRADE_FAIRS[hash(name) % len(TRADE_FAIRS)]
+        add("association", f'"{fair}" exhibitors packaging')
+        add("association", f'"{product}" trade association members')
+
+        # Lane 6: Brand distributor networks (generalized)
+        add("brand_network", f'"{product}" authorized distributor list')
+
+        return queries
+
+    # ─── Google Search (real API + LLM fallback) ────────────────────────
 
     @staticmethod
     async def google_search(query: str, num_results: int = 10) -> list[dict]:
-        """Generate realistic buyer/company leads for a B2B search query.
-        
-        Uses LLM to simulate finding real companies that match the buyer intent query.
-        In production, replace this method with SerpAPI/Google Custom Search.
-        """
-        agent = TradeAgent(system_prompt="You are a B2B lead generation specialist. Find real-looking importing companies.")
-        
-        prompt = f"""I need to find {num_results} companies that could be BUYERS or IMPORTERS for this product/query: "{query}"
+        """Search Google via Custom Search JSON API."""
+        api_key = settings.google_api_key
+        cse_id = settings.google_cse_id
 
-For each company, provide realistic details as if found through web search. Include a mix of countries.
+        if api_key and cse_id:
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(
+                        "https://www.googleapis.com/customsearch/v1",
+                        params={
+                            "key": api_key,
+                            "cx": cse_id,
+                            "q": query,
+                            "num": min(num_results, 10),
+                        }
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = []
+                        for item in data.get("items", []):
+                            results.append({
+                                "title": item.get("title", ""),
+                                "url": item.get("link", ""),
+                                "snippet": item.get("snippet", ""),
+                                "source": "google",
+                                "query": query,
+                            })
+                        if results:
+                            return results
+            except Exception as e:
+                print(f"[MarketScanner] Google API: {e}")
 
-Respond with ONLY a JSON array (no other text):
-[
-  {{
-    "title": "Company Name - Brief Description",
-    "url": "www.example.com/page",
-    "snippet": "Detailed description about this company: what they do, where they are located, what products they need, and evidence they could be a buyer/importer of this product."
-  }}
-]
-
-Make the company names diverse and realistic. Only output the JSON array."""
+        # Fallback: LLM simulation
+        print(f"[MarketScanner] LLM fallback for: {query[:60]}")
+        agent = TradeAgent(
+            system_prompt="You are a B2B lead generation specialist. Return realistic company search results."
+        )
+        prompt = f"""Find {num_results} REALISTIC companies that match this search: "{query}"
+Output ONLY a JSON array:
+[{{"title":"Company Name - Description","url":"company-website.com","snippet":"What they do, location, evidence they are a buyer/importer."}}]"""
         try:
             response = await agent.chat(prompt, temperature=0.8)
-            match = re.search(r'\[.*?\]', response, re.DOTALL)
+            match = re.search(r'\[.*\]', response, re.DOTALL)
             if match:
                 results = json.loads(match.group())
                 for r in results:
-                    r["source"] = "google"
+                    r["source"] = "google_simulated"
                     r["query"] = query
                 return results[:num_results]
-        except Exception:
-            pass
-        
+        except Exception as e:
+            print(f"[MarketScanner] LLM fallback failed: {e}")
         return []
-        try:
-            response = await agent.chat(prompt, temperature=0.7)
-            match = re.search(r'\[.*?\]', response, re.DOTALL)
-            if match:
-                results = json.loads(match.group())
-                # Add source tracking
-                for r in results:
-                    r["source"] = "google"
-                    r["query"] = query
-                return results[:num_results]
-        except Exception:
-            pass
-        
-        return [{"title": f"Results for {query}", "url": "", "snippet": "", "source": "google", "query": query}]
+
+    # ─── Email Extraction ───────────────────────────────────────────────
 
     @staticmethod
-    async def search_rss(keywords: list[str]) -> list[dict]:
-        """Simulate RSS/news feed search for industry news about target markets.
-        
-        In production, replace with actual RSS feed parsing or news API.
-        """
-        agent = TradeAgent(system_prompt="You simulate an industry news feed for packaging and trade.")
-        
-        prompt = f"""Generate 5 recent industry news headlines related to these topics: {', '.join(keywords[:5])}
+    def extract_emails(text: str, source_url: str = "") -> list[dict]:
+        """Extract and classify email addresses from text."""
+        seen = set()
+        rows = []
+        for match in EMAIL_RE.findall(text):
+            email = match.strip().lower()
+            if email in seen or not MarketScanner._valid_email(email):
+                continue
+            seen.add(email)
+            kind = "generic" if email.split("@")[0].lower() in GENERIC_LOCAL_PARTS else "person"
+            domain = email.rsplit("@", 1)[-1].lower()
+            relation = "free_mail" if domain in FREE_MAIL_DOMAINS else "business"
+            confidence = 0.9 if kind == "person" else 0.85
+            if relation == "free_mail":
+                confidence -= 0.2
+            rows.append({
+                "email": email,
+                "type": kind,
+                "source_url": source_url,
+                "domain_relation": relation,
+                "confidence": round(max(0.1, min(confidence, 0.98)), 2),
+            })
+        return rows
 
-Focus on: packaging industry, trade shows, new regulations, market trends, plastic/PP materials.
+    @staticmethod
+    def _valid_email(email: str) -> bool:
+        if email.count("@") != 1:
+            return False
+        local, domain = email.lower().split("@", 1)
+        if not local or not domain or "." not in domain:
+            return False
+        if domain in INVALID_EMAIL_DOMAINS:
+            return False
+        if local in INVALID_EMAIL_LOCALS:
+            return False
+        if local.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg")):
+            return False
+        return True
 
-Respond with a JSON array:
-[
-  {{
-    "title": "News headline about the topic",
-    "source_name": "Industry News Outlet",
-    "snippet": "Brief summary of the article..."
-  }}
-]
+    # ─── Tavily LinkedIn Decision-Maker Search ──────────────────────────
 
-Only output the JSON array."""
-        try:
-            response = await agent.chat(prompt, temperature=0.7)
-            match = re.search(r'\[.*?\]', response, re.DOTALL)
-            if match:
-                results = json.loads(match.group())
-                for r in results:
-                    r["source"] = "news"
-                return results
-        except Exception:
-            pass
-        return []
+    @staticmethod
+    async def search_linkedin_dm(company_name: str) -> list[dict]:
+        """Search LinkedIn for decision-makers at a company using Tavily API."""
+        api_key = settings.tavily_api_key
+        if not api_key:
+            return []
+
+        roles = ["purchasing manager", "procurement manager", "buyer", "import manager", "CEO", "owner"]
+        results = []
+        for role in roles[:3]:
+            query = f'"{company_name}" {role} site:linkedin.com/in'
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.post(
+                        "https://api.tavily.com/search",
+                        json={
+                            "api_key": api_key,
+                            "query": query,
+                            "search_depth": "basic",
+                            "max_results": 3,
+                        },
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        for item in data.get("results", []):
+                            results.append({
+                                "title": item.get("title", ""),
+                                "url": item.get("url", ""),
+                                "snippet": item.get("content", ""),
+                                "query": query,
+                                "source": "tavily_linkedin",
+                            })
+            except Exception as e:
+                print(f"[MarketScanner] Tavily error: {e}")
+
+        return results[:5]
+
+    # ─── Lead Extraction (LLM) ──────────────────────────────────────────
 
     @staticmethod
     async def extract_leads(texts: list[dict], market_name: str) -> list[dict]:
-        """Use LLM to extract potential buyer/lead information from search results.
-        
-        Returns list of dicts with: company, email, country, product_interest, confidence
-        """
+        """LLM-based lead extraction from search results."""
         if not texts:
             return []
 
-        # Prepare a sample of the text for the LLM
         sample = "\n\n".join([
-            f"Title: {t.get('title', '')}\nSnippet: {t.get('snippet', '')}"
-            for t in texts[:8]
+            f"Title: {t.get('title', '')}\nURL: {t.get('url', '')}\nSnippet: {t.get('snippet', '')}"
+            for t in texts[:10]
         ])
 
         if not sample.strip():
             return []
 
-        prompt = f"""Analyze the following search results for the market: {market_name}
+        prompt = f"""Analyze these search results for market: {market_name}
 
-Extract any companies or potential buyers mentioned. Look for:
-- Companies that might import/distribute packaging materials
-- RFQs or purchase inquiries
-- Companies expanding or in need of packaging solutions
-- Trade directory listings of importers
+Extract companies that could be buyers/importers of PP hollow board or packaging materials.
 
-Search results:
 {sample}
 
-Respond with a JSON array of extracted leads:
-[
-  {{
-    "company": "Company Name or 'Unknown'",
-    "country": "Country or 'Unknown'",
-    "product_interest": "What product they might need",
-    "confidence": 0.0 to 1.0,
-    "source_text": "Key evidence from the text"
-  }}
-]
-
-If no leads found, respond with empty array [].
-Only output JSON."""
+Output a JSON array:
+[{{"company":"Company Name","country":"Country","product_interest":"What they need","confidence":0.0-1.0,"source_text":"Evidence from results"}}]
+If no leads, output []."""
         try:
-            response = await self.agent.chat(prompt, temperature=0.3)
-            match = re.search(r'\[.*?\]', response, re.DOTALL)
+            agent = TradeAgent(system_prompt="Extract B2B leads from search results.")
+            response = await agent.chat(prompt, temperature=0.3)
+            match = re.search(r'\[.*\]', response, re.DOTALL)
             if match:
-                leads = json.loads(match.group())
-                return leads
+                return json.loads(match.group())
         except Exception:
             pass
         return []
 
     @staticmethod
     async def match_market(lead_text: str, markets: list[dict]) -> str:
-        """Determine which target market a lead belongs to.
-        Returns market name or 'general'.
-        """
+        """Match a lead to a target market."""
         if not markets:
             return "general"
-
         market_descriptions = "\n".join([
-            f"- {m.get('name')}: keywords={m.get('keywords', '')}, "
-            f"products={m.get('products', '')}, industries={m.get('industries', '')}"
+            f"- {m.get('name')}: products={m.get('products','')}, industries={m.get('industries','')}"
             for m in markets
         ])
-
-        prompt = f"""Which target market does this lead belong to?
-
-Target markets:
-{market_descriptions}
-
-Lead info: {lead_text[:500]}
-
-Respond with exactly the market name that best matches, or "general" if none match.
-Only output the name, nothing else."""
+        prompt = f"Which market does this lead match?\nMarkets:\n{market_descriptions}\nLead: {lead_text[:300]}\nOutput only the market name or 'general'."
         try:
-            agent = TradeAgent(system_prompt="You classify B2B leads into target market segments.")
+            agent = TradeAgent(system_prompt="Classify B2B leads into market segments.")
             response = await agent.chat(prompt, temperature=0.1)
             response = response.strip()
-            # Check if response matches a known market
             for m in markets:
                 if m.get("name", "").lower() in response.lower():
                     return m["name"]
@@ -186,44 +338,63 @@ Only output the name, nothing else."""
         except Exception:
             return "general"
 
+    # ─── Full Scan Orchestrator ─────────────────────────────────────────
+
     async def scan_market(self, market: dict) -> dict:
-        """Run a full scan for one target market. Returns scan results."""
+        """Multi-lane scan for one target market. Returns leads with emails extracted."""
         name = market.get("name", "Unknown")
-        
-        # Parse keywords
-        try:
-            keywords = json.loads(market.get("search_keywords", "[]"))
-        except (json.JSONDecodeError, TypeError):
-            keywords = []
-        
-        if not keywords:
-            try:
-                base_kw = json.loads(market.get("keywords", "[]"))
-            except (json.JSONDecodeError, TypeError):
-                base_kw = []
-            keywords = base_kw + [name]
+
+        # Generate diverse queries across 6 lanes
+        query_lanes = self.generate_query_lanes(market)
+        print(f"[MarketScanner] {name}: {len(query_lanes)} queries across {len(set(q['lane'] for q in query_lanes))} lanes")
 
         all_results = []
-        all_leads = []
+        lane_stats = {}
 
-        # 1. Google-style search for each keyword (first 3 only to keep it reasonable)
-        for kw in keywords[:3]:
-            results = await self.google_search(kw, num_results=5)
+        # Search all queries (limit to 8 to stay within Google API daily quota)
+        for q in query_lanes[:8]:
+            results = await self.google_search(q["query"], num_results=5)
+            lane = q["lane"]
+            lane_stats[lane] = lane_stats.get(lane, 0) + len(results)
             all_results.extend(results)
 
-        # 2. News/RSS search
-        news = await self.search_rss(keywords[:3])
-        all_results.extend(news)
+        print(f"[MarketScanner] {name}: {len(all_results)} total results")
 
-        # 3. Extract leads from results
-        if all_results:
-            leads = await self.extract_leads(all_results, name)
-            all_leads.extend(leads)
+        # Extract emails from all snippets
+        all_snippets = " ".join([r.get("snippet", "") + " " + r.get("title", "") for r in all_results])
+        extracted_emails = self.extract_emails(all_snippets)
+
+        # LLM-based lead extraction
+        leads = await self.extract_leads(all_results, name)
+
+        # Attach extracted emails to matching leads
+        for lead in leads:
+            company = lead.get("company", "").lower()
+            lead_emails = []
+            for em in extracted_emails:
+                # Simple heuristic: if email domain matches company name
+                email_domain = em["email"].rsplit("@", 1)[-1]
+                if company.replace(" ", "") in email_domain or email_domain in company.replace(" ", ""):
+                    lead_emails.append(em)
+            lead["emails_found"] = lead_emails
+            if lead_emails:
+                lead["email"] = lead_emails[0]["email"]
+
+        # LinkedIn DM discovery for top leads (first 3)
+        for lead in leads[:3]:
+            company = lead.get("company", "")
+            if company and company != "Unknown":
+                dm_results = await self.search_linkedin_dm(company)
+                if dm_results:
+                    lead["linkedin_dms"] = dm_results[:3]
 
         return {
             "market_name": name,
-            "keywords_used": keywords[:5],
+            "query_lanes": list(set(q["lane"] for q in query_lanes)),
+            "queries_run": len(query_lanes[:8]),
             "results_found": len(all_results),
-            "leads_extracted": all_leads,
+            "results_by_lane": lane_stats,
+            "emails_extracted": len(extracted_emails),
+            "leads_extracted": leads,
             "scanned_at": datetime.now(timezone.utc).isoformat(),
         }
