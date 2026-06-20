@@ -130,3 +130,39 @@ async def get_today_sends(db: AsyncSession = Depends(get_db)):
     total = len(count_result.scalars().all()) if count_result else len(items)
 
     return {"items": items, "total": total}
+
+
+@router.get("/schedule")
+async def get_schedule():
+    """Get the auto-crm schedule time."""
+    from pathlib import Path
+    import json
+    cfg_file = Path("auto-crm/data/email_config.json")
+    default = {"schedule_hour": 10}
+    if cfg_file.exists():
+        try:
+            cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+            return {"schedule_hour": cfg.get("schedule_hour", 10)}
+        except:
+            pass
+    return default
+
+
+@router.post("/schedule")
+async def set_schedule(data: dict):
+    """Set the auto-crm schedule time (Beijing hour, 0-23)."""
+    from pathlib import Path
+    import json
+    hour = int(data.get("schedule_hour", 10))
+    hour = max(0, min(23, hour))
+    cfg_file = Path("auto-crm/data/email_config.json")
+    cfg = {}
+    if cfg_file.exists():
+        try:
+            cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+        except:
+            pass
+    cfg["schedule_hour"] = hour
+    cfg_file.parent.mkdir(parents=True, exist_ok=True)
+    cfg_file.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    return {"status": "ok", "schedule_hour": hour}
