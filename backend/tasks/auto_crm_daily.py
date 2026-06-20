@@ -289,7 +289,46 @@ async def scheduled_auto_crm_task():
                 _save_report(report)
                 return report
 
-            # Step 3: Send emails
+            # Step 3: Enrich customers without email by scraping websites
+            enriched = 0
+            import asyncio as aio
+            import httpx
+            for customer in leads:
+                if customer.email or not customer.website:
+                    continue
+                try:
+                    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                        resp = await aio.wait_for(
+                            client.get(customer.website, headers={"User-Agent": "Mozilla/5.0"}),
+                            timeout=8.0
+                        )
+                        if resp.status_code == 200:
+                            import re as _re
+                            _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)
+                            found = set()
+                            for m in _email_re.findall(resp.text[:50000]):
+                                email = m.strip().lower()
+                                if email and "@" in email and not email.endswith((".png",".jpg",".gif",".svg",".css",".js")):
+                                    found.add(email)
+                            if found:
+                                from backend.services.email_intel import is_role_account
+                                best = None
+                                for e in found:
+                                    if not is_role_account(e):
+                                        best = e; break
+                                if not best:
+                                    best = next(iter(found))
+                                customer.email = best
+                                enriched += 1
+                                print(f"  [Auto-CRM] Found email for {customer.company}: {best}")
+                except (aio.TimeoutError, Exception):
+                    pass
+            if enriched > 0:
+                await db.commit()
+                report["email"]["enriched_from_website"] = enriched
+                print(f"  [Auto-CRM] Enriched {enriched} customers with emails from websites")
+
+            # Step 4: Send emails
             sent_count = 0
             for customer in leads:
                 if not customer.email:
