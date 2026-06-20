@@ -331,16 +331,31 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
             if not cust.website:
                 continue
             try:
+                # Try homepage + /contact for better email coverage
                 async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                    page_text = ""
                     resp = await aio.wait_for(
                         client.get(cust.website, headers={"User-Agent": "Mozilla/5.0"}),
                         timeout=8.0
                     )
                     if resp.status_code == 200:
+                        page_text = resp.text[:50000]
+                    for suffix in ["/contact", "/about", "/kontakt"]:
+                        if "@" not in page_text:
+                            try:
+                                r2 = await aio.wait_for(
+                                    client.get(cust.website.rstrip("/") + suffix, headers={"User-Agent": "Mozilla/5.0"}),
+                                    timeout=6.0
+                                )
+                                if r2.status_code == 200:
+                                    page_text += r2.text[:30000]
+                            except:
+                                pass
+                    if page_text and "@" in page_text:
                         import re as _re
                         _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)
                         found = set()
-                        for m in _email_re.findall(resp.text[:50000]):
+                        for m in _email_re.findall(page_text):
                             email = m.strip().lower()
                             # Filter out image/asset false positives
                             if email and "@" in email and not email.endswith((".png",".jpg",".gif",".svg",".css",".js")):

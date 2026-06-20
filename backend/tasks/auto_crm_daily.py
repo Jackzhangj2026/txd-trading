@@ -57,12 +57,12 @@ def generate_search_queries(day_of_month: int = None) -> list[str]:
     return queries[:4]  # Keep small for local LLM speed
 
 
-async def step_search_new_leads(db: AsyncSession) -> dict:
-    """Search for new leads using MarketScanner, save to customers table."""
+async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
+    """Search for new leads using MarketScanner, save at most max_save to customers table."""
     scanner = MarketScanner()
     day = datetime.now().day
     queries = generate_search_queries(day)
-    print(f"  [Auto-CRM] Search: {len(queries)} queries for new leads")
+    print(f"  [Auto-CRM] Search: {len(queries)} queries for new leads (max save: {max_save})")
 
     all_results = []
     all_leads = []
@@ -133,6 +133,8 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
 
     saved = 0
     for lead in all_leads:
+        if saved >= max_save:
+            break
         company = (lead.get("company") or "").strip()
         country = (lead.get("country") or "").strip()
         email = (lead.get("email") or "").strip().lower()
@@ -176,39 +178,48 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
 
 
 async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Customer]:
-    """Select leads to contact today: combine new + followup."""
-    new_result = await db.execute(
+    """Select leads to contact today: prefer with email, include website-only for scraping."""
+    # First: leads with email
+    result = await db.execute(
         select(Customer).where(
             Customer.source.like("auto_crm%"),
+            Customer.status.notin_(["contacted", "interested"]),
             Customer.email != "",
         ).order_by(Customer.score.desc()).limit(target)
     )
-    new_leads = []
-    for c in new_result.scalars().all():
-        if c.status not in ("contacted", "interested"):
-            new_leads.append(c)
+    leads = list(result.scalars().all())
 
-    if len(new_leads) < target:
-        more_result = await db.execute(
-            select(Customer).where(Customer.email != "").order_by(Customer.score.desc()).limit(target * 2)
+    # Fill remaining with leads that have website but no email (will be scraped)
+    if len(leads) < target:
+        web_result = await db.execute(
+            select(Customer).where(
+                Customer.source.like("auto_crm%"),
+                Customer.status.notin_(["contacted", "interested"]),
+                Customer.email == "",
+                Customer.website != "",
+            ).order_by(Customer.score.desc()).limit(target - len(leads))
         )
-        for c in more_result.scalars().all():
-            if c.status not in ("contacted", "interested") and c.id not in {nl.id for nl in new_leads}:
-                new_leads.append(c)
-                if len(new_leads) >= target:
+        for c in web_result.scalars().all():
+            if c.id not in {l.id for l in leads}:
+                leads.append(c)
+                if len(leads) >= target:
                     break
 
-    followup_result = await db.execute(
-        select(Customer).where(
-            Customer.status == "contacted", Customer.email != "",
-        ).order_by(Customer.updated_at.asc()).limit(target)
-    )
-    followup_leads = list(followup_result.scalars().all())
+    # Still short: any non-contacted customer with email
+    if len(leads) < target:
+        more = await db.execute(
+            select(Customer).where(
+                Customer.status.notin_(["contacted", "interested"]),
+                Customer.email != "",
+            ).order_by(Customer.score.desc()).limit(target - len(leads))
+        )
+        for c in more.scalars().all():
+            if c.id not in {l.id for l in leads}:
+                leads.append(c)
+                if len(leads) >= target:
+                    break
 
-    half = target // 2
-    selected = new_leads[:half]
-    selected.extend(followup_leads[:target - len(selected)])
-    return selected
+    return leads[:target]
 
 
 async def send_development_email(customer: Customer, mailbox: Mailbox, template: EmailTemplate) -> bool:
@@ -267,8 +278,8 @@ async def scheduled_auto_crm_task():
 
     async with async_session() as db:
         try:
-            # Step 0: Search for new leads
-            search_result = await step_search_new_leads(db)
+            # Step 0: Search for new leads (max 10 saved)
+            search_result = await step_search_new_leads(db, max_save=10)
             report["search"] = search_result
 
             # Step 1: Get leads to contact
@@ -314,16 +325,34 @@ async def scheduled_auto_crm_task():
                 if customer.email or not customer.website:
                     continue
                 try:
+                    # Try homepage first, then /contact if no email found
                     async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
                         resp = await aio.wait_for(
                             client.get(customer.website, headers={"User-Agent": "Mozilla/5.0"}),
                             timeout=8.0
                         )
+                        page_text = ""
                         if resp.status_code == 200:
+                            page_text = resp.text[:50000]
+                        # Also try /contact or /about
+                        if not page_text or "@" not in page_text:
+                            for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
+                                try:
+                                    r2 = await aio.wait_for(
+                                        client.get(customer.website.rstrip("/") + suffix, headers={"User-Agent": "Mozilla/5.0"}),
+                                        timeout=6.0
+                                    )
+                                    if r2.status_code == 200:
+                                        page_text += r2.text[:30000]
+                                        if "@" in r2.text[:30000]:
+                                            break
+                                except:
+                                    pass
+                        if page_text and "@" in page_text:
                             import re as _re
                             _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)
                             found = set()
-                            for m in _email_re.findall(resp.text[:50000]):
+                            for m in _email_re.findall(page_text):
                                 email = m.strip().lower()
                                 if email and "@" in email and not email.endswith((".png",".jpg",".gif",".svg",".css",".js")):
                                     found.add(email)
