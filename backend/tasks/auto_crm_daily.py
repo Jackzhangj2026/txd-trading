@@ -374,6 +374,32 @@ async def scheduled_auto_crm_task():
                 report["email"]["enriched_from_website"] = enriched
                 print(f"  [Auto-CRM] Enriched {enriched} customers with emails from websites")
 
+            # Step 3.5: LinkedIn DM search for companies (top 5 leads)
+            dm_enriched = 0
+            from backend.services.market_scanner import MarketScanner
+            scanner = MarketScanner()
+            for customer in leads[:5]:
+                if not customer.company or customer.company == "Unknown":
+                    continue
+                try:
+                    dm_results = await aio.wait_for(
+                        scanner.search_linkedin_dm(customer.company), timeout=10.0
+                    )
+                except aio.TimeoutError:
+                    dm_results = []
+                if dm_results:
+                    dm_names = [dm.get("title", "").split(" - ")[0].strip() for dm in dm_results[:3]]
+                    dm_str = "LinkedIn DMs: " + ", ".join([n for n in dm_names if n])
+                    if customer.notes:
+                        customer.notes = customer.notes + " | " + dm_str
+                    else:
+                        customer.notes = dm_str
+                    dm_enriched += 1
+                    print(f"  [Auto-CRM] LinkedIn DMs for {customer.company}: {', '.join(dm_names[:3])}")
+            if dm_enriched > 0:
+                await db.commit()
+                report["email"]["linkedin_dm_enriched"] = dm_enriched
+
             # Step 4: Send emails
             sent_count = 0
             for customer in leads:
