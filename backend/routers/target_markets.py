@@ -2,6 +2,7 @@
 
 import json
 import re
+import httpx
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, desc
@@ -312,7 +313,58 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
     m.last_scanned = datetime.now(timezone.utc).isoformat()
     await db.commit()
 
-    # Auto-send development emails to newly saved customers with emails
+    # ── Step 1: Enrich customers without emails by scraping their websites ──
+    import asyncio as aio
+    enriched = 0
+    if saved_count > 0:
+        # Get customers just saved that have website but no email
+        no_email_result = await db.execute(
+            select(Customer).where(
+                Customer.source == f"market_scan_{m.name}",
+                Customer.email == "",
+                Customer.website != "",
+            ).limit(10)
+        )
+        no_email_customers = list(no_email_result.scalars().all())
+
+        for cust in no_email_customers:
+            if not cust.website:
+                continue
+            try:
+                async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                    resp = await aio.wait_for(
+                        client.get(cust.website, headers={"User-Agent": "Mozilla/5.0"}),
+                        timeout=8.0
+                    )
+                    if resp.status_code == 200:
+                        import re as _re
+                        _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)
+                        found = set()
+                        for m in _email_re.findall(resp.text[:50000]):
+                            email = m.strip().lower()
+                            # Filter out image/asset false positives
+                            if email and "@" in email and not email.endswith((".png",".jpg",".gif",".svg",".css",".js")):
+                                found.add(email)
+                        if found:
+                            # Take the first non-role email
+                            from backend.services.email_intel import is_role_account
+                            best = None
+                            for e in found:
+                                if not is_role_account(e):
+                                    best = e; break
+                            if not best:
+                                best = next(iter(found))
+                            cust.email = best
+                            enriched += 1
+                            print(f"  [Scan] Found email for {cust.company}: {best}")
+            except (aio.TimeoutError, Exception):
+                pass
+
+        if enriched > 0:
+            await db.commit()
+            print(f"  [Scan] Enriched {enriched} customers with emails from websites")
+
+    # ── Step 2: Auto-send development emails ──
     sent_count = 0
     if saved_count > 0:
         # Get mailbox
