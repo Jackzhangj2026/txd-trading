@@ -52,6 +52,25 @@
     </div>
 </div>
 
+<!-- Recent Email Sends -->
+<div class="card mt-6">
+    <h2 class="text-lg font-semibold mb-4">Today's Sent Emails <span class="text-gray-500 text-sm" id="sent-count"></span></h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-gray-400 border-b border-gray-700">
+                <th class="text-left py-3 px-2">Time</th>
+                <th class="text-left py-3 px-2">To</th>
+                <th class="text-left py-3 px-2">Company</th>
+                <th class="text-left py-3 px-2">Subject</th>
+                <th class="text-left py-3 px-2">Status</th>
+            </tr></thead>
+            <tbody id="sent-table">
+                <tr><td colspan="5" class="text-gray-500 py-8 text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- Report History -->
 <div class="card mt-6">
     <h2 class="text-lg font-semibold mb-4">Task History</h2>
@@ -111,6 +130,30 @@ async function loadSearchCustomers() {
     } catch(e) {
         document.getElementById('search-customer-table').innerHTML = '<tr><td colspan="6" class="text-red-400 py-8 text-center">Failed to load</td></tr>';
     }
+}
+
+async function loadTodaySends() {
+    try {
+        const res = await fetch('/api/auto-crm/today-sends');
+        const data = await res.json();
+        document.getElementById('sent-count').textContent = '(' + (data.total || 0) + ' today)';
+        const tbody = document.getElementById('sent-table');
+        if (!data.items || data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-gray-500 py-8 text-center">No emails sent today</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.items.map(r => {
+            const sc = r.status === 'sent' ? '#22c55e' : '#f87171';
+            const time = r.time ? r.time.substring(11, 19) : '';
+            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                <td class="py-3 px-2 text-gray-400 text-xs">${time}</td>
+                <td class="py-3 px-2 text-gray-300">${r.customer_name || '-'}</td>
+                <td class="py-3 px-2 text-gray-400">${r.customer_company || '-'}</td>
+                <td class="py-3 px-2 text-gray-300 text-xs">${(r.subject || '').substring(0, 40)}</td>
+                <td class="py-3 px-2"><span style="color:${sc}">${r.status}</span></td>
+            </tr>`;
+        }).join('');
+    } catch(e) {}
 }
 
 async function loadReports() {
@@ -202,5 +245,6 @@ async function runDailyTask() {
 loadStats();
 loadSearchCustomers();
 loadReports();
+loadTodaySends();
 </script>
 {% endblock %}

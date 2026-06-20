@@ -84,3 +84,49 @@ async def get_auto_crm_reports():
         reports = json.loads(report_file.read_text(encoding="utf-8"))
         return reports
     return []
+
+
+@router.get("/today-sends")
+async def get_today_sends(db: AsyncSession = Depends(get_db)):
+    """Get today's sent emails with recipient details."""
+    from backend.models.email_log import EmailLog
+    from backend.models.customer import Customer
+    from sqlalchemy import select, desc
+    from datetime import datetime, timezone
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    result = await db.execute(
+        select(EmailLog).where(
+            EmailLog.direction == "out",
+            EmailLog.sent_at >= today,
+        ).order_by(desc(EmailLog.sent_at)).limit(50)
+    )
+    logs = result.scalars().all()
+
+    items = []
+    for log in logs:
+        customer_name = ""
+        customer_company = ""
+        if log.customer_id:
+            cust = await db.execute(select(Customer).where(Customer.id == log.customer_id))
+            c = cust.scalar_one_or_none()
+            if c:
+                customer_name = c.name or c.email or ""
+                customer_company = c.company or ""
+
+        items.append({
+            "id": log.id,
+            "time": log.sent_at or "",
+            "subject": log.subject or "",
+            "status": log.status or "sent",
+            "customer_name": customer_name,
+            "customer_company": customer_company,
+        })
+
+    # Also get total count
+    count_result = await db.execute(
+        select(EmailLog).where(EmailLog.direction == "out", EmailLog.sent_at >= today)
+    )
+    total = len(count_result.scalars().all()) if count_result else len(items)
+
+    return {"items": items, "total": total}
