@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     google_cse_id: str = ""
 
+    # Serper.dev Google Search (free 2500/month)
+    serper_api_key: str = ""
+
     # Tavily Search (for LinkedIn decision-maker discovery)
     tavily_api_key: str = ""
 

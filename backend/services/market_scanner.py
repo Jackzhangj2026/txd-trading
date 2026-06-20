@@ -144,25 +144,66 @@ class MarketScanner:
 
         return queries
 
-    # ─── Google Search (real API + LLM fallback) ────────────────────────
+    # ─── Search (Serper.dev → Google CSE → LLM fallback) ───────────────
 
     @staticmethod
     async def google_search(query: str, num_results: int = 10) -> list[dict]:
-        """Search Google via Custom Search JSON API."""
-        api_key = settings.google_api_key
+        """Search Google via Serper.dev API (primary), Google CSE, or LLM fallback."""
+        serper_key = settings.serper_api_key
+        google_key = settings.google_api_key
         cse_id = settings.google_cse_id
 
-        if api_key and cse_id:
+        # 1. Serper.dev (free 2500/month, real Google results)
+        if serper_key:
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    body = {"q": query, "num": min(num_results, 10)}
+                    # Add geo-targeting for European queries
+                    if any(c in query.lower() for c in ["germany", "gmbh", "deutschland"]):
+                        body["gl"] = "de"
+                    elif any(c in query.lower() for c in ["uk", "united kingdom", "england", "london", "ltd"]):
+                        body["gl"] = "uk"
+                    elif any(c in query.lower() for c in ["france", "paris", "sarl"]):
+                        body["gl"] = "fr"
+                    elif any(c in query.lower() for c in ["italy", "italia", "srl"]):
+                        body["gl"] = "it"
+                    elif any(c in query.lower() for c in ["spain", "españa", "barcelona"]):
+                        body["gl"] = "es"
+                    elif any(c in query.lower() for c in ["netherlands", "holland", "amsterdam"]):
+                        body["gl"] = "nl"
+                    elif any(c in query.lower() for c in ["poland", "polska"]):
+                        body["gl"] = "pl"
+                    resp = await client.post(
+                        "https://google.serper.dev/search",
+                        json=body,
+                        headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = []
+                        for item in data.get("organic", []):
+                            results.append({
+                                "title": item.get("title", ""),
+                                "url": item.get("link", ""),
+                                "snippet": item.get("snippet", ""),
+                                "source": "serper",
+                                "query": query,
+                            })
+                        if results:
+                            print(f"[MarketScanner] Serper: {len(results)} results for '{query[:50]}'")
+                            return results
+                    else:
+                        print(f"[MarketScanner] Serper error: {resp.status_code}")
+            except Exception as e:
+                print(f"[MarketScanner] Serper failed: {e}")
+
+        # 2. Google Custom Search (legacy, closing to new users)
+        if google_key and cse_id:
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.get(
                         "https://www.googleapis.com/customsearch/v1",
-                        params={
-                            "key": api_key,
-                            "cx": cse_id,
-                            "q": query,
-                            "num": min(num_results, 10),
-                        }
+                        params={"key": google_key, "cx": cse_id, "q": query, "num": min(num_results, 10)},
                     )
                     if resp.status_code == 200:
                         data = resp.json()
@@ -172,13 +213,13 @@ class MarketScanner:
                                 "title": item.get("title", ""),
                                 "url": item.get("link", ""),
                                 "snippet": item.get("snippet", ""),
-                                "source": "google",
+                                "source": "google_cse",
                                 "query": query,
                             })
                         if results:
                             return results
             except Exception as e:
-                print(f"[MarketScanner] Google API: {e}")
+                print(f"[MarketScanner] Google CSE failed: {e}")
 
         # Fallback: LLM simulation
         print(f"[MarketScanner] LLM fallback for: {query[:60]}")
