@@ -85,17 +85,33 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
             continue
 
     # Parse companies directly from search result titles
+    import re as _re2
+    _email_re2 = _re2.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re2.IGNORECASE)
     for result in all_results:
         title = (result.get("title") or "").strip()
         snippet = (result.get("snippet") or "").strip()
+        url = (result.get("url") or "").strip()
         company = ""
         if " - " in title:
             company = title.split(" - ")[0].strip()
         elif title:
             words = title.split()
             company = " ".join(words[:min(3, len(words))])
-        if not company or company.lower() in ("results", "search", "the", ""):
+        if not company or len(company) < 3 or company.lower() in ("results", "search", "the", ""):
             continue
+
+        # Extract email from snippet
+        email = ""
+        email_matches = _email_re2.findall(snippet + " " + title)
+        if email_matches:
+            e = email_matches[0].strip().lower()
+            if not e.endswith((".png",".jpg",".gif",".svg")):
+                email = e
+
+        # Extract website URL
+        website = ""
+        if url and not any(s in url.lower() for s in ("google.com","youtube.com","facebook.com","linkedin.com","twitter.com","instagram.com")):
+            website = url.split("?")[0].rstrip("/")
 
         country_keywords = {"USA":"USA", "Germany":"Germany", "UK":"UK", "United Kingdom":"UK",
                            "France":"France", "Italy":"Italy", "Spain":"Spain", "India":"India",
@@ -112,7 +128,7 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
         all_leads.append({
             "company": company, "country": country,
             "product_interest": product, "confidence": 0.5,
-            "source_text": snippet[:200], "email": "",
+            "source_text": snippet[:200], "email": email, "website": website,
         })
 
     saved = 0
@@ -135,6 +151,7 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
             existing_emails.add(email)
 
         name = company or email.split("@")[0] if email else "Unknown"
+        website = (lead.get("website") or "").strip()
         source_text = lead.get("source_text", "")
         notes = f"Auto-search: {product}" if product else ""
         if source_text:
@@ -145,7 +162,7 @@ async def step_search_new_leads(db: AsyncSession) -> dict:
             intent_text=notes or "", source="auto_crm_search",
         )
         customer = Customer(
-            name=name, company=company, country=country,
+            name=name, company=company, country=country, website=website,
             email=email, source="auto_crm_search", score=score, notes=notes,
         )
         db.add(customer)

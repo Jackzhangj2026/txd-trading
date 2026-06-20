@@ -466,7 +466,7 @@ If no leads, output []."""
                 "source_text": snippet[:200],
             })
 
-        # Attach extracted emails to matching leads
+        # Attach extracted emails to matching leads (lenient: any email is useful)
         for lead in leads:
             company = lead.get("company", "").lower().replace(" ", "")
             lead_emails = []
@@ -474,6 +474,9 @@ If no leads, output []."""
                 email_domain = em["email"].rsplit("@", 1)[-1]
                 if company in email_domain or email_domain.replace(".com", "") in company:
                     lead_emails.append(em)
+            # If no company-matched email, take any extracted email
+            if not lead_emails and extracted_emails:
+                lead_emails = [extracted_emails[0]]
             lead["emails_found"] = lead_emails
             if lead_emails:
                 lead["email"] = lead_emails[0]["email"]
