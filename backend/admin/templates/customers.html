@@ -50,11 +50,12 @@
                 <th class="text-left py-3 px-3" style="width:8%">{{ _t('Status') }}</th>
                 <th class="text-left py-3 px-3" style="width:6%">{{ _t('Score') }}</th>
                 <th class="text-left py-3 px-3" style="width:8%">{{ _t('Country') }}</th>
-                <th class="text-right py-3 px-3" style="width:13%">{{ _t('Actions') }}</th>
+                <th class="text-left py-3 px-3" style="width:12%">{{ _t('Notes') }}</th>
+                <th class="text-right py-3 px-3" style="width:10%">{{ _t('Actions') }}</th>
             </tr>
         </thead>
         <tbody id="customer-table-body">
-            <tr><td colspan="7" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
+            <tr><td colspan="8" class="text-gray-500 py-8 text-center">{{ _t('Loading') }}</td></tr>
         </tbody>
     </table>
 </div>
@@ -141,6 +142,7 @@ async function loadCustomers() {
                 <td class="py-3 px-3"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
                 <td class="py-3 px-3"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
                 <td class="py-3 px-3 text-gray-400 truncate">${c.country || ''}</td>
+                <td class="py-3 px-3 text-gray-500 text-xs truncate" title="${(c.notes || '').replace(/"/g,'&quot;')}">${(c.notes || '').substring(0, 40)}</td>
                 <td class="py-3 px-3 text-right whitespace-nowrap">
                     <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
                     ${c.status === 'interested' 
