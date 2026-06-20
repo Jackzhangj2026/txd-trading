@@ -177,3 +177,32 @@ async def delete_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Customer not found")
     await db.delete(customer)
     await db.commit()
+
+
+@router.get("/export/csv")
+async def export_customers_csv(db: AsyncSession = Depends(get_db)):
+    """Export all customers as CSV file."""
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+
+    result = await db.execute(select(Customer).order_by(Customer.created_at.desc()))
+    customers = result.scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    # Header
+    writer.writerow(["Name", "Email", "Company", "Country", "Website", "Source", "Status", "Score", "Notes", "Created"])
+    for c in customers:
+        writer.writerow([
+            c.name or "", c.email or "", c.company or "", c.country or "",
+            c.website or "", c.source or "", c.status or "", c.score or 0,
+            (c.notes or "")[:500], str(c.created_at or "")[:19],
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=customers.csv"},
+    )
