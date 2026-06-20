@@ -11,6 +11,9 @@ from pydantic import BaseModel
 from backend.database import get_db
 from backend.models.target_market import TargetMarket
 from backend.models.customer import Customer
+from backend.models.mailbox import Mailbox
+from backend.models.email_template import EmailTemplate
+from backend.models.email_log import EmailLog
 from backend.agents import TradeAgent
 
 router = APIRouter(prefix="/api/target-markets", tags=["target-markets"])
@@ -232,7 +235,12 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
         "search_keywords": m.search_keywords,
     }
 
-    scan_result = await scanner.scan_market(market_dict)
+    try:
+        scan_result = await scanner.scan_market(market_dict)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Scan error: {str(e)[:200]}")
 
     # Save extracted leads as customers
     from backend.models.customer import Customer
@@ -248,13 +256,8 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
         if company in ("Unknown", "") and not email:
             continue
 
-        # Try to match market
-        all_markets_result = await db.execute(select(TargetMarket).where(TargetMarket.active == True))
-        all_markets = all_markets_result.scalars().all()
-        market_list = [{"name": mm.name, "keywords": mm.keywords, "products": mm.products, "industries": mm.industries} for mm in all_markets]
-
-        from backend.services.market_scanner import MarketScanner
-        matched = await MarketScanner.match_market(company + " " + product, market_list)
+        # Match market directly (skip LLM call to avoid timeout with local model)
+        matched = m.name
 
         # Build notes with enriched info
         notes_parts = []
@@ -309,7 +312,62 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
     m.last_scanned = datetime.now(timezone.utc).isoformat()
     await db.commit()
 
-    scan_result["leads_extracted"] = scan_result.get("leads_extracted", [])[:10]  # Return first 10
+    # Auto-send development emails to newly saved customers with emails
+    sent_count = 0
+    if saved_count > 0:
+        # Get mailbox
+        mailbox_result = await db.execute(
+            select(Mailbox).where(Mailbox.active == True).order_by(Mailbox.created_at.desc()).limit(1)
+        )
+        mailbox = mailbox_result.scalar_one_or_none()
+        # Get template
+        tpl_result = await db.execute(
+            select(EmailTemplate).where(EmailTemplate.name == "auto_crm_first_contact").limit(1)
+        )
+        template = tpl_result.scalar_one_or_none()
+
+        if mailbox and template:
+            from backend.tasks.auto_crm_daily import send_development_email
+            import asyncio as aio
+
+            # Get newly saved customers (those created in the last few seconds)
+            recent_result = await db.execute(
+                select(Customer).where(
+                    Customer.source == f"market_scan_{m.name}",
+                    Customer.status == "lead",
+                    Customer.email != "",
+                ).order_by(Customer.created_at.desc()).limit(saved_count)
+            )
+            recent_customers = recent_result.scalars().all()
+
+            for customer in recent_customers:
+                if not customer.email:
+                    continue
+                try:
+                    success = await aio.wait_for(
+                        send_development_email(customer, mailbox, template),
+                        timeout=15.0
+                    )
+                except aio.TimeoutError:
+                    success = False
+                if success:
+                    customer.status = "contacted"
+                    sent_count += 1
+                    # Log
+                    log = EmailLog(
+                        mailbox_id=mailbox.id, customer_id=customer.id, direction="out",
+                        subject=f"Introduction from TXD CO., LTD - {customer.company}",
+                        body=f"Market scan auto-send to {customer.email}",
+                        status="sent", sent_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    db.add(log)
+
+            if sent_count > 0:
+                await db.commit()
+                print(f"  [Scan] Auto-sent {sent_count} emails")
+
+    scan_result["leads_extracted"] = scan_result.get("leads_extracted", [])[:10]
+    scan_result["emails_sent"] = sent_count
     return scan_result
 
 
