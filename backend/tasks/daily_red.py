@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timezone
 from backend.services.content_generator import ContentGenerator
 from backend.services.social_publisher import publisher as red_publisher
-from backend.database import async_session_maker
+from backend.database import async_session
 from backend.models.content_piece import ContentPiece
 from backend.routers.content_media import _embed_factory_images, _load_red_settings
 
@@ -55,7 +55,7 @@ async def generate_and_publish_red():
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # Check how many published today
-    async with async_session_maker() as db:
+    async with async_session() as db:
         from sqlalchemy import select, func
         result = await db.execute(
             select(func.count()).select_from(ContentPiece).where(
@@ -87,7 +87,7 @@ async def generate_and_publish_red():
         body = _embed_factory_images(result.get("body", ""))
         title = result.get("title", topic)[:300]
 
-        async with async_session_maker() as db:
+        async with async_session() as db:
             piece = ContentPiece(
                 title=title, platform="red", content_type="post",
                 status="draft", body=body, media_urls=json.dumps([]), language="en",

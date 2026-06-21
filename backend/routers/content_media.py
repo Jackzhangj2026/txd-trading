@@ -175,7 +175,7 @@ async def red_publish_now():
     from backend.services.social_publisher import publisher
     from backend.services.content_generator import ContentGenerator
     from backend.models.content_piece import ContentPiece
-    from backend.database import async_session_maker
+    from backend.database import async_session
 
     # Check login
     state_path = os.path.join(
@@ -204,7 +204,7 @@ async def red_publish_now():
     pub_result = await publisher.publish(title=title, body=body, headless=True)
 
     # Save to DB
-    async with async_session_maker() as db:
+    async with async_session() as db:
         piece = ContentPiece(
             title=title, platform="red", content_type="post",
             status="published" if pub_result.get("success") else "draft",
