@@ -31,14 +31,11 @@ FACTORY_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "factory
 
 
 def _embed_factory_images(body: str, max_images: int = 4) -> str:
-    """Replace {{image_N}} placeholders with real compressed factory images as base64 <img> tags."""
+    """Ensure real factory images are embedded in the body as base64 <img> tags.
+    If {{image_N}} placeholders exist, replace them. Otherwise, auto-inject images
+    after the first paragraph and before the last paragraph."""
     import re
     from PIL import Image
-
-    # Count placeholders to replace
-    placeholders = re.findall(r'\{\{image_(\d+)\}\}', body)
-    if not placeholders:
-        return body
 
     # Find available factory images
     img_dir = os.path.normpath(FACTORY_IMAGE_DIR)
@@ -49,34 +46,86 @@ def _embed_factory_images(body: str, max_images: int = 4) -> str:
     if not all_imgs:
         return body
 
-    chosen = random.sample(all_imgs, min(len(placeholders), len(all_imgs)))
-
-    for i, filename in enumerate(chosen):
-        placeholder = f"{{image_{i + 1}}}"
-        if placeholder not in body:
-            continue
-
+    def _make_img_tag(filename: str, idx: int) -> str:
         img_path = os.path.join(img_dir, filename)
         try:
             img = Image.open(img_path)
-            # Compress: max 600px wide, JPEG quality 60%
             w, h = img.size
             if w > 600:
                 ratio = 600 / w
                 img = img.resize((600, int(h * ratio)), Image.LANCZOS)
             buf = io.BytesIO()
-            img_format = img.format or 'JPEG'
-            if img_format.upper() in ('PNG', 'WEBP'):
+            if img.format and img.format.upper() in ('PNG', 'WEBP'):
                 img = img.convert('RGB')
             img.save(buf, format='JPEG', quality=60, optimize=True)
             b64 = base64.b64encode(buf.getvalue()).decode('ascii')
-            img_tag = f'<img src="data:image/jpeg;base64,{b64}" alt="Product Image {i + 1}" style="max-width:100%;border-radius:8px;margin:12px 0;display:block;">'
-            body = body.replace(placeholder, img_tag)
+            return f'<img src="data:image/jpeg;base64,{b64}" alt="Product Image {idx}" style="max-width:100%;border-radius:12px;margin:12px 0;display:block;">'
         except Exception as e:
             print(f"[ContentMedia] Image embed failed for {filename}: {e}")
-            # Leave placeholder as-is on failure
+            return ""
 
-    return body
+    # Strategy 1: Replace {{image_N}} placeholders
+    placeholders = re.findall(r'\{\{image_(\d+)\}\}', body)
+    if placeholders:
+        chosen = random.sample(all_imgs, min(len(placeholders), len(all_imgs)))
+        for i, filename in enumerate(chosen):
+            placeholder = f"{{image_{i + 1}}}"
+            if placeholder in body:
+                tag = _make_img_tag(filename, i + 1)
+                if tag:
+                    body = body.replace(placeholder, tag)
+        return body
+
+    # Strategy 2: No placeholders — auto-inject images into HTML structure
+    # Find <p> tags to insert images between them
+    paras = list(re.finditer(r'<p\b[^>]*>.*?</p>', body, re.DOTALL))
+    if len(paras) < 2:
+        # Too few paragraphs, just append images at the end
+        chosen = random.sample(all_imgs, min(max_images, len(all_imgs)))
+        tags = []
+        for i, fn in enumerate(chosen):
+            tag = _make_img_tag(fn, i + 1)
+            if tag:
+                tags.append(f'<p style="text-align:center;color:#999;font-size:13px;">▲ Product photo {i + 1}</p>{tag}')
+        if tags:
+            body += "\n" + "\n".join(tags)
+        return body
+
+    # Insert images: 1 after first paragraph, rest before last paragraph
+    chosen = random.sample(all_imgs, min(max_images, len(all_imgs)))
+    result_parts = []
+    # Everything before first paragraph
+    result_parts.append(body[:paras[0].start()])
+    # First paragraph
+    result_parts.append(body[paras[0].start():paras[0].end()])
+    # First image after first paragraph
+    if len(chosen) >= 1:
+        tag = _make_img_tag(chosen[0], 1)
+        if tag:
+            result_parts.append(f'\n<p style="text-align:center;color:#999;font-size:13px;margin-top:8px;">▲ Product photo 1</p>\n{tag}\n')
+
+    # Middle paragraphs (between first and last)
+    for p in paras[1:-1]:
+        result_parts.append(body[p.start():p.end()])
+
+    # More images before last paragraph
+    for i in range(1, min(len(chosen), 3)):
+        tag = _make_img_tag(chosen[i], i + 1)
+        if tag:
+            result_parts.append(f'\n<p style="text-align:center;color:#999;font-size:13px;margin-top:8px;">▲ Product photo {i + 1}</p>\n{tag}\n')
+
+    # Remaining images (4th)
+    if len(chosen) >= 4:
+        tag = _make_img_tag(chosen[3], 4)
+        if tag:
+            result_parts.append(f'\n<p style="text-align:center;color:#999;font-size:13px;margin-top:8px;">▲ Product photo 4</p>\n{tag}\n')
+
+    # Last paragraph + everything after
+    result_parts.append(body[paras[-1].start():])
+    return "".join(result_parts)
+
+
+class GenerateRequest(BaseModel):
     topic: str
     platforms: list[str] = ["linkedin", "twitter", "red"]
 
