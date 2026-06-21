@@ -125,6 +125,103 @@ def _embed_factory_images(body: str, max_images: int = 4) -> str:
     return "".join(result_parts)
 
 
+# ─── RED Auto-Publish Settings ──────────────────────────────────
+
+RED_SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "red_auto_settings.json")
+
+
+def _load_red_settings() -> dict:
+    if not os.path.exists(RED_SETTINGS_FILE):
+        return {"enabled": False, "publish_time": "09:00", "daily_count": 1}
+    with open(RED_SETTINGS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_red_settings(settings: dict):
+    os.makedirs(os.path.dirname(RED_SETTINGS_FILE), exist_ok=True)
+    with open(RED_SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
+
+
+@router.get("/red-settings")
+async def get_red_settings():
+    """Get RED auto-publish settings."""
+    settings = _load_red_settings()
+    state_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "browser_data", "red_state.json"
+    )
+    settings["logged_in"] = os.path.exists(state_path)
+    return settings
+
+
+@router.put("/red-settings")
+async def update_red_settings(data: dict):
+    """Update RED auto-publish settings."""
+    settings = _load_red_settings()
+    for key in ("enabled", "publish_time", "daily_count"):
+        if key in data:
+            settings[key] = data[key]
+    _save_red_settings(settings)
+    state_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "browser_data", "red_state.json"
+    )
+    settings["logged_in"] = os.path.exists(state_path)
+    return settings
+
+
+@router.post("/red-publish-now")
+async def red_publish_now():
+    """Generate one RED note + auto-publish via Playwright."""
+    from backend.services.social_publisher import publisher
+    from backend.services.content_generator import ContentGenerator
+    from backend.models.content_piece import ContentPiece
+    from backend.database import async_session_maker
+
+    # Check login
+    state_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "browser_data", "red_state.json"
+    )
+    if not os.path.exists(state_path):
+        return {"success": False, "action": "login_required", "message": "Not logged in"}
+
+    # Generate
+    topics = [
+        "PP hollow board packaging advantages for e-commerce",
+        "Custom PP corrugated boxes for electronics protection",
+        "Sustainable packaging trends 2025 — PP hollow board solutions",
+        "Factory tour: How PP hollow boards are made",
+        "Why plastic corrugated sheets beat cardboard for export packaging",
+    ]
+    import random
+    topic = random.choice(topics)
+
+    generator = ContentGenerator()
+    result = await generator.generate_for_platform(topic, "red")
+    body = _embed_factory_images(result.get("body", ""))
+    title = result.get("title", topic)[:300]
+
+    # Publish
+    pub_result = await publisher.publish(title=title, body=body, headless=True)
+
+    # Save to DB
+    async with async_session_maker() as db:
+        piece = ContentPiece(
+            title=title, platform="red", content_type="post",
+            status="published" if pub_result.get("success") else "draft",
+            body=body, media_urls=json.dumps([]), language="en",
+        )
+        if pub_result.get("success"):
+            piece.published_at = datetime.now(timezone.utc).isoformat()
+        db.add(piece)
+        await db.commit()
+
+    return {
+        "success": pub_result.get("success", False),
+        "message": pub_result.get("message", ""),
+        "title": title,
+    }
+
+
 # ─── RED Auto-Publish + Manual Copy ──────────────────────────────
 
 @router.post("/red-login")

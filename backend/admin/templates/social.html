@@ -4,10 +4,11 @@
 <div class="mb-8">
     <h1 class="text-3xl font-bold">📱 Social Media</h1>
     <p class="text-gray-500 mt-1">Generate, schedule, and manage social media content</p>
-    <div class="flex gap-2 mt-3">
-        <button onclick="loginRED()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500/10 transition">🔑 Login RED (One-time)</button>
-        <span id="red-status" class="text-xs text-gray-500 self-center"></span>
-    </div>
+    <button onclick="toggleAutoPanel()" id="auto-panel-btn"
+        class="mt-3 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2"
+        style="background:linear-gradient(135deg,#ff2442,#ff6b6b);color:#fff">
+        🤖 Auto Publish RED
+    </button>
 </div>
 
 <div class="card mb-6">
@@ -34,6 +35,47 @@
         <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="wechat_moment"> 朋友圈</label>
     </div>
     <div id="gen-status" class="text-sm text-gray-500"></div>
+</div>
+
+<!-- RED Auto-Publish Settings Panel -->
+<div id="auto-panel" class="card mb-6 hidden">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">🤖 RED Auto Publish</h2>
+        <button onclick="toggleAutoPanel()" class="text-gray-500 hover:text-white text-lg">&times;</button>
+    </div>
+    <div class="flex items-center gap-3 mb-4 p-3 rounded-lg" style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2)">
+        <span id="login-status-icon" class="text-xl">🔴</span>
+        <div class="flex-1">
+            <div class="text-sm font-semibold" id="login-status-text">Not logged in</div>
+            <div class="text-xs text-gray-500">Login once to enable auto-publish</div>
+        </div>
+        <button onclick="loginRED()" id="login-btn" class="px-4 py-1.5 rounded-lg text-xs font-semibold border border-purple-400 text-purple-400 hover:bg-purple-400/10 transition">🔑 Login</button>
+    </div>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div>
+            <label class="text-sm text-gray-400">Publish Time</label>
+            <input id="auto-time" type="time" value="09:00" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 text-sm" onchange="saveAutoSettings()">
+        </div>
+        <div>
+            <label class="text-sm text-gray-400">Posts Per Day</label>
+            <select id="auto-count" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 text-sm" onchange="saveAutoSettings()">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input id="auto-enabled" type="checkbox" class="w-4 h-4" onchange="saveAutoSettings()">
+                <span class="text-sm text-gray-300">Enable Auto</span>
+            </label>
+        </div>
+    </div>
+    <div class="flex gap-2">
+        <button onclick="autoPublishNow()" id="auto-publish-btn" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2" style="background:linear-gradient(135deg,#ff2442,#ff6b6b);color:#fff">🚀 Publish Now</button>
+        <button onclick="saveAutoSettings()" class="px-4 py-2 rounded-lg text-sm border border-gray-700 text-gray-400 hover:text-white transition">💾 Save Settings</button>
+    </div>
+    <div id="auto-msg" class="text-xs text-gray-500 mt-2"></div>
 </div>
 
 <div class="card mb-6">
@@ -202,46 +244,97 @@ function toggleContentDetail(row, id) {
     detail.classList.remove('hidden');
 }
 
-// ─── RED Auto-Publish ────────────────────────────
+// ─── RED Auto-Publish Panel ─────────────────────
+
+async function toggleAutoPanel() {
+    const panel = document.getElementById('auto-panel');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
+        await loadAutoSettings();
+    }
+}
+
+async function loadAutoSettings() {
+    try {
+        const res = await fetch('/api/content-media/red-settings');
+        const s = await res.json();
+        document.getElementById('auto-time').value = s.publish_time || '09:00';
+        document.getElementById('auto-count').value = s.daily_count || 1;
+        document.getElementById('auto-enabled').checked = s.enabled || false;
+        updateLoginStatus(s.logged_in);
+    } catch (e) { /* ignore */ }
+}
+
+function updateLoginStatus(loggedIn) {
+    document.getElementById('login-status-icon').textContent = loggedIn ? '🟢' : '🔴';
+    document.getElementById('login-status-text').textContent = loggedIn ? 'Logged in ✓' : 'Not logged in';
+    document.getElementById('login-btn').textContent = loggedIn ? '🔄 Re-login' : '🔑 Login';
+}
+
+async function saveAutoSettings() {
+    const settings = {
+        publish_time: document.getElementById('auto-time').value,
+        daily_count: parseInt(document.getElementById('auto-count').value),
+        enabled: document.getElementById('auto-enabled').checked,
+    };
+    try {
+        await fetch('/api/content-media/red-settings', {
+            method: 'PUT', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(settings),
+        });
+        document.getElementById('auto-msg').textContent = '✅ Settings saved';
+        setTimeout(() => { document.getElementById('auto-msg').textContent = ''; }, 2000);
+    } catch (e) {
+        document.getElementById('auto-msg').textContent = '❌ Save failed';
+    }
+}
 
 async function loginRED() {
-    const btn = event.target;
+    const btn = document.getElementById('login-btn');
     btn.disabled = true;
-    btn.textContent = 'Opening browser...';
+    btn.textContent = 'Opening...';
+    document.getElementById('auto-msg').textContent = 'Browser opening — scan QR code to login...';
     try {
         const res = await fetch('/api/content-media/red-login', { method: 'POST' });
         const data = await res.json();
-        if (data.success) {
-            document.getElementById('red-status').textContent = '✅ Logged in';
-            document.getElementById('red-status').style.color = '#22c55e';
-        } else {
-            document.getElementById('red-status').textContent = '⚠️ ' + data.message;
-            document.getElementById('red-status').style.color = '#f59e0b';
-        }
+        if (data.success) { updateLoginStatus(true); document.getElementById('auto-msg').textContent = '✅ Login saved!'; }
+        else { document.getElementById('auto-msg').textContent = '⚠️ ' + data.message; }
     } catch (e) {
-        document.getElementById('red-status').textContent = '❌ Failed';
-        document.getElementById('red-status').style.color = '#f43f5e';
+        document.getElementById('auto-msg').textContent = '❌ Login failed';
     }
     btn.disabled = false;
-    btn.textContent = '🔑 Login RED (One-time)';
+    btn.textContent = '🔑 Login';
 }
+
+async function autoPublishNow() {
+    const btn = document.getElementById('auto-publish-btn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Publishing...';
+    document.getElementById('auto-msg').textContent = 'Generating + publishing to RED...';
+    try {
+        const res = await fetch('/api/content-media/red-publish-now', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) { document.getElementById('auto-msg').textContent = '✅ Published!'; loadQueue(); }
+        else if (data.action === 'login_required') { document.getElementById('auto-msg').textContent = '⚠️ Login first'; }
+        else { document.getElementById('auto-msg').textContent = '❌ ' + (data.message || 'Failed'); }
+    } catch (e) {
+        document.getElementById('auto-msg').textContent = '❌ Error: ' + e.message;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Publish Now';
+}
+
+// ─── Legacy RED publish (from queue row) ────────
 
 async function publishToRED(id) {
     if (!confirm('Auto-publish this to RED via browser?')) return;
     try {
         const res = await fetch('/api/content-media/' + id + '/publish-to-red?headless=false', { method: 'POST' });
         const data = await res.json();
-        if (data.success) {
-            alert('✅ Published to RED!');
-            loadQueue();
-        } else if (data.action === 'login_required') {
-            alert('Need to login first. Click "🔑 Login RED" button above.');
-        } else {
-            alert('Publish failed: ' + (data.message || 'unknown error'));
-        }
-    } catch (e) {
-        alert('Error: ' + e.message);
-    }
+        if (data.success) { alert('✅ Published!'); loadQueue(); }
+        else if (data.action === 'login_required') { alert('Login first — open Auto panel'); }
+        else { alert('Failed: ' + (data.message || '')); }
+    } catch (e) { alert('Error: ' + e.message); }
 }
 
 async function copyContent(id) {

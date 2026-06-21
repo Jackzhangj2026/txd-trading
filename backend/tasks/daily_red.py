@@ -1,14 +1,17 @@
-"""Daily RED auto-publish task — generates and optionally publishes content."""
+"""Daily RED auto-publish task — respects auto-settings (time, count, enabled)."""
 import asyncio
 import json
 import os
+import random
 from datetime import datetime, timezone
 from backend.services.content_generator import ContentGenerator
 from backend.services.social_publisher import publisher as red_publisher
 from backend.database import async_session_maker
 from backend.models.content_piece import ContentPiece
+from backend.routers.content_media import _embed_factory_images, _load_red_settings
 
-# Topics to rotate through
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "red_auto_settings.json")
+
 RED_TOPICS = [
     "PP hollow board packaging advantages for e-commerce",
     "Why plastic corrugated sheets beat cardboard for export packaging",
@@ -24,71 +27,69 @@ RED_TOPICS = [
 
 
 async def generate_and_publish_red():
-    """Generate one RED note and optionally auto-publish it."""
+    """Generate + publish RED notes based on auto-settings."""
+    settings = _load_red_settings()
+
+    if not settings.get("enabled", False):
+        print("[RedDaily] Auto-publish disabled — skipping")
+        return
+
+    daily_count = settings.get("daily_count", 1)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Check if already generated today
+    # Check how many published today
     async with async_session_maker() as db:
         from sqlalchemy import select, func
         result = await db.execute(
             select(func.count()).select_from(ContentPiece).where(
                 ContentPiece.platform == "red",
-                ContentPiece.created_at >= today,
+                ContentPiece.status == "published",
+                ContentPiece.published_at >= today,
             )
         )
-        if result.scalar() > 0:
-            print(f"[RedDaily] Already generated RED content today ({today})")
-            return
+        published_today = result.scalar() or 0
 
-    # Pick topic based on day of month
-    day = datetime.now().day
-    topic = RED_TOPICS[day % len(RED_TOPICS)]
+    remaining = daily_count - published_today
+    if remaining <= 0:
+        print(f"[RedDaily] Already published {published_today} today (limit: {daily_count})")
+        return
 
-    print(f"[RedDaily] Generating RED note for: {topic}")
+    # Check login
+    state_path = red_publisher.user_data / "red_state.json"
+    logged_in = state_path.exists()
+    if not logged_in:
+        print("[RedDaily] Not logged in — generating draft only")
 
+    # Pick random topics
+    chosen_topics = random.sample(RED_TOPICS, min(remaining, len(RED_TOPICS)))
     generator = ContentGenerator()
-    result = await generator.generate_for_platform(topic, "red")
 
-    body = result.get("body", "")
-    title = result.get("title", topic)
+    for idx, topic in enumerate(chosen_topics):
+        print(f"[RedDaily] Generating ({idx + 1}/{len(chosen_topics)}): {topic[:50]}")
+        result = await generator.generate_for_platform(topic, "red")
+        body = _embed_factory_images(result.get("body", ""))
+        title = result.get("title", topic)[:300]
 
-    # Embed factory images
-    from backend.routers.content_media import _embed_factory_images
-    body = _embed_factory_images(body)
-
-    # Save as draft
-    async with async_session_maker() as db:
-        piece = ContentPiece(
-            title=title[:300],
-            platform="red",
-            content_type="post",
-            status="draft",
-            body=body,
-            media_urls=json.dumps([]),
-            language="en",
-        )
-        db.add(piece)
-        await db.commit()
-        print(f"[RedDaily] RED note saved: {title[:60]}")
-
-        # Auto-publish if login state exists
-        state_path = red_publisher.user_data / "red_state.json"
-        if state_path.exists():
-            print("[RedDaily] Login state found — attempting auto-publish...")
-            pub_result = await red_publisher.publish(
-                title=title,
-                body=body,
-                headless=True,
+        async with async_session_maker() as db:
+            piece = ContentPiece(
+                title=title, platform="red", content_type="post",
+                status="draft", body=body, media_urls=json.dumps([]), language="en",
             )
-            if pub_result.get("success"):
-                piece.status = "published"
-                piece.published_at = datetime.now(timezone.utc).isoformat()
-                await db.commit()
-                print("[RedDaily] ✅ Auto-published to RED!")
+            db.add(piece)
+            await db.commit()
+
+            if logged_in:
+                print(f"[RedDaily] Auto-publishing...")
+                pub_result = await red_publisher.publish(title=title, body=body, headless=True)
+                if pub_result.get("success"):
+                    piece.status = "published"
+                    piece.published_at = datetime.now(timezone.utc).isoformat()
+                    await db.commit()
+                    print(f"[RedDaily] ✅ Published: {title[:50]}")
+                else:
+                    print(f"[RedDaily] Publish failed: {pub_result.get('message')}")
             else:
-                print(f"[RedDaily] Auto-publish failed: {pub_result.get('message')}")
-        else:
-            print("[RedDaily] No login state — saved as draft. Use '🔑 Login RED' then '🚀 Auto' to publish.")
+                print(f"[RedDaily] Saved as draft: {title[:50]}")
 
 
 if __name__ == "__main__":
