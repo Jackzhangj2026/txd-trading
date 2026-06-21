@@ -128,8 +128,8 @@ Requirements:
 - "种草" (product recommendation) style — authentic, helpful, not salesy
 - 150-300 words
 - Include 3-5 emoji
-- Use {{image_1}}, {{image_2}} placeholders to mark where product photos should go
-- Add short captions under each image placeholder describing what the image shows
+- Use {{image_1}}, {{image_2}}, {{image_3}}, {{image_4}} placeholders to mark where product photos should go — place each one on its own line
+- After each image placeholder, add a short caption line describing what the image shows (e.g. "▲ PP hollow board close-up — lightweight yet strong")
 - End with a question to encourage comments
 - 3-4 hashtags
 

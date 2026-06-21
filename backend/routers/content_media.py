@@ -1,6 +1,10 @@
 """Social media content API — generate, queue, schedule, publish."""
 
 import json
+import os
+import random
+import base64
+import io
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, desc
@@ -23,7 +27,56 @@ PIATFORM_DISPLAY = {
 }
 
 
-class GenerateRequest(BaseModel):
+FACTORY_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "factory image")
+
+
+def _embed_factory_images(body: str, max_images: int = 4) -> str:
+    """Replace {{image_N}} placeholders with real compressed factory images as base64 <img> tags."""
+    import re
+    from PIL import Image
+
+    # Count placeholders to replace
+    placeholders = re.findall(r'\{\{image_(\d+)\}\}', body)
+    if not placeholders:
+        return body
+
+    # Find available factory images
+    img_dir = os.path.normpath(FACTORY_IMAGE_DIR)
+    if not os.path.isdir(img_dir):
+        return body
+
+    all_imgs = [f for f in os.listdir(img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
+    if not all_imgs:
+        return body
+
+    chosen = random.sample(all_imgs, min(len(placeholders), len(all_imgs)))
+
+    for i, filename in enumerate(chosen):
+        placeholder = f"{{image_{i + 1}}}"
+        if placeholder not in body:
+            continue
+
+        img_path = os.path.join(img_dir, filename)
+        try:
+            img = Image.open(img_path)
+            # Compress: max 600px wide, JPEG quality 60%
+            w, h = img.size
+            if w > 600:
+                ratio = 600 / w
+                img = img.resize((600, int(h * ratio)), Image.LANCZOS)
+            buf = io.BytesIO()
+            img_format = img.format or 'JPEG'
+            if img_format.upper() in ('PNG', 'WEBP'):
+                img = img.convert('RGB')
+            img.save(buf, format='JPEG', quality=60, optimize=True)
+            b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+            img_tag = f'<img src="data:image/jpeg;base64,{b64}" alt="Product Image {i + 1}" style="max-width:100%;border-radius:8px;margin:12px 0;display:block;">'
+            body = body.replace(placeholder, img_tag)
+        except Exception as e:
+            print(f"[ContentMedia] Image embed failed for {filename}: {e}")
+            # Leave placeholder as-is on failure
+
+    return body
     topic: str
     platforms: list[str] = ["linkedin", "twitter", "red"]
 
@@ -41,13 +94,14 @@ async def generate_content(data: GenerateRequest, db: AsyncSession = Depends(get
 
     for platform in data.platforms:
         result = await generator.generate_for_platform(data.topic, platform)
+        body = _embed_factory_images(result.get("body", ""))
 
         piece = ContentPiece(
             title=result.get("title", data.topic)[:300],
             content_type="post" if platform in ("linkedin", "twitter", "facebook", "pinterest") else "script",
             platform=platform,
             status="draft",
-            body=result.get("body", ""),
+            body=body,
             media_urls=json.dumps(result.get("media_urls", [])),
             language="zh" if platform in ("douyin", "wechat_article", "wechat_moment") else "en",
         )
