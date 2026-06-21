@@ -27,12 +27,29 @@ RED_TOPICS = [
 
 
 async def generate_and_publish_red():
-    """Generate + publish RED notes based on auto-settings."""
+    """Generate + publish RED notes based on auto-settings.
+    Called every 30 min by scheduler but only runs if current hour matches setting."""
     settings = _load_red_settings()
 
     if not settings.get("enabled", False):
-        print("[RedDaily] Auto-publish disabled — skipping")
-        return
+        return  # Disabled — silent skip
+
+    # Check if current hour matches configured publish time (±30 min window)
+    publish_time = settings.get("publish_time", "09:00")
+    now = datetime.now(timezone.utc)
+    # Convert UTC to Beijing time for comparison
+    beijing_hour = (now.hour + 8) % 24
+    beijing_minute = now.minute
+    try:
+        target_h, target_m = map(int, publish_time.split(":"))
+    except ValueError:
+        target_h, target_m = 9, 0
+
+    # Only run within 30 min of target time
+    current_minutes = beijing_hour * 60 + beijing_minute
+    target_minutes = target_h * 60 + target_m
+    if abs(current_minutes - target_minutes) > 30:
+        return  # Not time yet — silent skip
 
     daily_count = settings.get("daily_count", 1)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")

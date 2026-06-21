@@ -65,4 +65,13 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # RED auto-publish: check every 30 minutes, task reads settings + respects time
+    from backend.tasks.daily_red import generate_and_publish_red
+    scheduler.add_job(
+        generate_and_publish_red,
+        CronTrigger(minute="*/30"),
+        id="daily_red",
+        replace_existing=True,
+    )
+
     scheduler.start()
