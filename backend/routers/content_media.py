@@ -201,7 +201,7 @@ async def red_publish_now():
     title = result.get("title", topic)[:300]
 
     # Publish
-    pub_result = await publisher.publish(title=title, body=body, headless=True)
+    pub_result = await publisher.publish(title=title, body=body, headless=False)
 
     # Save to DB
     async with async_session() as db:
