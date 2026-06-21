@@ -125,6 +125,55 @@ def _embed_factory_images(body: str, max_images: int = 4) -> str:
     return "".join(result_parts)
 
 
+# ─── RED Auto-Publish + Manual Copy ──────────────────────────────
+
+@router.post("/red-login")
+async def red_login():
+    """Open browser for manual RED creator login. Saves browser state for auto-publish."""
+    from backend.services.social_publisher import publisher
+    result = await publisher.login_and_save_state()
+    return result
+
+
+@router.post("/{content_id}/publish-to-red")
+async def publish_to_red(
+    content_id: str,
+    headless: bool = Query(True, description="Run browser headless"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Auto-publish a content piece to RED via browser automation."""
+    from backend.services.social_publisher import publisher
+    from backend.models.content_piece import ContentPiece
+
+    result = await db.execute(select(ContentPiece).where(ContentPiece.id == content_id))
+    piece = result.scalar_one_or_none()
+    if not piece:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    pub_result = await publisher.publish(
+        title=piece.title,
+        body=piece.body or "",
+        headless=headless,
+    )
+
+    if pub_result.get("success"):
+        piece.status = "published"
+        piece.published_at = datetime.now(timezone.utc).isoformat()
+        await db.commit()
+
+    return pub_result
+
+
+@router.get("/{content_id}/copy")
+async def get_copy_content(content_id: str, db: AsyncSession = Depends(get_db)):
+    """Get content formatted for manual copy-paste to RED."""
+    from backend.services.social_publisher import publisher
+    result = await publisher.copy_content(content_id, db)
+    if not result.get("success"):
+        raise HTTPException(status_code=404, detail=result.get("message", "Not found"))
+    return result
+
+
 class GenerateRequest(BaseModel):
     topic: str
     platforms: list[str] = ["linkedin", "twitter", "red"]

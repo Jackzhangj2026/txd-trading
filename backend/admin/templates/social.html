@@ -4,6 +4,10 @@
 <div class="mb-8">
     <h1 class="text-3xl font-bold">📱 Social Media</h1>
     <p class="text-gray-500 mt-1">Generate, schedule, and manage social media content</p>
+    <div class="flex gap-2 mt-3">
+        <button onclick="loginRED()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500/10 transition">🔑 Login RED (One-time)</button>
+        <span id="red-status" class="text-xs text-gray-500 self-center"></span>
+    </div>
 </div>
 
 <div class="card mb-6">
@@ -131,7 +135,12 @@ async function loadQueue() {
                 <td class="py-3 px-2 text-gray-400">${c.language === 'zh' ? '🇨🇳' : '🇬🇧'}</td>
                 <td class="py-3 px-2 text-gray-400">${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                 <td class="py-3 px-2">
-                    <button onclick="event.stopPropagation(); publishContent('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300">Publish</button>
+                    ${c.platform === 'red' ? `
+                        <button onclick="event.stopPropagation(); publishToRED('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300 mr-2">🚀 Auto</button>
+                        <button onclick="event.stopPropagation(); copyContent('${c.id}')" class="text-xs text-green-400 hover:text-green-300">📋 Copy</button>
+                    ` : `
+                        <button onclick="event.stopPropagation(); publishContent('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300">Publish</button>
+                    `}
                 </td>
             </tr>
             <tr id="detail-${c.id}" class="border-b border-gray-800 hidden">
@@ -191,6 +200,74 @@ function toggleContentDetail(row, id) {
         }
     }
     detail.classList.remove('hidden');
+}
+
+// ─── RED Auto-Publish ────────────────────────────
+
+async function loginRED() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Opening browser...';
+    try {
+        const res = await fetch('/api/content-media/red-login', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('red-status').textContent = '✅ Logged in';
+            document.getElementById('red-status').style.color = '#22c55e';
+        } else {
+            document.getElementById('red-status').textContent = '⚠️ ' + data.message;
+            document.getElementById('red-status').style.color = '#f59e0b';
+        }
+    } catch (e) {
+        document.getElementById('red-status').textContent = '❌ Failed';
+        document.getElementById('red-status').style.color = '#f43f5e';
+    }
+    btn.disabled = false;
+    btn.textContent = '🔑 Login RED (One-time)';
+}
+
+async function publishToRED(id) {
+    if (!confirm('Auto-publish this to RED via browser?')) return;
+    try {
+        const res = await fetch('/api/content-media/' + id + '/publish-to-red?headless=false', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Published to RED!');
+            loadQueue();
+        } else if (data.action === 'login_required') {
+            alert('Need to login first. Click "🔑 Login RED" button above.');
+        } else {
+            alert('Publish failed: ' + (data.message || 'unknown error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function copyContent(id) {
+    try {
+        const res = await fetch('/api/content-media/' + id + '/copy');
+        const data = await res.json();
+        if (!data.success) { alert('Not found'); return; }
+
+        const w = window.open('', '_blank', 'width=500,height=750,scrollbars=yes');
+        w.document.write('<!DOCTYPE html><html><head><title>Copy to RED</title>' +
+            '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#f5f5f5;padding:20px}' +
+            '.card{max-width:420px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)}' +
+            '.card-body{padding:20px 16px;color:#222;font-size:15px;line-height:1.7}' +
+            '.card-body img{max-width:100%!important;border-radius:12px;margin:12px 0;display:block}' +
+            '.tips{max-width:420px;margin:16px auto;background:#ede9fe;border-radius:12px;padding:16px;font-size:13px;color:#5b21b6}' +
+            '.tips b{display:block;margin-bottom:4px}' +
+            '.btn{display:block;width:100%;max-width:420px;margin:12px auto;padding:12px;background:#ff2442;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}' +
+            '</style></head><body>' +
+            '<div class="card"><div class="card-body">' + (data.body || '') + '</div></div>' +
+            '<div class="tips"><b>📋 How to publish:</b>1. Select all (Ctrl+A) and Copy (Ctrl+C)<br>2. Open RED App → Create Note → Paste<br>3. Upload images from your computer<br>4. Add tags and publish!</div>' +
+            '<button class="btn" onclick="navigator.clipboard.writeText(document.querySelector(\'.card-body\').innerText).then(()=>alert(\'✅ Text copied! Paste into RED\')).catch(()=>alert(\'Use Ctrl+A then Ctrl+C\'))">📋 Copy Text to Clipboard</button>' +
+            '</body></html>');
+        w.document.close();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
 }
 
 loadQueue();
