@@ -118,22 +118,24 @@ BODY: <post content>"""
         return await self._call_and_parse(prompt, topic, "facebook")
 
     async def _red_note(self, topic: str) -> dict:
-        """Generate a 小红书 RED种草 note (Chinese)."""
-        prompt = f"""Write a 小红书 (RED) 种草笔记 about: {topic}
+        """Generate a 小红书 RED note — English, product intro, with image placeholders."""
+        prompt = f"""Write a Xiaohongshu (RED) note in ENGLISH about: {topic}
 
-Company: TXD CO., LTD — PP中空板/塑料瓦楞板 生产工厂
+Company: TXD CO., LTD — PP hollow board / plastic corrugated sheet manufacturer in Xiamen, China.
 
 Requirements:
-- 中文写作 (Chinese only)
-- 种草风格，真实分享
-- 200-400字
-- 包含3-5个emoji
-- 结尾引导互动
-- 3-5个话题标签
+- Write in ENGLISH (targeting international audience on RED)
+- "种草" (product recommendation) style — authentic, helpful, not salesy
+- 150-300 words
+- Include 3-5 emoji
+- Use {{image_1}}, {{image_2}} placeholders to mark where product photos should go
+- Add short captions under each image placeholder describing what the image shows
+- End with a question to encourage comments
+- 3-4 hashtags
 
 Respond in format:
-TITLE: <笔记标题>
-BODY: <完整笔记内容>"""
+TITLE: <catchy note title in English>
+BODY: <full note with HTML formatting: use <p> for paragraphs, <b> for emphasis, emoji as text>"""
         return await self._call_and_parse(prompt, topic, "red")
 
     async def _douyin_script(self, topic: str) -> dict:

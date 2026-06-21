@@ -49,7 +49,7 @@ async def generate_content(data: GenerateRequest, db: AsyncSession = Depends(get
             status="draft",
             body=result.get("body", ""),
             media_urls=json.dumps(result.get("media_urls", [])),
-            language="zh" if platform in ("red", "douyin", "wechat_article", "wechat_moment") else "en",
+            language="zh" if platform in ("douyin", "wechat_article", "wechat_moment") else "en",
         )
         db.add(piece)
         created.append({"platform": platform, "title": piece.title, "id": piece.id})
@@ -89,6 +89,7 @@ async def list_content_queue(
                 "platform_display": PIATFORM_DISPLAY.get(c.platform, c.platform),
                 "content_type": c.content_type,
                 "status": c.status,
+                "body": c.body or "",
                 "body_preview": c.body[:200] if c.body else "",
                 "scheduled_at": c.scheduled_at,
                 "language": c.language,
@@ -174,9 +175,10 @@ async def content_calendar(
             "platform": c.platform,
             "platform_display": PIATFORM_DISPLAY.get(c.platform, c.platform),
             "status": c.status,
+            "body": c.body or "",
+            "language": c.language,
+            "created_at": str(c.created_at) if c.created_at else "",
         })
-
-    return {"calendar": calendar, "total": len(items)}
 
 
 @router.get("/platforms")

@@ -116,6 +116,7 @@ async function loadQueue() {
             return;
         }
         tbody.innerHTML = data.items.map(c => {
+            _contentCache[c.id] = c;
             const platformColors = {
                 'linkedin': '#0a66c2', 'twitter': '#1da1f2', 'youtube': '#ff0000',
                 'pinterest': '#e60023', 'tiktok': '#000000', 'facebook': '#1877f2',
@@ -123,14 +124,19 @@ async function loadQueue() {
                 'wechat_moment': '#07c160',
             };
             const stColors = {'draft': '#6b7280', 'scheduled': '#eab308', 'published': '#22c55e', 'failed': '#f43f5e'};
-            return `<tr class="border-b border-gray-800 hover:bg-white/5">
+            return `<tr class="border-b border-gray-800 hover:bg-white/5 cursor-pointer" onclick="toggleContentDetail(this, '${c.id}')">
                 <td class="py-3 px-2"><span class="badge" style="background:${platformColors[c.platform] || '#333'}22;color:${platformColors[c.platform] || '#fff'}">${c.platform_display}</span></td>
                 <td class="py-3 px-2 text-gray-300">${c.title.substring(0, 50)}</td>
                 <td class="py-3 px-2"><span class="badge" style="background:${stColors[c.status] || '#333'}22;color:${stColors[c.status] || '#fff'}">${c.status}</span></td>
                 <td class="py-3 px-2 text-gray-400">${c.language === 'zh' ? '🇨🇳' : '🇬🇧'}</td>
                 <td class="py-3 px-2 text-gray-400">${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                 <td class="py-3 px-2">
-                    <button onclick="publishContent('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300">Publish</button>
+                    <button onclick="event.stopPropagation(); publishContent('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300">Publish</button>
+                </td>
+            </tr>
+            <tr id="detail-${c.id}" class="border-b border-gray-800 hidden">
+                <td colspan="6" class="py-4 px-6">
+                    <div class="bg-gray-800 rounded-lg p-4 text-gray-200 max-h-[500px] overflow-y-auto font-sans text-sm leading-relaxed content-body"></div>
                 </td>
             </tr>`;
         }).join('');
@@ -147,6 +153,26 @@ async function publishContent(id) {
     } catch (e) {
         alert('Failed to publish');
     }
+}
+
+// Store loaded content items for detail expansion
+let _contentCache = {};
+
+function toggleContentDetail(row, id) {
+    const detail = document.getElementById('detail-' + id);
+    if (!detail) return;
+    if (!detail.classList.contains('hidden')) {
+        detail.classList.add('hidden');
+        return;
+    }
+    // Fill body content from cache
+    const contentDiv = detail.querySelector('.content-body');
+    if (contentDiv && _contentCache[id]) {
+        const body = _contentCache[id].body || _contentCache[id].body_preview || '';
+        // Render as HTML (content is AI-generated, trusted source)
+        contentDiv.innerHTML = body || '<span class="text-gray-500">No content generated yet</span>';
+    }
+    detail.classList.remove('hidden');
 }
 
 loadQueue();
