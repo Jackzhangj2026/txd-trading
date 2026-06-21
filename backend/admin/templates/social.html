@@ -165,12 +165,30 @@ function toggleContentDetail(row, id) {
         detail.classList.add('hidden');
         return;
     }
-    // Fill body content from cache
     const contentDiv = detail.querySelector('.content-body');
     if (contentDiv && _contentCache[id]) {
-        const body = _contentCache[id].body || _contentCache[id].body_preview || '';
-        // Render as HTML (content is AI-generated, trusted source)
-        contentDiv.innerHTML = body || '<span class="text-gray-500">No content generated yet</span>';
+        const item = _contentCache[id];
+        const body = item.body || item.body_preview || '';
+        const platform = item.platform || '';
+
+        // Platform-specific wrapper styling
+        if (platform === 'red') {
+            contentDiv.innerHTML = `
+                <div style="max-width:420px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                    <div style="padding:20px 16px 16px;color:#222;font-size:15px;line-height:1.7;">
+                        ${body || '<p class="text-gray-400">No content</p>'}
+                    </div>
+                    <div style="padding:0 16px 16px;display:flex;align-items:center;gap:8px;color:#999;font-size:12px;border-top:1px solid #f0f0f0;margin:0 16px;padding-top:12px;">
+                        <span>❤️ 0</span><span>💬 0</span><span>⭐ 0</span>
+                    </div>
+                </div>`;
+        } else {
+            // Default: clean card
+            contentDiv.innerHTML = `
+                <div style="max-width:600px;background:#1f2937;border-radius:12px;padding:20px;color:#e5e7eb;font-size:14px;line-height:1.6;">
+                    ${body || '<span class="text-gray-500">No content generated yet</span>'}
+                </div>`;
+        }
     }
     detail.classList.remove('hidden');
 }

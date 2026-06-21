@@ -118,24 +118,35 @@ BODY: <post content>"""
         return await self._call_and_parse(prompt, topic, "facebook")
 
     async def _red_note(self, topic: str) -> dict:
-        """Generate a 小红书 RED note — English, product intro, with image placeholders."""
-        prompt = f"""Write a Xiaohongshu (RED) note in ENGLISH about: {topic}
+        """Generate a 小红书 RED note — English, Xiaohongshu-style formatting with HTML."""
+        prompt = f"""Write a Xiaohongshu (RED) note in ENGLISH for international audience.
 
-Company: TXD CO., LTD — PP hollow board / plastic corrugated sheet manufacturer in Xiamen, China.
+Topic: {topic}
+Company: TXD CO., LTD — PP hollow board manufacturer in Xiamen, China.
 
-Requirements:
-- Write in ENGLISH (targeting international audience on RED)
-- "种草" (product recommendation) style — authentic, helpful, not salesy
-- 150-300 words
-- Include 3-5 emoji
-- Use {{image_1}}, {{image_2}}, {{image_3}}, {{image_4}} placeholders to mark where product photos should go — place each one on its own line
-- After each image placeholder, add a short caption line describing what the image shows (e.g. "▲ PP hollow board close-up — lightweight yet strong")
-- End with a question to encourage comments
-- 3-4 hashtags
+CRITICAL: Output the body as complete HTML — use <p> for paragraphs, <b> or <strong> for emphasis, <br> for line breaks. This HTML will be rendered directly.
+
+RED Note Style Requirements:
+- Start with an attention-grabbing title line in <h3>
+- Use <p> paragraphs — conversational, friendly, authentic sharing tone (NOT corporate sales pitch)
+- Include 3-5 emoji throughout
+- Insert {{image_1}}, {{image_2}}, {{image_3}}, {{image_4}} each on its own line — they will become real product photos
+- After each image placeholder, add a <p> caption like "▲ Lightweight PP hollow board — only 1/3 the weight of wood"
+- End with a <p> question to engage readers
+- Finish with <p> hashtags: #PPhollowBoard #SustainablePackaging #FactoryDirect etc.
+
+The HTML body should be 150-300 words, clean semantic HTML (no CSS, no classes).
 
 Respond in format:
-TITLE: <catchy note title in English>
-BODY: <full note with HTML formatting: use <p> for paragraphs, <b> for emphasis, emoji as text>"""
+TITLE: <catchy title>
+BODY: <h3>...</h3>
+<p>...</p>
+{{image_1}}
+<p>▲ ...</p>
+<p>...</p>
+{{image_2}}
+<p>▲ ...</p>
+...etc..."""
         return await self._call_and_parse(prompt, topic, "red")
 
     async def _douyin_script(self, topic: str) -> dict:
