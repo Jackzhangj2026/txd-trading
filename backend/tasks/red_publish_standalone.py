@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-"""RED auto-publish standalone — login → click 写长文 → 新的创作 → fill → upload images → publish."""
-import sys, os, json, asyncio, re, base64, tempfile
+"""RED auto-publish: 发布笔记 → 上传图文 → 上传图片 → 填标题 → 填正文 → 填话题 → 发布"""
+import sys, os, json, asyncio, re, base64, tempfile, random
 from pathlib import Path
 
-# Fix Windows encoding
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from playwright.async_api import async_playwright, TimeoutError as PWTimeout
 
 RED_URL = "https://creator.xiaohongshu.com/publish/publish"
+FACTORY_IMG = Path(__file__).parent.parent.parent / "factory image"
 BASE = Path(__file__).parent.parent.parent / "browser_data"
 STATE = BASE / "red_state.json"
 DEBUG = BASE / "debug"
@@ -28,22 +26,29 @@ async def shot(page, name):
 
 async def click_by_text(page, text):
     """Click first visible element with exact text using JS evaluate."""
-    return await page.evaluate("""
-        ([text]) => {
-            const all = document.querySelectorAll('span, div, button, a');
-            for (const el of all) {
-                if (el.textContent.trim() === text && el.offsetParent !== null) {
-                    el.click();
-                    return 'clicked';
-                }
+    return await page.evaluate("""([text]) => {
+        const all = document.querySelectorAll('span, div, button, a');
+        for (const el of all) {
+            if (el.textContent.trim() === text && el.offsetParent !== null) {
+                el.click(); return 'clicked';
             }
-            return 'not found';
         }
-    """, [text])
+        return 'not found';
+    }""", [text])
+
+
+def pick_factory_images(count=4):
+    """Pick random images from factory image folder."""
+    if not FACTORY_IMG.is_dir():
+        return []
+    all_imgs = [str(FACTORY_IMG / f) for f in os.listdir(FACTORY_IMG)
+                if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
+    if len(all_imgs) <= count:
+        return all_imgs
+    return random.sample(all_imgs, count)
 
 
 async def main():
-    # Load payload
     if not PAYLOAD.exists():
         print(json.dumps({"success": False, "message": "No payload file"}))
         return
@@ -51,6 +56,10 @@ async def main():
         payload = json.load(f)
     title = payload.get("title", "Test")
     body = payload.get("body", "<p>Test content</p>")
+
+    # Pick 3-4 random factory images
+    image_files = pick_factory_images(random.randint(3, 4))
+    print(f"  Selected {len(image_files)} factory images")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
@@ -62,169 +71,122 @@ async def main():
         page = await ctx.new_page()
 
         try:
-            # 1. Navigate
+            # ── 1. Navigate ──
             await page.goto(RED_URL, timeout=30000)
             await page.wait_for_timeout(8000)
-            await shot(page, "00_page_loaded")
+            await shot(page, "01_page")
 
-            # 2. Login if needed
+            # ── 2. Login if needed ──
             if "login" in page.url.lower():
+                print("  Login: scan QR...")
                 await page.wait_for_url(lambda u: "login" not in u.lower(), timeout=180000)
                 await ctx.storage_state(path=str(STATE))
                 await page.wait_for_timeout(5000)
-
             if "login" in page.url.lower():
-                print(json.dumps({"success": False, "message": "Login failed"}))
-                return
+                print(json.dumps({"success": False, "message": "Login failed"})); return
 
-            # 3. Click to create new note
-            # Page may show "发布笔记" (dashboard) or "写长文" (publish page tabs)
+            # ── 3. Click 发布笔记 ──
             r = await click_by_text(page, "发布笔记")
-            if r != "clicked":
-                r = await click_by_text(page, "写长文")
-            if r != "clicked":
-                r = await click_by_text(page, "新的创作")
-            if r != "clicked":
-                all_text = await page.evaluate("""() => {
-                    const spans = document.querySelectorAll('span, div, button, a');
-                    const found = [];
-                    for (const el of spans) {
-                        const t = el.textContent.trim();
-                        if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) found.push(t);
-                    }
-                    return [...new Set(found)].slice(0, 20);
-                }""")
-                await shot(page, "error_no_create_button")
-                print(json.dumps({"success": False, "message": f"No create button. Texts: {all_text}"}))
-                return
-            print(f"  Clicked create button: {r}")
+            print(f"  发布笔记: {r}")
             await page.wait_for_timeout(3000)
 
-            # 4. If we landed on publish page with tabs, click "写长文"
-            # (dashboard's "发布笔记" goes directly to editor, but publish page needs tab selection)
-            r2 = await click_by_text(page, "写长文")
-            if r2 == "clicked":
-                print("  Clicked 写长文 tab")
-                await page.wait_for_timeout(3000)
+            # ── 4. Click 上传图文 ──
+            r = await click_by_text(page, "上传图文")
+            print(f"  上传图文: {r}")
+            await page.wait_for_timeout(5000)
+            await shot(page, "02_after_upload_tuwen")
 
-            # 5. Click "新的创作" if present
-            r3 = await click_by_text(page, "新的创作")
-            if r3 == "clicked":
-                print("  Clicked 新的创作")
-                await page.wait_for_timeout(5000)
+            # ── 5. Upload images ──
+            print(f"  Uploading {len(image_files)} images...")
+            for i, img_path in enumerate(image_files):
+                try:
+                    # Click upload area to trigger file dialog
+                    # On RED note editor, there's usually a "+" or image area
+                    upload_triggers = ['上传图片', '添加图片']
+                    for ut in upload_triggers:
+                        r = await click_by_text(page, ut)
+                        if r == "clicked":
+                            print(f"  Clicked '{ut}'")
+                            break
+                    await page.wait_for_timeout(500)
 
-            # 6. Wait for editor
-            await page.wait_for_timeout(3000)
-            try:
-                await page.wait_for_selector('input:visible, [contenteditable="true"]:visible', timeout=20000)
-            except PWTimeout:
-                print(json.dumps({"success": False, "message": "Editor did not load"}))
-                return
-            await shot(page, "editor_loaded")
+                    # Try file input
+                    fi = page.locator('input[type="file"]').first
+                    if await fi.count() > 0:
+                        await fi.set_input_files(img_path)
+                        print(f"  Image {i+1}/{len(image_files)} uploaded")
+                        await page.wait_for_timeout(1500)
+                    else:
+                        # Try file chooser
+                        try:
+                            async with page.expect_file_chooser(timeout=3000) as fc:
+                                # Click any upload-like element
+                                for cls in ['[class*="upload"]', '[class*="add"]', '[class*="image"]']:
+                                    el = page.locator(cls).first
+                                    if await el.count() > 0 and await el.is_visible():
+                                        await el.click(); break
+                            fc_obj = await fc.value
+                            await fc_obj.set_files(img_path)
+                            print(f"  Image {i+1}/{len(image_files)} via filechooser")
+                            await page.wait_for_timeout(1500)
+                        except:
+                            print(f"  Image {i+1}: no upload method found")
+                except Exception as e:
+                    print(f"  Image {i+1} error: {e}")
 
-            # 6. Fill title
+            await page.wait_for_timeout(2000)
+            await shot(page, "03_images_uploaded")
+
+            # ── 6. Fill title ──
             for i in range(min(await page.locator('input:visible').count(), 10)):
                 try:
                     el = page.locator('input:visible').nth(i)
                     ph = (await el.get_attribute('placeholder') or '')
-                    if '标题' in ph or 'title' in ph.lower() or (not ph and i == 0):
+                    tp = await el.get_attribute('type') or 'text'
+                    if '标题' in ph or 'title' in ph.lower() or (tp == 'text' and not ph):
                         await el.fill(title)
+                        print(f"  Title filled")
                         break
                 except: pass
 
-            # 7. Fill content (plain text)
+            # ── 7. Fill content ──
             plain = re.sub(r'<img[^>]*>', '', body)
             plain = re.sub(r'<[^>]+>', '', plain).strip()
-            editable = page.locator('[contenteditable="true"]:visible').first
-            if await editable.count() > 0:
-                await editable.fill(plain)
-                await page.wait_for_timeout(1000)
+            ce = page.locator('[contenteditable="true"]:visible').first
+            if await ce.count() > 0:
+                await ce.fill(plain)
+                print("  Content filled")
+            await page.wait_for_timeout(1000)
 
-            # 8. Upload images
-            imgs = re.findall(r'<img[^>]*src="data:image/([^;]+);base64,([^"]+)"[^>]*>', body)
-            if imgs:
-                print(f"  Uploading {len(imgs)} images...")
-                await shot(page, "before_images")
+            # ── 8. Fill topics/hashtags ──
+            # RED has a topic input — try to find it
+            for i in range(min(await page.locator('input:visible').count(), 15)):
+                try:
+                    el = page.locator('input:visible').nth(i)
+                    ph = (await el.get_attribute('placeholder') or '')
+                    if '话题' in ph or '标签' in ph or 'tag' in ph.lower() or 'topic' in ph.lower():
+                        await el.fill("#PPhollowBoard #SustainablePackaging #FactoryDirect")
+                        print(f"  Topics filled")
+                        break
+                except: pass
 
-                # Debug: check frames and find upload mechanism
-                frames = page.frames
-                print(f"  Frames: {len(frames)}")
-                fi_count = await page.locator('input[type="file"]').count()
-                print(f"  File inputs: {fi_count}")
-                all_in = await page.locator('input').count()
-                print(f"  All inputs: {all_in}")
+            await page.wait_for_timeout(1000)
+            await shot(page, "04_filled")
 
-                for fi, frame in enumerate(frames):
-                    if frame != page.main_frame:
-                        fi_in_frame = await frame.locator('input[type="file"]').count()
-                        print(f"  Frame {fi}: {fi_in_frame} file inputs")
-
-                for i, (fmt, b64) in enumerate(imgs[:9]):
-                    uploaded = False
-                    try:
-                        data = base64.b64decode(b64)
-                        ext = "png" if fmt.lower() == "png" else "jpg"
-                        tmp = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
-                        tmp.write(data); tmp.close()
-
-                        # Strategy 1: Find ANY file input (visible or hidden)
-                        all_inputs = page.locator('input[type="file"]')
-                        if await all_inputs.count() > 0:
-                            await all_inputs.first.set_input_files(tmp.name)
-                            print(f"  Image {i+1}/{len(imgs)} uploaded via file input")
-                            await page.wait_for_timeout(1500)
-                            uploaded = True
-
-                        # Strategy 2: Click toolbar then upload
-                        if not uploaded:
-                            for img_sel in ['[class*="image"]', '[class*="img"]', '[class*="pic"]', '[class*="upload"]']:
-                                btn = page.locator(img_sel).first
-                                if await btn.count() > 0 and await btn.is_visible():
-                                    await btn.click(); await page.wait_for_timeout(500)
-                                    fi = page.locator('input[type="file"]').first
-                                    if await fi.count() > 0:
-                                        await fi.set_input_files(tmp.name)
-                                        print(f"  Image {i+1} via {img_sel}")
-                                        await page.wait_for_timeout(1500)
-                                        uploaded = True
-                                        break
-
-                        # Strategy 3: File chooser event
-                        if not uploaded:
-                            try:
-                                async with page.expect_file_chooser(timeout=3000) as fc_info:
-                                    ed = page.locator('[contenteditable="true"]:visible').first
-                                    if await ed.count() > 0: await ed.click()
-                                fc = await fc_info.value
-                                await fc.set_files(tmp.name)
-                                print(f"  Image {i+1} via filechooser")
-                                await page.wait_for_timeout(1500)
-                                uploaded = True
-                            except: pass
-
-                        if not uploaded:
-                            print(f"  Image {i+1}: no method worked")
-                        os.unlink(tmp.name)
-                    except Exception as e:
-                        print(f"  Image {i+1} error: {e}")
-                        try: os.unlink(tmp.name)
-                        except: pass
-
-            await page.wait_for_timeout(2000)
-            await shot(page, "filled")
-
-            # 9. Click publish
+            # ── 9. Publish ──
             for pub_text in ['发布', '发布笔记']:
                 r = await click_by_text(page, pub_text)
                 if r == "clicked":
                     await page.wait_for_timeout(5000)
-                    await shot(page, "published")
-                    print(json.dumps({"success": True, "message": f"Published via '{pub_text}'"}))
+                    await shot(page, "05_published")
+                    print(json.dumps({"success": True, "message": f"Published via '{pub_text}'", "images": len(image_files)}))
                     break
             else:
                 print(json.dumps({"success": False, "message": "Publish button not found"}))
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(json.dumps({"success": False, "message": f"{type(e).__name__}: {e}"}))
         finally:
             await page.wait_for_timeout(3000)
