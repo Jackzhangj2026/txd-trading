@@ -87,25 +87,26 @@ class REDPublisher:
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=150.0)
+            stderr_text = stderr.decode("utf-8", errors="replace") if stderr else ""
+            stdout_text = stdout.decode("utf-8", errors="replace") if stdout else ""
 
-            if stderr:
-                print(f"[REDPublisher stderr] {stderr.decode('utf-8', errors='replace')[:500]}")
+            if stderr_text:
+                print(f"[REDPublisher stderr]\n{stderr_text[:800]}")
 
-            output = stdout.decode("utf-8", errors="replace").strip()
-            # Find JSON in output (might have print() noise before it)
-            for line in output.split("\n"):
+            # Find JSON in output
+            for line in stdout_text.split("\n"):
                 line = line.strip()
                 if line.startswith("{") and line.endswith("}"):
-                    try:
-                        return _json.loads(line)
+                    try: return _json.loads(line)
                     except: pass
 
-            if output:
-                try:
-                    return _json.loads(output.split("\n")[-1])
+            # Try last line
+            lines = [l.strip() for l in stdout_text.split("\n") if l.strip()]
+            if lines:
+                try: return _json.loads(lines[-1])
                 except: pass
 
-            return {"success": False, "message": f"Subprocess: {output[:200] or 'no output'}"}
+            return {"success": False, "message": f"Subprocess: {stdout_text[:200] or stderr_text[:200] or 'no output'}"}
 
         except asyncio.TimeoutError:
             return {"success": False, "message": "Publish timed out (150s)"}

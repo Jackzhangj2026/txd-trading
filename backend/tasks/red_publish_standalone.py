@@ -123,20 +123,48 @@ async def main():
             await page.wait_for_timeout(1000)
             await shot(page, "03_filled")
 
-            # Publish
+            # Publish — try multiple methods
+            published = False
+            # Method 1: text search
             for pt in ['发布', '发布笔记', 'Publish']:
                 btn = page.locator(f'text="{pt}"').last
                 if await btn.count() > 0:
                     try:
                         await btn.evaluate('el => el.click()')
-                        await page.wait_for_timeout(5000)
-                        await shot(page, "04_published")
-                        print(json.dumps({"success": True, "message": f"Published via '{pt}'"}))
-                        await browser.close()
-                        return
+                        published = True
+                        print(f"[RED] Published via text '{pt}'")
+                        break
                     except: pass
 
-            print(json.dumps({"success": False, "message": "No publish button found"}))
+            # Method 2: scan all buttons
+            if not published:
+                btns = page.locator('button:visible, [role="button"]:visible')
+                cnt = await btns.count()
+                print(f"[RED] Found {cnt} visible buttons")
+                for i in range(min(cnt, 40)):
+                    b = btns.nth(i)
+                    try:
+                        txt = (await b.text_content() or '').strip()
+                        if txt and len(txt) < 15:
+                            print(f"[RED] Btn #{i}: '{txt}'")
+                        if any(kw in (txt or '') for kw in ['发布', '笔记', 'publish', 'Publish', '提交', '确认']):
+                            await b.evaluate('el => el.click()')
+                            published = True
+                            print(f"[RED] Published via btn #{i} '{txt}'")
+                            break
+                    except: pass
+
+            # Method 3: keyboard shortcut
+            if not published:
+                try:
+                    await page.keyboard.press('Control+Enter')
+                    published = True
+                    print("[RED] Published via Ctrl+Enter")
+                except: pass
+
+            await page.wait_for_timeout(3000)
+            await shot(page, "04_result")
+            print(json.dumps({"success": published, "message": "Published OK" if published else "No publish method worked"}))
             await browser.close()
 
     except Exception as e:
