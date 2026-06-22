@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""RED auto-publish: 发布笔记 → 上传图文 → 上传图片 → 填标题 → 填正文 → 填话题 → 发布"""
-import sys, os, json, asyncio, re, base64, tempfile, random
+"""RED auto-publish standalone script."""
+import sys, os, json, asyncio, re, random
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-from playwright.async_api import async_playwright, TimeoutError as PWTimeout
+from playwright.async_api import async_playwright
 
 RED_URL = "https://creator.xiaohongshu.com/publish/publish"
 FACTORY_IMG = Path(__file__).parent.parent.parent / "factory image"
@@ -24,296 +24,208 @@ async def shot(page, name):
     except: pass
 
 
-async def click_by_text(page, text):
-    """Click first element with exact text, trying different visibility checks."""
+async def click_text(page, text):
     return await page.evaluate("""([text]) => {
-        const all = document.querySelectorAll('span, div, button, a, li');
-        // First try: visible elements
-        for (const el of all) {
+        for (const el of document.querySelectorAll('*')) {
             if (el.textContent.trim() === text && el.offsetParent !== null) {
-                el.click(); return 'clicked visible';
+                el.click(); return 'ok';
             }
         }
-        // Fallback: any element (might be hidden but clickable)
-        for (const el of all) {
-            if (el.textContent.trim() === text && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
-                el.click(); return 'clicked any';
-            }
-        }
-        return 'not found';
+        return 'no';
     }""", [text])
-
-
-def pick_factory_images(count=4):
-    """Pick random images from factory image folder."""
-    if not FACTORY_IMG.is_dir():
-        return []
-    all_imgs = [str(FACTORY_IMG / f) for f in os.listdir(FACTORY_IMG)
-                if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
-    if len(all_imgs) <= count:
-        return all_imgs
-    return random.sample(all_imgs, count)
 
 
 async def main():
     if not PAYLOAD.exists():
-        print(json.dumps({"success": False, "message": "No payload file"}))
-        return
-    with open(PAYLOAD, "r", encoding="utf-8") as f:
-        payload = json.load(f)
-    title = payload.get("title", "Test")
-    body = payload.get("body", "<p>Test content</p>")
+        print(json.dumps({"success": False, "message": "No payload"})); return
+    d = json.load(open(PAYLOAD, "r", encoding="utf-8"))
+    title = d["title"][:20]
+    body = d.get("body", "")
 
-    # Pick 3-4 random factory images
-    image_files = pick_factory_images(random.randint(3, 4))
-    print(f"  Selected {len(image_files)} factory images")
+    # Pick random factory images
+    imgs = list(FACTORY_IMG.glob("*.jpg")) + list(FACTORY_IMG.glob("*.png"))
+    imgs = random.sample(imgs, min(random.randint(3, 4), len(imgs)))
+    print(f"  {len(imgs)} images")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
-        ctx = await browser.new_context(
-            viewport={"width": 1280, "height": 900},
-            storage_state=str(STATE) if STATE.exists() else None,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        )
+        ctx = await browser.new_context(viewport={"width": 1280, "height": 900},
+            storage_state=str(STATE) if STATE.exists() else None)
         page = await ctx.new_page()
 
         try:
-            # ── 1. Navigate (force fresh start) ──
-            # Go to creator home first, then publish page
+            # 1. Navigate
             await page.goto("https://creator.xiaohongshu.com", timeout=30000)
             await page.wait_for_timeout(5000)
             if "login" in page.url.lower():
-                print("  Login: scan QR...")
                 await page.wait_for_url(lambda u: "login" not in u.lower(), timeout=180000)
                 await ctx.storage_state(path=str(STATE))
                 await page.wait_for_timeout(5000)
 
-            # Now go to publish page
             await page.goto(RED_URL, timeout=30000)
             await page.wait_for_timeout(8000)
-            await shot(page, "01_page")
+            await shot(page, "01")
 
-            # Login check
-            if "login" in page.url.lower():
-                print(json.dumps({"success": False, "message": "Login required — please scan QR"}))
-                return
-
-            # ── 2. Click 发布笔记 (on dashboard/publish page) ──
-            r = await click_by_text(page, "发布笔记")
+            # 2. Click 发布笔记 → 上传图文
+            r = await click_text(page, "发布笔记")
             print(f"  发布笔记: {r}")
             await page.wait_for_timeout(5000)
-            await shot(page, "02_after_fabubiji")
 
-            # ── 4. Now should be on publish page with tabs. Click 上传图文 ──
-            r = await click_by_text(page, "上传图文")
-            if r == "not found":
-                # Page might have changed URL — wait and retry
-                await page.wait_for_timeout(3000)
-                r = await click_by_text(page, "上传图文")
+            r = await click_text(page, "上传图文")
             print(f"  上传图文: {r}")
-            if r == "not found":
-                # Dump texts to debug
-                all_text = await page.evaluate("""() => {
-                    const all = document.querySelectorAll('*');
-                    const found = [];
-                    for (const el of all) {
-                        const t = el.textContent.trim();
-                        if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) found.push(t);
-                    }
-                    return [...new Set(found)].slice(0, 30);
-                }""")
-                print(f"  Page texts: {all_text}")
-                print(json.dumps({"success": False, "message": f"上传图文 not found. Texts: {all_text[:15]}"}))
-                return
             await page.wait_for_timeout(5000)
-            await shot(page, "03_after_tuwen")
 
-            # ── 5. Upload images (direct to input, no Windows dialog) ──
-            print(f"  Uploading {len(image_files)} images...")
-
-            # Find all file inputs
-            all_fi = page.locator('input[type="file"]')
-            fi_count = await all_fi.count()
-            print(f"  File inputs: {fi_count}")
-
-            for i, img_path in enumerate(image_files):
-                uploaded = False
-                try:
-                    # Try direct set_input_files FIRST (no dialog)
-                    for j in range(fi_count):
-                        try:
-                            await all_fi.nth(j).set_input_files(img_path)
-                            print(f"    [{i+1}] uploaded via input #{j}")
-                            await page.wait_for_timeout(2000)
-                            uploaded = True
-                            break
-                        except Exception as e:
-                            if 'multiple' not in str(e).lower():
-                                raise
-                            # Non-multiple input — try file_chooser
-                            pass
-
-                    if not uploaded:
-                        # Click "上传图片" to make file input appear + trigger chooser
-                        for ut in ['上传图片', '添加图片']:
-                            r = await click_by_text(page, ut)
-                            if r == "clicked":
-                                print(f"    [{i+1}] Clicked '{ut}'")
-                                await page.wait_for_timeout(800)
-                                break
-                        # Try file chooser
-                        try:
-                            async with page.expect_file_chooser(timeout=5000) as fc_info:
-                                pass  # already clicked above
-                            fc = await fc_info.value
-                            await fc.set_files(img_path)
-                            print(f"    [{i+1}] via file_chooser")
-                            await page.wait_for_timeout(2000)
-                            uploaded = True
-                        except:
-                            pass
-
-                    if not uploaded:
-                        print(f"    [{i+1}] FAILED")
-                except Exception as e:
-                    print(f"    [{i+1}] error: {e}")
-
-                # Close any dialog
-                try:
-                    for _ in range(3):
-                        await page.keyboard.press('Escape')
-                        await page.wait_for_timeout(200)
-                except: pass
-
-            # After all images, dismiss modals
+            # 3. Upload images (direct, no dialog)
+            fi = page.locator('input[type="file"]').first
+            for i, img in enumerate(imgs):
+                await fi.set_input_files(str(img))
+                await page.wait_for_timeout(2000)
+                print(f"  img {i+1}/{len(imgs)}")
             await page.wait_for_timeout(2000)
-            for _ in range(3):
-                await page.keyboard.press('Escape')
-                await page.wait_for_timeout(300)
-            for txt in ['取消', '完成', '确定', '知道了']:
-                try:
-                    r = await click_by_text(page, txt)
-                    if r.startswith("clicked"): await page.wait_for_timeout(500)
-                except: pass
-            await shot(page, "03_images_uploaded")
+            await shot(page, "04_imgs")
 
-            await page.wait_for_timeout(3000)
-            await shot(page, "03_images_uploaded")
-
-            # ── 6. Fill title (max 20 chars for RED) ──
-            short_title = title[:20]  # RED limit
+            # 4. Fill title
             for i in range(min(await page.locator('input:visible').count(), 10)):
                 try:
                     el = page.locator('input:visible').nth(i)
                     ph = (await el.get_attribute('placeholder') or '')
-                    tp = await el.get_attribute('type') or 'text'
-                    if '标题' in ph or 'title' in ph.lower() or (tp == 'text' and not ph):
-                        await el.fill(short_title)
-                        print(f"  Title filled ({len(short_title)} chars)")
+                    if '标题' in ph:
+                        await el.fill(title)
+                        print(f"  title: {title}")
                         break
                 except: pass
 
-            # ── 7. Fill content (strip image captions like "photo1, photo2") ──
+            # 5. Fill content (strip image captions)
             plain = re.sub(r'<img[^>]*>', '', body)
             plain = re.sub(r'<[^>]+>', '', plain)
-            # Remove lines with "photo", "image", "▲", "picture" references
-            lines = plain.split('\n')
-            cleaned_lines = []
-            for line in lines:
-                stripped = line.strip()
-                if stripped and not re.match(r'^(photo|image|picture|▲|△)\s*\d*', stripped, re.IGNORECASE):
-                    cleaned_lines.append(stripped)
-            plain = '\n'.join(cleaned_lines).strip()
+            lines = [l.strip() for l in plain.split('\n') if l.strip()
+                     and not re.match(r'^(photo|image|picture|▲|△)\s*\d*', l.strip(), re.I)]
+            plain = '\n'.join(lines)
             ce = page.locator('[contenteditable="true"]:visible').first
             if await ce.count() > 0:
                 await ce.fill(plain)
-                print("  Content filled (image captions removed)")
-            await page.wait_for_timeout(1000)
+                print(f"  content: {len(plain)} chars")
 
-            # ── 8. Fill topics, then click outside to dismiss dropdown mask ──
+            # 6. Topics + dismiss
             for i in range(min(await page.locator('input:visible').count(), 15)):
                 try:
                     el = page.locator('input:visible').nth(i)
                     ph = (await el.get_attribute('placeholder') or '')
-                    if '话题' in ph or '标签' in ph or 'tag' in ph.lower() or 'topic' in ph.lower():
+                    if '话题' in ph:
                         await el.fill("#PPhollowBoard #SustainablePackaging")
-                        print("  Topics filled")
                         break
                 except: pass
+            await page.wait_for_timeout(500)
+            await page.keyboard.press('Escape')
+            await page.wait_for_timeout(300)
+            await page.evaluate("document.body.click()")
+            await page.wait_for_timeout(500)
+            await shot(page, "05_content")
 
-            # Click outside to dismiss any dropdown/mask from topic suggestions
-            await page.wait_for_timeout(500)
-            await page.evaluate("document.body.click()")  # Click on body to close dropdowns
-            await page.wait_for_timeout(500)
-            # Also click in the content area to move focus away
+            # 7. Trigger UI update — click body, blur inputs
+            await page.evaluate("document.body.click()")
+            await page.wait_for_timeout(1000)
+            
+            # Click content area then body again to trigger validation
             ce = page.locator('[contenteditable="true"]:visible').first
             if await ce.count() > 0:
                 await ce.click()
-            await page.wait_for_timeout(500)
-            # Press Escape a few times for good measure
-            for _ in range(3):
-                await page.keyboard.press('Escape')
-                await page.wait_for_timeout(200)
-
+                await page.wait_for_timeout(300)
+            await page.evaluate("document.body.click()")
             await page.wait_for_timeout(1000)
-            await shot(page, "04_filled")
+            await shot(page, "05_content")
 
-            # ── 9. Publish — click with real mouse event ──
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_timeout(1000)
+            # 8. Wait for bottom publish bar (fixed OR sticky)
+            print("  waiting for bottom publish bar...")
+            for attempt in range(10):
+                has = await page.evaluate("""() => {
+                    for (const el of document.querySelectorAll('*')) {
+                        const t = el.textContent.trim();
+                        if (t === '发布' || t === '发布笔记') {
+                            let p = el;
+                            while (p && p !== document.body) {
+                                const pos = getComputedStyle(p).position;
+                                if (pos === 'fixed' || pos === 'sticky') return true;
+                                p = p.parentElement;
+                            }
+                            // Also check if element is at very bottom of viewport
+                            const rect = el.getBoundingClientRect();
+                            if (rect.bottom > window.innerHeight - 60 && rect.top > window.innerHeight * 0.6) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }""")
+                if has:
+                    print(f"  bar visible at attempt {attempt+1}")
+                    break
+                await page.wait_for_timeout(2000)
 
-            published = False
-            # Use Playwright locator click (real mouse event, not JS click)
-            for pub_sel in [
-                'button:has-text("发布")',
-                'button:has-text("发布笔记")',
-                'span:has-text("发布")',
-                'div:has-text("发布")',
-                '[class*="publish"]',
-                '[class*="submit"]',
-            ]:
-                btn = page.locator(pub_sel).last  # last = bottom one
-                if await btn.count() > 0:
-                    try:
-                        await btn.click(timeout=5000)
-                        print(f"  Clicked publish via: {pub_sel}")
-                        published = True
-                        await page.wait_for_timeout(5000)
-                        break
-                    except: pass
+            # 9. Click red publish button in bottom bar (next to 暂存离开)
+            r = await page.evaluate("""() => {
+                // Find bottom bar: look for "暂存离开" as anchor, then find nearby "发布"
+                let saveBtn = null;
+                for (const el of document.querySelectorAll('*')) {
+                    if (el.textContent.trim() === '暂存离开' && el.offsetParent !== null) {
+                        saveBtn = el;
+                        break;
+                    }
+                }
+                if (saveBtn) {
+                    // Get parent container (bottom bar)
+                    let bar = saveBtn;
+                    while (bar && bar !== document.body) {
+                        const pos = getComputedStyle(bar).position;
+                        if (pos === 'fixed' || pos === 'sticky') break;
+                        bar = bar.parentElement;
+                    }
+                    if (bar && bar !== document.body) {
+                        // Find "发布" button inside the same bar
+                        const pubBtns = bar.querySelectorAll('*');
+                        for (const b of pubBtns) {
+                            const t = b.textContent.trim();
+                            if (t === '发布' && b.offsetParent !== null) {
+                                b.click();
+                                return 'ok bar ' + b.tagName;
+                            }
+                        }
+                    }
+                }
+                // Fallback: find bottom-most red clickable element
+                let best = null, bestBottom = -1;
+                for (const el of document.querySelectorAll('button, span, div, a')) {
+                    const t = el.textContent.trim();
+                    if ((t === '发布' || t === '发布笔记') && el.offsetParent !== null) {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.bottom > bestBottom) {
+                            bestBottom = rect.bottom;
+                            best = el;
+                        }
+                    }
+                }
+                if (best) { best.click(); return 'ok best ' + best.tagName; }
+                
+                // Last resort: click the parent of any visible "发布"
+                for (const el of document.querySelectorAll('*')) {
+                    if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
+                        && el.childNodes[0].textContent.trim() === '发布'
+                        && el.offsetParent !== null) {
+                        el.click(); return 'ok textNode ' + el.tagName;
+                    }
+                }
+                return 'not found';
+            }""")
+            print(f"  publish: {r}")
+            print(f"  publish: {r}")
+            await page.wait_for_timeout(5000)
+            await shot(page, "99_done")
 
-            # If not found, try clicking red buttons at bottom
-            if not published:
-                btns = page.locator('button:visible, [role="button"]:visible')
-                for i in range(min(await btns.count(), 30)):
-                    try:
-                        b = btns.nth(i)
-                        txt = (await b.text_content() or '').strip()
-                        bg = await b.evaluate('el => getComputedStyle(el).backgroundColor')
-                        if txt in ('发布', '发布笔记') or ('255' in bg and 'red' in str(bg).lower()):
-                            await b.click(timeout=5000)
-                            print(f"  Clicked button #{i}: '{txt}' bg={bg}")
-                            published = True
-                            await page.wait_for_timeout(5000)
-                            break
-                    except: pass
-
-            # Check for publish confirmation dialog
-            for confirm_text in ['确定', '确认', '发布', '是']:
-                try:
-                    r = await click_by_text(page, confirm_text)
-                    if r.startswith("clicked"):
-                        print(f"  Confirmed: '{confirm_text}'")
-                        await page.wait_for_timeout(3000)
-                except: pass
-
-            await shot(page, "05_published")
-            print(json.dumps({"success": True, "message": "Published" if published else "No publish btn", "images": len(image_files)}))
+            print(json.dumps({"success": r.startswith("ok"), "message": r, "images": len(imgs)}))
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(json.dumps({"success": False, "message": f"{type(e).__name__}: {e}"}))
+            import traceback; traceback.print_exc()
+            print(json.dumps({"success": False, "message": str(e)}))
         finally:
             await page.wait_for_timeout(3000)
             await browser.close()
