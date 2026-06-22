@@ -48,11 +48,6 @@
     </div>
     <!-- RED Auto Publish Panel -->
     <div id="red-auto-mini" class="hidden p-4 rounded-lg mb-3" style="background:rgba(108,92,231,0.05);border:1px solid rgba(108,92,231,0.15)">
-        <div class="flex items-center gap-3 mb-3">
-            <span id="login-status-icon" class="text-lg">🔴</span>
-            <span id="login-status-text" class="text-sm text-gray-400">Not logged in — login once to enable auto-publish</span>
-            <button onclick="loginRED()" id="login-btn" class="ml-auto px-3 py-1 rounded-lg text-xs font-semibold border border-purple-400 text-purple-400 hover:bg-purple-400/10">🔑 Login</button>
-        </div>
         <div class="flex items-center gap-3 flex-wrap">
             <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-500">Time</span>
@@ -355,14 +350,7 @@ async function loadAutoSettings() {
         document.getElementById('auto-time').value = s.publish_time || '09:00';
         document.getElementById('auto-count').value = s.daily_count || 1;
         document.getElementById('auto-enabled').checked = s.enabled || false;
-        updateLoginStatus(s.logged_in);
     } catch (e) { /* ignore */ }
-}
-
-function updateLoginStatus(loggedIn) {
-    document.getElementById('login-status-icon').textContent = loggedIn ? '🟢' : '🔴';
-    document.getElementById('login-status-text').textContent = loggedIn ? 'Logged in ✓' : 'Not logged in';
-    document.getElementById('login-btn').textContent = loggedIn ? '🔄 Re-login' : '🔑 Login';
 }
 
 async function saveAutoSettings() {
@@ -381,23 +369,6 @@ async function saveAutoSettings() {
     } catch (e) {
         document.getElementById('auto-msg').textContent = '❌ Save failed';
     }
-}
-
-async function loginRED() {
-    const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.textContent = 'Opening...';
-    document.getElementById('auto-msg').textContent = 'Browser opening — scan QR code to login...';
-    try {
-        const res = await fetch('/api/content-media/red-login', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) { updateLoginStatus(true); document.getElementById('auto-msg').textContent = '✅ Login saved!'; }
-        else { document.getElementById('auto-msg').textContent = '⚠️ ' + data.message; }
-    } catch (e) {
-        document.getElementById('auto-msg').textContent = '❌ Login failed';
-    }
-    btn.disabled = false;
-    btn.textContent = '🔑 Login';
 }
 
 async function autoPublishNow() {

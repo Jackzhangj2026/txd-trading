@@ -66,19 +66,16 @@ class REDPublisher:
         tags: list[str] | None = None,
         headless: bool = False,
     ) -> dict:
-        """Publish a RED note — debug mode with screenshots."""
+        """Publish to RED. Auto-login if needed (opens browser for QR scan)."""
         import re, base64, tempfile, time
 
         debug_dir = self.user_data / "debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
 
         state_path = self.user_data / "red_state.json"
-        if not state_path.exists():
-            return {"success": False, "message": "Not logged in", "action": "login_required"}
 
         async def _shot(page, name):
-            try:
-                await page.screenshot(path=str(debug_dir / f"{name}_{int(time.time())}.png"))
+            try: await page.screenshot(path=str(debug_dir / f"{name}_{int(time.time())}.png"))
             except: pass
 
         try:
@@ -87,21 +84,47 @@ class REDPublisher:
                     headless=headless,
                     args=["--disable-blink-features=AutomationControlled"]
                 )
-                context = await browser.new_context(
-                    viewport={"width": 1280, "height": 900},
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    storage_state=str(state_path),
-                )
+
+                # If logged in, restore state; otherwise fresh context
+                if state_path.exists():
+                    context = await browser.new_context(
+                        viewport={"width": 1280, "height": 900},
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        storage_state=str(state_path),
+                    )
+                else:
+                    context = await browser.new_context(
+                        viewport={"width": 1280, "height": 900},
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    )
+
                 page = await context.new_page()
 
-                # Step 1: Go to publish page
+                # Go to publish page
                 await page.goto(RED_PUBLISH_URL, wait_until="domcontentloaded", timeout=30000)
                 await page.wait_for_timeout(3000)
                 await _shot(page, "01_publish_page")
 
+                # Auto-login if needed
+                if "login" in page.url.lower():
+                    print("[REDPublisher] Not logged in — opening login page. Please scan QR code...")
+                    # Wait for user to scan QR and redirect
+                    try:
+                        await page.wait_for_url(
+                            lambda url: "login" not in url.lower() and "creator" in url.lower(),
+                            timeout=120000,
+                        )
+                        print("[REDPublisher] Login successful — saving session.")
+                        await context.storage_state(path=str(state_path))
+                        await page.wait_for_timeout(2000)
+                    except PlaywrightTimeout:
+                        await browser.close()
+                        return {"success": False, "message": "Login timed out (120s). Scan QR code and try again.", "action": "login_required"}
+
+                # Check again
                 if "login" in page.url.lower():
                     await browser.close()
-                    return {"success": False, "message": "Session expired", "action": "login_required"}
+                    return {"success": False, "message": "Still on login page. Try again.", "action": "login_required"}
 
                 # Step 2: Upload images (RED: images first, then text)
                 img_pattern = re.findall(r'<img[^>]*src="data:image/([^;]+);base64,([^"]+)"[^>]*>', body)
