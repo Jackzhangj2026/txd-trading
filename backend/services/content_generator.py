@@ -118,35 +118,28 @@ BODY: <post content>"""
         return await self._call_and_parse(prompt, topic, "facebook")
 
     async def _red_note(self, topic: str) -> dict:
-        """Generate a 小红书 RED note — English, Xiaohongshu-style formatting with HTML."""
+        """Generate a RED note — clean text, no image placeholders (images auto-uploaded)."""
         prompt = f"""Write a Xiaohongshu (RED) note in ENGLISH for international audience.
 
 Topic: {topic}
 Company: TXD CO., LTD — PP hollow board manufacturer in Xiamen, China.
 
-CRITICAL: Output the body as complete HTML — use <p> for paragraphs, <b> or <strong> for emphasis, <br> for line breaks. This HTML will be rendered directly.
-
-RED Note Style Requirements:
-- Start with an attention-grabbing title line in <h3>
-- Use <p> paragraphs — conversational, friendly, authentic sharing tone (NOT corporate sales pitch)
+CRITICAL RULES:
+- Title MUST be 20 characters or less (RED limit)
+- DO NOT include any image placeholders like {{{{image_1}}}} — images will be added automatically
+- DO NOT include photo references like "photo 1", "Image 1", "▲ see photo" etc.
+- Output as clean HTML: use <p> for paragraphs, <b> for emphasis
+- Start with an engaging <h3> title line
+- 150-300 words, friendly authentic sharing tone (not sales pitch)
 - Include 3-5 emoji throughout
-- Insert {{image_1}}, {{image_2}}, {{image_3}}, {{image_4}} each on its own line — they will become real product photos
-- After each image placeholder, add a <p> caption like "▲ Lightweight PP hollow board — only 1/3 the weight of wood"
-- End with a <p> question to engage readers
+- End with a question to engage readers
 - Finish with <p> hashtags: #PPhollowBoard #SustainablePackaging #FactoryDirect etc.
 
-The HTML body should be 150-300 words, clean semantic HTML (no CSS, no classes).
-
 Respond in format:
-TITLE: <catchy title>
+TITLE: <title under 20 chars>
 BODY: <h3>...</h3>
 <p>...</p>
-{{image_1}}
-<p>▲ ...</p>
-<p>...</p>
-{{image_2}}
-<p>▲ ...</p>
-...etc..."""
+<p>...</p>"""
         return await self._call_and_parse(prompt, topic, "red")
 
     async def _douyin_script(self, topic: str) -> dict:

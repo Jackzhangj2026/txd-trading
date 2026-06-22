@@ -190,8 +190,8 @@ async def red_publish_now():
 
     generator = ContentGenerator()
     result = await generator.generate_for_platform(topic, "red")
-    body = _embed_factory_images(result.get("body", ""))
-    title = result.get("title", topic)[:300]
+    body = result.get("body", "")  # No image embedding — uploaded separately
+    title = result.get("title", topic)[:20]
 
     # Publish (auto-login if needed)
     pub_result = await publisher.publish(title=title, body=body, headless=False)
@@ -339,7 +339,7 @@ async def generate_content(data: GenerateRequest, db: AsyncSession = Depends(get
 
     for platform in data.platforms:
         result = await generator.generate_for_platform(data.topic, platform)
-        body = _embed_factory_images(result.get("body", ""))
+        body = _embed_factory_images(result.get("body", "")) if platform != "red" else result.get("body", "")
 
         piece = ContentPiece(
             title=result.get("title", data.topic)[:300],
