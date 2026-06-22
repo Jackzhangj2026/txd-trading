@@ -258,60 +258,57 @@ async def main():
             await page.wait_for_timeout(1000)
             await shot(page, "04_filled")
 
-            # ── 9. Publish — find red publish button at bottom ──
+            # ── 9. Publish — click with real mouse event ──
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(1000)
 
-            # Method 1: click by text
             published = False
-            for pub_text in ['发布', '发布笔记']:
-                r = await click_by_text(page, pub_text)
-                if r.startswith("clicked"):
-                    await page.wait_for_timeout(5000)
-                    published = True
-                    break
+            # Use Playwright locator click (real mouse event, not JS click)
+            for pub_sel in [
+                'button:has-text("发布")',
+                'button:has-text("发布笔记")',
+                'span:has-text("发布")',
+                'div:has-text("发布")',
+                '[class*="publish"]',
+                '[class*="submit"]',
+            ]:
+                btn = page.locator(pub_sel).last  # last = bottom one
+                if await btn.count() > 0:
+                    try:
+                        await btn.click(timeout=5000)
+                        print(f"  Clicked publish via: {pub_sel}")
+                        published = True
+                        await page.wait_for_timeout(5000)
+                        break
+                    except: pass
 
-            # Method 2: find red button via JS (bottom publish button is typically red)
+            # If not found, try clicking red buttons at bottom
             if not published:
-                r = await page.evaluate("""() => {
-                    const btns = document.querySelectorAll('button, div[class*="btn"], span[class*="btn"], [class*="publish"], [class*="submit"]');
-                    for (const el of btns) {
-                        const text = el.textContent.trim();
-                        const style = getComputedStyle(el);
-                        const bg = style.backgroundColor;
-                        const isRed = bg.includes('rgb(255,') || bg.includes('rgb(244,') || bg.includes('rgb(230,');
-                        if ((text === '发布' || text === '发布笔记') && el.offsetParent !== null) {
-                            el.click(); return 'clicked text';
-                        }
-                        if (text === '发布' && isRed) {
-                            el.click(); return 'clicked red';
-                        }
-                    }
-                    // Last resort: any red button at bottom
-                    for (const el of btns) {
-                        const style = getComputedStyle(el);
-                        const bg = style.backgroundColor;
-                        if ((bg.includes('rgb(255,') || bg.includes('#ff') || bg.includes('#FF')) && el.offsetParent !== null) {
-                            const rect = el.getBoundingClientRect();
-                            if (rect.top > window.innerHeight * 0.5) {
-                                el.click(); return 'clicked bottom red: ' + el.textContent.trim().substring(0, 10);
-                            }
-                        }
-                    }
-                    return 'not found';
-                }""")
-                if r.startswith("clicked"):
-                    published = True
-                    await page.wait_for_timeout(5000)
+                btns = page.locator('button:visible, [role="button"]:visible')
+                for i in range(min(await btns.count(), 30)):
+                    try:
+                        b = btns.nth(i)
+                        txt = (await b.text_content() or '').strip()
+                        bg = await b.evaluate('el => getComputedStyle(el).backgroundColor')
+                        if txt in ('发布', '发布笔记') or ('255' in bg and 'red' in str(bg).lower()):
+                            await b.click(timeout=5000)
+                            print(f"  Clicked button #{i}: '{txt}' bg={bg}")
+                            published = True
+                            await page.wait_for_timeout(5000)
+                            break
+                    except: pass
 
-            # Method 3: Try Ctrl+Enter shortcut
-            if not published:
-                await page.keyboard.press('Control+Enter')
-                await page.wait_for_timeout(3000)
-                published = True
+            # Check for publish confirmation dialog
+            for confirm_text in ['确定', '确认', '发布', '是']:
+                try:
+                    r = await click_by_text(page, confirm_text)
+                    if r.startswith("clicked"):
+                        print(f"  Confirmed: '{confirm_text}'")
+                        await page.wait_for_timeout(3000)
+                except: pass
 
             await shot(page, "05_published")
-            print(json.dumps({"success": True, "message": "Published" if published else "May have published via Ctrl+Enter", "images": len(image_files)}))
+            print(json.dumps({"success": True, "message": "Published" if published else "No publish btn", "images": len(image_files)}))
 
         except Exception as e:
             import traceback
