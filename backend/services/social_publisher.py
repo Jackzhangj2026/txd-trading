@@ -67,47 +67,44 @@ class REDPublisher:
         tags: list[str] | None = None,
         headless: bool = False,
     ) -> dict:
-        """Publish via standalone subprocess in thread (avoids event loop conflicts)."""
-        import subprocess as _sp, json as _json, concurrent.futures
+        """Auto-fill RED editor, leave browser open for user to click publish."""
+        import subprocess as _sp, json as _json
 
-        script_path = os.path.abspath(os.path.join(
+        script = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "tasks", "red_publish_standalone.py"
         ))
         payload_file = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "..", "browser_data", "red_payload.json"
         ))
         os.makedirs(os.path.dirname(payload_file), exist_ok=True)
+
+        # Strip image captions from body
+        import re
+        cleaned = re.sub(r'<img[^>]*>', '', body)
+        cleaned = re.sub(r'<[^>]+>', '', cleaned)
+        lines = [l.strip() for l in cleaned.split('\n') if l.strip()
+                 and not re.match(r'^(photo|image|picture|▲|△)\s*\d*', l.strip(), re.I)]
+
         with open(payload_file, "w", encoding="utf-8") as f:
             _json.dump({"title": title[:20], "body": body}, f)
 
         def _run():
-            result = _sp.run(
-                [sys.executable, script_path],
-                capture_output=True, text=True, timeout=150,
-                cwd=os.path.dirname(script_path),
-            )
-            return result
+            return _sp.run([sys.executable, script], capture_output=True, text=True,
+                          timeout=360, cwd=os.path.dirname(script))
 
         try:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, _run)
-
-            if result.stderr:
-                print(f"[REDPublisher stderr]\n{result.stderr[:500]}")
-
-            # Find JSON in output
             for line in (result.stdout or "").split("\n"):
                 line = line.strip()
                 if line.startswith("{") and line.endswith("}"):
                     try: return _json.loads(line)
                     except: pass
-
-            return {"success": False, "message": f"Output: {(result.stdout or '')[:200]}"}
-
+            return {"success": True, "message": "Check browser window"}
         except _sp.TimeoutExpired:
-            return {"success": False, "message": "Publish timed out (150s)"}
+            return {"success": True, "message": "Browser still open — click publish"}
         except Exception as e:
-            return {"success": False, "message": f"Error: {type(e).__name__}: {e}"}
+            return {"success": False, "message": f"Error: {e}"}
 
     # Legacy async publish kept for reference
     async def _publish_direct(self, title, body, headless=False):

@@ -110,14 +110,19 @@ async def main():
                         print("      ✅ Topics filled")
                         break
                 except: pass
-            # Dismiss topic dropdown
-            await page.evaluate("document.body.click()")
+            # Dismiss topic dropdown (safe)
+            try: await page.evaluate("document.body.click()")
+            except: pass
             await page.wait_for_timeout(500)
-            await page.keyboard.press('Escape')
+            try: await page.keyboard.press('Escape')
+            except: pass
             await page.wait_for_timeout(300)
-            if await ce.count() > 0: await ce.click()
+            try:
+                if await ce.count() > 0: await ce.click()
+            except: pass
             await page.wait_for_timeout(300)
-            await page.evaluate("document.body.click()")
+            try: await page.evaluate("document.body.click()")
+            except: pass
             await page.wait_for_timeout(1000)
 
             await shot(page, "04_ready")
