@@ -82,7 +82,7 @@ class REDPublisher:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=headless,
-                    args=["--disable-blink-features=AutomationControlled"]
+                    args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-setuid-sandbox"]
                 )
 
                 # If logged in, restore state; otherwise fresh context
@@ -314,8 +314,9 @@ class REDPublisher:
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
-            return {"success": False, "message": f"Error: {str(e) or repr(e)}"}
+            tb = traceback.format_exc()
+            print(f"[REDPublisher] ERROR: {tb}")
+            return {"success": False, "message": f"Error: {type(e).__name__}: {str(e) or repr(e)}"}
 
     async def copy_content(self, content_id: str, db) -> dict:
         """Prepare content for manual copy/paste.
