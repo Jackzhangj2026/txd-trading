@@ -87,7 +87,44 @@ async def main():
             if await ce.count() > 0: await ce.click(); await page.wait_for_timeout(300)
             await page.evaluate("document.body.click()"); await page.wait_for_timeout(1000)
 
-            print("  looking for bottom bar publish button...")
+            # Try clicking "笔记预览" to enter preview/publish mode
+            r = await page.evaluate("""() => {
+                for (const el of document.querySelectorAll('*')) {
+                    if (el.textContent.trim() === '笔记预览') { el.click(); return 'ok'; }
+                }
+                return 'no';
+            }""")
+            print(f"  笔记预览 click: {r}")
+            await page.wait_for_timeout(3000)
+
+            # Check for publish bar now
+            has = await page.evaluate("""() => {
+                for (const el of document.querySelectorAll('*')) {
+                    const t = el.textContent.trim();
+                    if (t === '暂存离开' || t === '发布') return t;
+                }
+                return 'none';
+            }""")
+            print(f"  bottom bar elements: {has}")
+
+            # Check if page navigated away (published)
+            final_url = page.url
+            published = 'publish' not in final_url.lower()
+
+            await page.screenshot(path=str(DEBUG / "after_publish.png"))
+            print(json.dumps({"success": published, "images": len(imgs), "url": final_url[:80]}))
+
+            # Dump ALL unique visible texts on the entire page
+            all_t = await page.evaluate("""() => {
+                const s = new Set();
+                for (const el of document.querySelectorAll('*')) {
+                    const t = el.textContent.trim();
+                    if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) s.add(t);
+                }
+                return [...s].sort();
+            }""")
+            print("ALL page texts:")
+            for t in all_t: print(f"  '{t}'")
 
             # Wait up to 30s for bottom bar with "暂存离开" + "发布" or standalone "发布"
             clicked = False
