@@ -3,7 +3,7 @@
   "sender_email": "necata@163.com",
   "smtp_server": "smtp.163.com",
   "smtp_port": 465,
-  "smtp_password": "JUj9qDm9tTkgQAiu",
+  "smtp_password": "GRvthPijL8x5jciJ",
   "daily_limit": 5,
   "interval_min": 180,
   "enabled": true

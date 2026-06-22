@@ -1,5 +1,6 @@
 ﻿id,company,contact_person,email,phone,country,source,product_interest,status,stage,created_at,notes
-LD0001,Professional Plastics Inc.,Brian Casey,sales@proplas.com,(888)995-7767,USA,web_search,PP hollow sheet/corrugated plastic,contacted,followup1,2026-05-12T08:39:29.718119,
+LD0001,Professional Plastics Inc.,Brian Casey,sales@proplas.com,(888)995-7767,USA,web_search,PP hollow sheet/corrugated plastic,contacted,followup1,2026-05-12T08:39:29.718119,"
+[更新] 2026-06-17T01:06:31.351544: Distributes Coroplast brand fluted PP sheets - Angola, NY"
 LD0002,Professional Plastics Inc.,Mark Casey,m.casey@proplas.com,(888)995-7767,USA,web_search,PP hollow sheet/corrugated plastic,contacted,followup1,2026-05-12T08:39:29.722336,
 LD0003,AmeriLux International,Alyssa Birkholz,,(888)602-4441,USA,web_search,PP hollow sheet/corrugated plastic,new,new,2026-05-12T08:39:29.734513,
 LD0004,Fresh-Pak Corporation,,info@freshpakcorp.com,(713)690-8742,USA,web_search,PP hollow sheet/corrugated plastic,contacted,followup1,2026-05-12T08:39:29.743430,
@@ -59,7 +60,8 @@ LD0052,Emabo Sp. z o.o.,Patrycja Zielińska-Lange,patrycja@emabo.com.pl,+48 881 
 LD0053,DOMHAR Sp. z o.o.,,biuro@domhar.pl,+48 508 870 461,Poland,web_search,PP packaging bags,contacted,followup1,2026-05-20T01:06:20.189433,Direct importer of PP packaging products
 LD0054,Cor Rijken Verpakkingen B.V.,,info@cor-rijken.nl,+31 575-448433,Netherlands,web_search,PP hollow sheet/packaging,contacted,followup1,2026-05-20T01:06:20.198701,"PP sheets, films, laminated packaging distributor"
 LD0055,Emil Stahl GmbH & Co. KG,,info@emil-stahl.de,,Germany,web_search,PP hollow chamber sheets,contacted,followup1,2026-05-20T01:06:20.209227,"PP hollow chamber sheets for transport packaging manufacturer
-[更新] 2026-06-01T01:06:40.430733: Transport packaging: PP hollow chamber, corrugated cardboard, foam"
+[更新] 2026-06-01T01:06:40.430733: Transport packaging: PP hollow chamber, corrugated cardboard, foam
+[更新] 2026-06-17T01:06:31.451441: Manufacturer of transport packaging using PP hollow sheets - Michelau"
 LD0056,Dolder-Bigler Deutschland GmbH,Wolfgang Gomm,plastics@dolderbigler.com,+49 176 103 618 16,Germany,web_search,PP compounds/engineering plastics,contacted,followup1,2026-05-20T01:06:20.218244,Distributor of PP compounds and engineering plastics
 LD0057,Trent Plastics Fabrications Ltd,,sales@trentplastics.co.uk,+44 1427 611668,UK,web_search,PP fluted corrugated sheet,contacted,followup1,2026-05-20T01:06:20.249259,Large stockist of fluted corrugated PP sheets
 LD0058,Smurfit Kappa Diss,,sales.diss@smurfitkappa.co.uk,+44 1379 676 531,UK,web_search,PP corrugated packaging,contacted,followup1,2026-05-20T01:06:20.259578,"Corrugated packaging manufacturer, trade supply"
@@ -139,11 +141,14 @@ LD0119,Shreya Enterprises,,shreya212507@gmail.com,,India,web_search,Packaging di
 LD0120,Modi Wrapstar Pvt Ltd,,sales@modwrap.com,,India,web_search,Plastic films manufacturer,contacted,followup1,2026-05-29T01:05:51.099208,PP hollow sheet for packaging
 LD0121,Mpact Limited,,info@mpact.co.za,+27 11 994 5500,South Africa,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-01T01:06:40.388517,Leading plastic packaging company in southern Africa
 LD0122,Packaging Plant and Consumables CC,,help@packagingplant.co.za,+27 11 031 6677,South Africa,web_search,PP hollow sheet/packaging,contacted,followup1,2026-06-01T01:06:40.414883,"Packaging distributor - corrugated board, plastic bags"
-LD0123,GORDOPACK Gesellschaft für Kunststoffverpackungen mbH,,info@gordopack.de,,Germany,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-01T01:06:40.446220,Plastic packaging manufacturer
+LD0123,GORDOPACK Gesellschaft für Kunststoffverpackungen mbH,,info@gordopack.de,,Germany,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-01T01:06:40.446220,"Plastic packaging manufacturer
+[更新] 2026-06-17T01:06:31.401006: Plastic packaging manufacturer since 1972"
 LD0124,abcMeineVerpackung.de e.K.,,info@meineverpackung.de,,Germany,web_search,PP hollow sheet/packaging,contacted,followup1,2026-06-01T01:06:40.463092,Packaging materials distributor
 LD0125,Tillmann Verpackungen Schmalkalden GmbH,,info@tillmann-sm.de,,Germany,web_search,PP hollow sheet/packaging,contacted,followup1,2026-06-01T01:06:40.479456,Packaging from corrugated cardboard and plastics
-LD0126,Flexible Reinforcements Ltd,,sales@flexr.co.uk,+44 1282 478222,UK,web_search,PP hollow sheet/polypropylene sheets,contacted,followup1,2026-06-01T01:06:40.512388,Manufacturer/distributor of polypropylene sheets and PVC sheeting
-LD0127,J. Ward-Turner Plastics Group,,info@jward-Turnergroup.com,0870 787 0340,UK,web_search,PP hollow sheet/corrugated twin-wall,contacted,followup1,2026-06-01T01:06:40.529863,UK supplier of corrugated twin-wall and solid polypropylene since 1982
+LD0126,Flexible Reinforcements Ltd,,sales@flexr.co.uk,+44 1282 478222,UK,web_search,PP hollow sheet/polypropylene sheets,contacted,followup1,2026-06-01T01:06:40.512388,"Manufacturer/distributor of polypropylene sheets and PVC sheeting
+[更新] 2026-06-17T01:06:31.604215: Distributor of PP sheets and PVC/plastic sheeting - Burnley"
+LD0127,J. Ward-Turner Plastics Group,,info@jward-Turnergroup.com,0870 787 0340,UK,web_search,PP hollow sheet/corrugated twin-wall,contacted,followup1,2026-06-01T01:06:40.529863,"UK supplier of corrugated twin-wall and solid polypropylene since 1982
+[更新] 2026-06-17T01:06:31.580004: Corrugated twin-wall & solid polypropylene since 1982"
 LD0128,Altius USA Corp,,mia@grupoaltius.com,,USA,web_search,PP corrugated boxes,new,new,2026-06-02T01:06:56.987847,"US importer of PP corrugated boxes - Doral, FL"
 LD0129,Boox Pbc,Matt,matt@boox.eco,,USA,web_search,PP corrugated boxes,new,new,2026-06-02T01:06:56.996366,"US importer of PP corrugated boxes - Petaluma, CA"
 LD0130,Cloudsort Corp,Derek,derek@cloudsort.com,,USA,web_search,PP corrugated packaging,new,new,2026-06-02T01:06:57.012390,"US importer - Bellevue, WA"
@@ -215,7 +220,8 @@ LD0185,"TPN Flexpak Co., Ltd.",,admin@flexpak.co.th,+66 8 9675 5984,Thailand,web
 LD0186,Thantawan Industry PCL,,info@thantawan.com,+66 2 273 8333,Thailand,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-09T01:07:42.826242,
 LD0187,"NPP Production Supply Co., Ltd.",,info@npp-pro.com,+66 2 809 3209,Thailand,web_search,PP hollow sheet/plastic bottles and containers,contacted,followup1,2026-06-09T01:07:42.843701,
 LD0188,"V.P. Plastic Co., Ltd.",,info@vppthai.com,+662 463 0335,Thailand,web_search,PP hollow sheet/plastic products,contacted,followup1,2026-06-09T01:07:42.861868,
-LD0189,Napco National,,info@napconational.com,+966-13-847 2288,Saudi Arabia,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-09T01:07:42.880556,
+LD0189,Napco National,,info@napconational.com,+966-13-847 2288,Saudi Arabia,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-09T01:07:42.880556,"
+[更新] 2026-06-17T01:06:31.757339: Major manufacturer & importer of plastic packaging - Dammam"
 LD0190,Rowad National Plastic Co.,,info@rowadplastic.com,+966 11 265 1966,Saudi Arabia,web_search,PP hollow sheet/plastic sheets,contacted,followup1,2026-06-09T01:07:42.899461,
 LD0191,Arabian Gulf Manufacturers Co.,,info@agmco.com.sa,+966 13 812 0000,Saudi Arabia,web_search,PP hollow sheet/plastic packaging,contacted,followup1,2026-06-09T01:07:42.919718,
 LD0192,National Packing Products Co. (Watan Pac),,info@watanpac.com.sa,+966 11 265 2211,Saudi Arabia,web_search,PP hollow sheet/corrugated packaging,contacted,followup1,2026-06-09T01:07:42.938475,
@@ -242,7 +248,8 @@ LD0212,Monte Package,,sales@montepkg.com,(269) 849-1722,USA,web_search,PP hollow
 LD0213,RCE Mfg,,sales@rcemanufacturing.com,(631) 856-9005,USA,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.892352,US corrugated packaging manufacturer - NY
 LD0214,Westlake Produce Co,,sales@westlakeproduce.com,(213) 624-8676,USA,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.915573,US packaging buyer - CA
 LD0215,Chase Plastics de México,,info@chaseplastics.com,800-232-4273,Mexico,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.938564,Plastic sheet distributor including polypropylene
-LD0216,Corplex UK Ltd,,correx.sales@corplex.com,+44 (0)1452 316 500,UK,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.964440,Correx(R) twin-wall fluted polypropylene sheets manufacturer
+LD0216,Corplex UK Ltd,,correx.sales@corplex.com,+44 (0)1452 316 500,UK,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.964440,"Correx(R) twin-wall fluted polypropylene sheets manufacturer
+[更新] 2026-06-17T01:06:31.528884: Producer of Correx twin-wall polypropylene sheet - Gloucester"
 LD0217,Eagle Plastics,,enquiries@eagleplastics.co.uk,0116 276 6363,UK,web_search,PP hollow sheet,new,new,2026-06-15T01:06:42.990673,UK polypropylene sheet distributor
 LD0218,ASEMCONNECT VIETNAM,,msd.xph@gmail.com,(+84-24) 38587051,Vietnam,web_search,PP hollow sheet,new,new,2026-06-15T01:06:43.019088,Vietnam plastic packaging import/export company
 LD0219,Sam Mfg And Trading One Member Ltd,Dat,datnt@sam.org.vn,0374635463,Vietnam,web_search,PP hollow sheet,new,new,2026-06-15T01:06:43.042656,Vietnam manufacturing and trading company
@@ -263,3 +270,20 @@ LD0233,Avicos Plastic,,,+971-551452174,UAE,web_search,PP hollow sheet,new,new,20
 LD0234,MEGAPERFIL INDÚSTRIA E COMÉRCIO LTDA,,adm@megaperfil.com.br,+55 45 3242-1855,Brazil,web_search,PP hollow sheet,new,new,2026-06-16T01:06:31.674668,Explicitly imports and exports plastic products. Importação e exportação de produtos plásticos.
 LD0235,PLÁSTICOS METALMA S/A,,metalma@metalma.com.br,+55 41 2141-6000,Brazil,web_search,PP hollow sheet,new,new,2026-06-16T01:06:31.702042,Sheets and coils manufacturer. Vacuum molding. Chapas e bobinas - Moldagem a vácuo.
 LD0236,MasterBrasil Indústria e Comércio de Tintas e Plásticos Ltda,,masterbrasil@masterbrasil.ind.br,+55 41 3249-2925,Brazil,web_search,PP hollow sheet,new,new,2026-06-16T01:06:31.728551,Representation and distribution of plastic materials. Potentially imports PP sheets.
+LD0237,PolyPak Packaging,,sales@polypak.com,(323) 264-2400,USA,web_search,PP hollow sheet / Plastic packaging,new,new,2026-06-17T01:06:31.258728,"Poly mailers and packaging importer - Los Angeles, CA"
+LD0238,Getty Packaging Corp,,gettypackagingcorp@gmail.com,(917) 688-9868,USA,web_search,PP hollow sheet / Packaging,new,new,2026-06-17T01:06:31.278018,"ImportGenius confirmed US customs importer - Paterson, NJ"
+LD0239,Prime Line Packaging,,info@primelinepkg.com,(800) 409-1154,USA,web_search,PP hollow sheet / Packaging,new,new,2026-06-17T01:06:31.302428,"Packaging distributor - South Plainfield, NJ"
+LD0240,Metropak,,service@metropak.com,(972) 808-0490,USA,web_search,PP hollow sheet / Plastic packaging,new,new,2026-06-17T01:06:31.327372,"Packaging distributor - Richardson, TX"
+LD0241,GEHR Kunststoffwerk,,info@gehr.de,+49 621-8789-0,Germany,web_search,PP hollow sheet / Plastic sheets,new,new,2026-06-17T01:06:31.375754,"Manufacturer of plastic sheets, rods, tubes - Mannheim"
+LD0242,rose plastic AG,,info@rose-plastic.de,+49 8388 9200-0,Germany,web_search,PP hollow sheet / Plastic packaging,new,new,2026-06-17T01:06:31.426077,Plastic packaging manufacturer - Hergensweiler
+LD0243,NSB Polymers GmbH,,info@nsb-polymers.de,+49 2133 7909017,Germany,web_search,PP hollow sheet / Polymers,new,new,2026-06-17T01:06:31.476211,Trading company specialized in off-grade plastics - Dormagen
+LD0244,Globe Packaging (SEJ Distribution),,sales@globepackaging.co.uk,0345 224 3691,UK,web_search,PP hollow sheet / Packaging distributor,new,new,2026-06-17T01:06:31.501308,"Distributor of packaging materials including carrier bags, boxes"
+LD0245,International Polymers Ltd,,sales@internationalpolymersltd.com,+44 (0)1926 754094,UK,web_search,PP hollow sheet / Polymer trading,new,new,2026-06-17T01:06:31.555392,Polymer trading & import specialist sourcing PP globally - Leamington Spa
+LD0246,Victoria Packaging Ltd,J. Stait,j.stait@victoriapackaging.co.uk,0121 559 0808,UK,web_search,PP hollow sheet / Plastic containers,new,new,2026-06-17T01:06:31.628016,National distributor of plastic containers & packaging
+LD0247,Em-Pack de México,,ventas@empackmex.com.mx,(52) 5644 1089,Mexico,web_search,Corrugated plastic sheets/boxes,new,new,2026-06-17T01:06:31.651105,Buy-sell corrugated plastic boxes and packaging - CDMX
+LD0248,Vistech Quality Plastic,,info@vistech.mx,+52 81 2169 2438,Mexico,web_search,Corrugated plastic packaging,contacted,followup1,2026-06-17T01:06:31.677008,"Manufacturer of corrugated plastic packaging, plastic bags - Monterrey"
+LD0249,Plasticos Del Futuro (Plafusa),,gte.ventas@plafusa.com,(0155) 21227660,Mexico,web_search,Corrugated plastic / Packaging,contacted,followup1,2026-06-17T01:06:31.704421,"Plastics transformation, packaging and printing - 40+ years in Mexico"
+LD0250,Cajas Agrícolas S.A. de C.V.,,info@cajasagricolas.com.mx,+52 686 561 8528,Mexico,web_search,Corrugated plastic boxes / Food packaging,contacted,followup1,2026-06-17T01:06:31.730316,Corrugated plastic boxes for the food industry
+LD0251,Gulf Packaging System (GPS),,info@gulf-pack.com,+966 12 608 0506,Saudi Arabia,web_search,PP hollow sheet / Plastic packaging,contacted,followup1,2026-06-17T01:06:31.785485,"Plastic packaging for Food, Beverage, Pharma - Jeddah"
+LD0252,Asia Plastic & Packaging,,,+966 920006385,Saudi Arabia,web_search,Flexible plastic packaging,new,new,2026-06-17T01:06:31.810938,"Flexible plastic packaging solutions, ISO certified - Riyadh"
+LD0253,Al Rabeh Company for Packaging,,malhawbani@gmail.com,+966 12 288 0771,Saudi Arabia,web_search,Packaging materials,contacted,followup1,2026-06-17T01:06:31.836372,Packaging company in Saudi Arabia

@@ -39,5 +39,132 @@
       "sent": 10
     },
     "elapsed_seconds": 45.5
+  },
+  {
+    "date": "2026-06-18",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 15
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 327.5
+  },
+  {
+    "date": "2026-06-19",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 108.5
+  },
+  {
+    "date": "2026-06-20",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 16
+    },
+    "email": {
+      "leads_selected": 10,
+      "sent": 10
+    },
+    "elapsed_seconds": 126.2
+  },
+  {
+    "date": "2026-06-20",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 0,
+      "sent": 0
+    }
+  },
+  {
+    "date": "2026-06-20",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 0,
+      "sent": 0
+    }
+  },
+  {
+    "date": "2026-06-20",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 0,
+      "sent": 0
+    }
+  },
+  {
+    "date": "2026-06-20",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 14
+    },
+    "email": {
+      "leads_selected": 2,
+      "sent": 2
+    },
+    "elapsed_seconds": 46.5
+  },
+  {
+    "date": "2026-06-21",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "enriched_from_website": 2,
+      "linkedin_dm_enriched": 5,
+      "sent": 4
+    },
+    "elapsed_seconds": 136.8
+  },
+  {
+    "date": "2026-06-22",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "enriched_from_website": 1,
+      "linkedin_dm_enriched": 5,
+      "sent": 1
+    },
+    "elapsed_seconds": 78.9
   }
 ]

@@ -18,6 +18,8 @@ class Campaign(UUIDMixin, TimestampMixin, Base):
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
     delay_min: Mapped[int] = mapped_column(Integer, default=30)
     delay_max: Mapped[int] = mapped_column(Integer, default=180)
+    daily_limit: Mapped[int] = mapped_column(Integer, default=20)  # max emails per day for this campaign
+    last_run_date: Mapped[str] = mapped_column(String(20), default="")  # ISO date of last run
     image_filenames: Mapped[str] = mapped_column(Text, default="[]")
     error_message: Mapped[str] = mapped_column(Text, default="")
 
