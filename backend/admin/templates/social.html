@@ -377,8 +377,7 @@ async function autoPublishNow() {
         const res = await fetch('/api/content-media/red-publish-now', { method: 'POST' });
         const data = await res.json();
         if (data.success) { document.getElementById('auto-msg').textContent = '✅ Published!'; loadQueue(); }
-        else if (data.action === 'login_required') { document.getElementById('auto-msg').textContent = '⚠️ Login first'; }
-        else { document.getElementById('auto-msg').textContent = '❌ ' + (data.message || 'Failed'); }
+        else { document.getElementById('auto-msg').textContent = '❌ ' + (data.message || 'Failed — check browser window'); }
     } catch (e) { document.getElementById('auto-msg').textContent = '❌ ' + e.message; }
 }
 

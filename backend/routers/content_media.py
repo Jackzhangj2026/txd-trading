@@ -177,14 +177,7 @@ async def red_publish_now():
     from backend.models.content_piece import ContentPiece
     from backend.database import async_session
 
-    # Check login
-    state_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "browser_data", "red_state.json"
-    )
-    if not os.path.exists(state_path):
-        return {"success": False, "action": "login_required", "message": "Not logged in"}
-
-    # Generate
+    # Generate content
     topics = [
         "PP hollow board packaging advantages for e-commerce",
         "Custom PP corrugated boxes for electronics protection",
@@ -199,6 +192,9 @@ async def red_publish_now():
     result = await generator.generate_for_platform(topic, "red")
     body = _embed_factory_images(result.get("body", ""))
     title = result.get("title", topic)[:300]
+
+    # Publish (auto-login if needed)
+    pub_result = await publisher.publish(title=title, body=body, headless=False)
 
     # Publish
     pub_result = await publisher.publish(title=title, body=body, headless=False)
