@@ -97,8 +97,10 @@ async def main():
                      and not re.match(r'^(photo|image|picture|▲|△)\s*\d*', l.strip(), re.I)]
             ce = page.locator('[contenteditable="true"]:visible').first
             if await ce.count() > 0:
-                await ce.fill('\n'.join(lines))
-                print(f"      ✅ {len(''.join(lines))} chars")
+                body_text = '\n'.join(lines)[:1000]  # Hard limit 1000 chars
+                await ce.fill(body_text)
+                print(f"      ✅ {len(body_text)} chars")
+            await page.wait_for_timeout(1000)
 
             # 6. Fill topics + dismiss dropdown
             print("[6/6] Filling topics...")

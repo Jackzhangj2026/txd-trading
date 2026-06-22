@@ -131,6 +131,7 @@ CRITICAL RULES:
 - Output as clean HTML: use <p> for paragraphs, <b> for emphasis
 - Start with an engaging <h3> title line
 - 150-300 words, friendly authentic sharing tone (not sales pitch)
+- Maximum 1000 characters total (RED body limit)
 - Include 3-5 emoji throughout
 - End with a question to engage readers
 - Finish with <p> hashtags: #PPhollowBoard #SustainablePackaging #FactoryDirect etc.
