@@ -59,10 +59,21 @@ async def main():
                 try:
                     await page.wait_for_url(lambda u: "login" not in u.lower(), timeout=120000)
                     await ctx.storage_state(path=str(STATE_PATH))
-                    print("[RED] Login saved")
+                    print("[RED] Login saved, navigating to publish page...")
+                    # After login, explicitly go to publish page
+                    await page.goto(RED_PUBLISH_URL, wait_until="domcontentloaded", timeout=30000)
+                    await page.wait_for_timeout(3000)
+                    await shot(page, "01b_after_login")
                 except PlaywrightTimeout:
-                    print(json.dumps({"success": False, "message": "QR timeout"}))
+                    print(json.dumps({"success": False, "message": "QR scan timeout (120s)"}))
+                    await browser.close()
                     return
+
+            # If still on login page after redirect attempt
+            if "login" in page.url.lower():
+                print(json.dumps({"success": False, "message": "Login failed"}))
+                await browser.close()
+                return
 
             await page.wait_for_timeout(2000)
 

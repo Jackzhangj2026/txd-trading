@@ -196,9 +196,6 @@ async def red_publish_now():
     # Publish (auto-login if needed)
     pub_result = await publisher.publish(title=title, body=body, headless=False)
 
-    # Publish
-    pub_result = await publisher.publish(title=title, body=body, headless=False)
-
     # Save to DB
     async with async_session() as db:
         piece = ContentPiece(
