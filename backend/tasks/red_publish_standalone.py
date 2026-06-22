@@ -96,45 +96,38 @@ async def main():
             await page.wait_for_timeout(5000)
             await shot(page, "02_after_upload_tuwen")
 
-            # ── 5. Upload images ──
+            # ── 5. Upload images (all at once) ──
             print(f"  Uploading {len(image_files)} images...")
-            for i, img_path in enumerate(image_files):
+
+            # Click "上传图片" to trigger file dialog
+            for ut in ['上传图片', '添加图片']:
+                r = await click_by_text(page, ut)
+                if r == "clicked":
+                    print(f"    Clicked '{ut}'")
+                    await page.wait_for_timeout(1000)
+                    break
+
+            # Upload all images in one batch
+            fi = page.locator('input[type="file"]').first
+            if await fi.count() > 0:
+                await fi.set_input_files(image_files)
+                print(f"    All {len(image_files)} images selected")
+                # Wait for upload to complete
+                await page.wait_for_timeout(8000)
+            else:
+                print("    No file input found!")
+
+            # Dismiss any post-upload modals
+            for mask_sel in ['[class*="mask"]', '[class*="modal"]', 'button:has-text("确定")', 'button:has-text("完成")']:
                 try:
-                    # Click upload area to trigger file dialog
-                    # On RED note editor, there's usually a "+" or image area
-                    upload_triggers = ['上传图片', '添加图片']
-                    for ut in upload_triggers:
-                        r = await click_by_text(page, ut)
-                        if r == "clicked":
-                            print(f"  Clicked '{ut}'")
-                            break
-                    await page.wait_for_timeout(500)
+                    el = page.locator(mask_sel).first
+                    if await el.count() > 0 and await el.is_visible():
+                        await el.click(timeout=2000)
+                        print(f"    Dismissed: {mask_sel}")
+                        await page.wait_for_timeout(500)
+                except: pass
 
-                    # Try file input
-                    fi = page.locator('input[type="file"]').first
-                    if await fi.count() > 0:
-                        await fi.set_input_files(img_path)
-                        print(f"  Image {i+1}/{len(image_files)} uploaded")
-                        await page.wait_for_timeout(1500)
-                    else:
-                        # Try file chooser
-                        try:
-                            async with page.expect_file_chooser(timeout=3000) as fc:
-                                # Click any upload-like element
-                                for cls in ['[class*="upload"]', '[class*="add"]', '[class*="image"]']:
-                                    el = page.locator(cls).first
-                                    if await el.count() > 0 and await el.is_visible():
-                                        await el.click(); break
-                            fc_obj = await fc.value
-                            await fc_obj.set_files(img_path)
-                            print(f"  Image {i+1}/{len(image_files)} via filechooser")
-                            await page.wait_for_timeout(1500)
-                        except:
-                            print(f"  Image {i+1}: no upload method found")
-                except Exception as e:
-                    print(f"  Image {i+1} error: {e}")
-
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(3000)
             await shot(page, "03_images_uploaded")
 
             # ── 6. Fill title ──
