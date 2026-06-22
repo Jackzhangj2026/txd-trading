@@ -8,25 +8,25 @@
 
 <!-- Browser-style Tab Bar -->
 <div class="flex border-b border-gray-700 mb-6 overflow-x-auto" style="gap:0">
-    <button class="tab-btn active" data-tab="red" onclick="switchTab('red')"
+    <button type="button" class="tab-btn active" data-tab="red" onclick="window.switchTab('red')"
         style="padding:10px 16px;font-size:13px;font-weight:600;color:#ff2442;border-bottom:2px solid #ff2442;background:transparent;white-space:nowrap">📕 小红书 RED</button>
-    <button class="tab-btn" data-tab="linkedin" onclick="switchTab('linkedin')"
+    <button class="tab-btn" data-tab="linkedin" onclick="window.switchTab('linkedin')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">💼 LinkedIn</button>
-    <button class="tab-btn" data-tab="twitter" onclick="switchTab('twitter')"
+    <button class="tab-btn" data-tab="twitter" onclick="window.switchTab('twitter')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">🐦 Twitter/X</button>
-    <button class="tab-btn" data-tab="youtube" onclick="switchTab('youtube')"
+    <button class="tab-btn" data-tab="youtube" onclick="window.switchTab('youtube')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">▶️ YouTube</button>
-    <button class="tab-btn" data-tab="tiktok" onclick="switchTab('tiktok')"
+    <button class="tab-btn" data-tab="tiktok" onclick="window.switchTab('tiktok')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">🎵 TikTok</button>
-    <button class="tab-btn" data-tab="pinterest" onclick="switchTab('pinterest')"
+    <button class="tab-btn" data-tab="pinterest" onclick="window.switchTab('pinterest')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">📌 Pinterest</button>
-    <button class="tab-btn" data-tab="facebook" onclick="switchTab('facebook')"
+    <button class="tab-btn" data-tab="facebook" onclick="window.switchTab('facebook')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">👍 Facebook</button>
-    <button class="tab-btn" data-tab="douyin" onclick="switchTab('douyin')"
+    <button class="tab-btn" data-tab="douyin" onclick="window.switchTab('douyin')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">🎶 抖音</button>
-    <button class="tab-btn" data-tab="wechat_article" onclick="switchTab('wechat_article')"
+    <button class="tab-btn" data-tab="wechat_article" onclick="window.switchTab('wechat_article')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">📰 公众号</button>
-    <button class="tab-btn" data-tab="wechat_moment" onclick="switchTab('wechat_moment')"
+    <button class="tab-btn" data-tab="wechat_moment" onclick="window.switchTab('wechat_moment')"
         style="padding:10px 16px;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;background:transparent;white-space:nowrap">💬 朋友圈</button>
 </div>
 
@@ -159,26 +159,26 @@
 <script>
 // ─── Tab Switching ──────────────────────────────
 
-function switchTab(platform) {
+// Ensure global scope
+window.switchTab = function(platform) {
     // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    var btns = document.getElementsByClassName('tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+        var btn = btns[i];
         var active = btn.getAttribute('data-tab') === platform;
         btn.style.color = active ? '#ff2442' : '#9ca3af';
         btn.style.borderBottomColor = active ? '#ff2442' : 'transparent';
-    });
-    // Hide all tab panels
-    var panels = document.querySelectorAll('[id^="tab-"]');
-    for (var i = 0; i < panels.length; i++) {
-        var p = panels[i];
-        if (p.tagName === 'DIV' && p.classList.contains('card')) {
-            p.classList.add('hidden');
-        }
     }
-    // Show selected
+    // Hide all tab panels by ID prefix
+    var allDivs = document.querySelectorAll('div[id^="tab-"]');
+    for (var j = 0; j < allDivs.length; j++) {
+        allDivs[j].style.display = 'none';
+    }
+    // Show target
     var target = document.getElementById('tab-' + platform);
-    if (target) target.classList.remove('hidden');
+    if (target) target.style.display = '';
     if (platform === 'red') loadAutoSettings();
-}
+};
 
 // ─── RED Card Functions ──────────────────────────
 
