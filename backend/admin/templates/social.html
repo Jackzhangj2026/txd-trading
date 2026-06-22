@@ -264,12 +264,15 @@ async function loadQueue() {
                 'wechat_moment': '#07c160',
             };
             const stColors = {'draft': '#6b7280', 'scheduled': '#eab308', 'published': '#22c55e', 'failed': '#f43f5e'};
+            const timeStr = c.status === 'published' && c.published_at
+                ? new Date(c.published_at).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
+                : (c.created_at ? new Date(c.created_at).toLocaleDateString() : '—');
             return `<tr class="border-b border-gray-800 hover:bg-white/5 cursor-pointer" onclick="toggleContentDetail(this, '${c.id}')">
                 <td class="py-3 px-2"><span class="badge" style="background:${platformColors[c.platform] || '#333'}22;color:${platformColors[c.platform] || '#fff'}">${c.platform_display}</span></td>
                 <td class="py-3 px-2 text-gray-300">${c.title.substring(0, 50)}</td>
                 <td class="py-3 px-2"><span class="badge" style="background:${stColors[c.status] || '#333'}22;color:${stColors[c.status] || '#fff'}">${c.status}</span></td>
                 <td class="py-3 px-2 text-gray-400">${c.language === 'zh' ? '🇨🇳' : '🇬🇧'}</td>
-                <td class="py-3 px-2 text-gray-400">${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                <td class="py-3 px-2 text-gray-400 text-xs">${timeStr}</td>
                 <td class="py-3 px-2">
                     ${c.platform === 'red' ? `
                         <button onclick="event.stopPropagation(); publishToRED('${c.id}')" class="text-xs text-purple-400 hover:text-purple-300 mr-2">🚀 Auto</button>

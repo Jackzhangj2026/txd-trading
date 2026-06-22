@@ -394,6 +394,7 @@ async def list_content_queue(
                 "body": c.body or "",
                 "body_preview": c.body[:200] if c.body else "",
                 "scheduled_at": c.scheduled_at,
+                "published_at": c.published_at or "",
                 "language": c.language,
                 "created_at": str(c.created_at) if c.created_at else "",
             }
