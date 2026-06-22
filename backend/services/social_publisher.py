@@ -126,7 +126,27 @@ class REDPublisher:
                     await browser.close()
                     return {"success": False, "message": "Still on login page. Try again.", "action": "login_required"}
 
-                # Step 2: Upload images (RED: images first, then text)
+                # Step 2: Dismiss any overlay/mask/popup
+                mask_selectors = [
+                    '[class*="mask"]', '[class*="overlay"]', '[class*="modal"]',
+                    '[class*="dialog"]', '[class*="popup"]', '[class*="tip"]',
+                    'button:has-text("知道了")', 'button:has-text("确定")',
+                    'button:has-text("OK")', 'button:has-text("Got it")',
+                    '[class*="close"]', 'button:has-text("跳过")',
+                ]
+                for mask_sel in mask_selectors:
+                    try:
+                        masks = page.locator(mask_sel)
+                        count = await masks.count()
+                        for mi in range(count):
+                            m = masks.nth(mi)
+                            if await m.is_visible():
+                                await m.click(timeout=2000)
+                                await page.wait_for_timeout(500)
+                                print(f"[REDPublisher] Dismissed: {mask_sel}")
+                    except: pass
+
+                # Step 3: Upload images
                 img_pattern = re.findall(r'<img[^>]*src="data:image/([^;]+);base64,([^"]+)"[^>]*>', body)
                 images_uploaded = 0
 
@@ -199,78 +219,83 @@ class REDPublisher:
                     await page.wait_for_timeout(2000)
                     await _shot(page, "02_images_uploaded")
 
-                # Step 3: Fill title
-                title_selectors = [
-                    'input[placeholder*="标题"]',
-                    'input[placeholder*="title"]',
-                    '[class*="title"] input',
-                    'input[class*="title"]',
-                    '[class*="publish"] input[type="text"]',
-                ]
+                # Step 3: Fill title — try every visible text input
                 title_filled = False
-                for sel in title_selectors:
-                    inp = page.locator(sel).first
-                    if await inp.count() > 0 and await inp.is_visible():
-                        await inp.click()
-                        await page.wait_for_timeout(200)
-                        await inp.fill("")
-                        await inp.fill(title)
-                        title_filled = True
-                        print(f"[REDPublisher] Title filled via: {sel}")
-                        break
+                all_inputs = page.locator('input:visible')
+                input_count = await all_inputs.count()
+                for i in range(min(input_count, 20)):
+                    inp = all_inputs.nth(i)
+                    try:
+                        inp_type = await inp.get_attribute('type') or 'text'
+                        if inp_type in ('text', 'search', '') and not title_filled:
+                            await inp.click()
+                            await page.wait_for_timeout(100)
+                            await inp.fill('')
+                            await inp.fill(title)
+                            title_filled = True
+                            print(f"[REDPublisher] Title filled in input #{i}")
+                    except: pass
                 if not title_filled:
-                    print("[REDPublisher] ⚠️ Title field not found")
+                    print("[REDPublisher] WARNING: No title input found")
 
-                # Step 4: Fill content (plain text, strip HTML)
+                # Step 4: Fill content — plain text, strip HTML
                 plain_text = re.sub(r'<img\b[^>]*>', '', body)
                 plain_text = re.sub(r'<[^>]+>', '', plain_text)
                 plain_text = re.sub(r'\n{3,}', '\n\n', plain_text).strip()
 
-                content_selectors = [
-                    '[contenteditable="true"]',
-                    '[class*="ql-editor"]',
-                    '[class*="editor"]',
-                    'div[placeholder*="正文"]',
-                    'div[placeholder*="content"]',
-                    '[class*="note-content"]',
-                    '[class*="rich-text"]',
-                ]
                 content_filled = False
-                for sel in content_selectors:
-                    el = page.locator(sel).first
-                    if await el.count() > 0 and await el.is_visible():
+                editables = page.locator('[contenteditable="true"]:visible')
+                editable_count = await editables.count()
+                for i in range(min(editable_count, 10)):
+                    el = editables.nth(i)
+                    try:
                         await el.click()
-                        await page.wait_for_timeout(300)
+                        await page.wait_for_timeout(200)
                         await el.fill(plain_text)
                         content_filled = True
-                        print(f"[REDPublisher] Content filled via: {sel}")
+                        print(f"[REDPublisher] Content filled in editable #{i}")
                         break
+                    except: pass
                 if not content_filled:
-                    print("[REDPublisher] ⚠️ Content field not found")
+                    print("[REDPublisher] WARNING: No editable content area found")
 
                 await page.wait_for_timeout(1000)
                 await _shot(page, "03_content_filled")
 
-                # Step 5: Click publish
-                publish_selectors = [
-                    'button:has-text("发布")',
-                    'button:has-text("发布笔记")',
-                    '[class*="publish"] button',
-                    'button[class*="submit"]',
-                    'button[class*="publish"]',
-                    'span:has-text("发布")',
-                ]
+                # Step 6: Click publish — force click via JS to bypass mask
                 published = False
-                for sel in publish_selectors:
-                    btn = page.locator(sel).first
-                    if await btn.count() > 0:
-                        is_enabled = await btn.is_enabled()
-                        print(f"[REDPublisher] Publish btn '{sel}': enabled={is_enabled}")
-                        if is_enabled:
-                            await btn.click()
+                # Try to find the publish button text
+                publish_texts = ['发布', '发布笔记', 'Publish', '提交']
+                for pt in publish_texts:
+                    btn = page.locator(f'text="{pt}"').last
+                    if await btn.count() > 0 and await btn.is_visible():
+                        try:
+                            # Force click via JS to bypass mask overlays
+                            await btn.evaluate('el => el.click()')
                             published = True
+                            print(f"[REDPublisher] Published via JS click on '{pt}'")
                             await page.wait_for_timeout(5000)
                             break
+                        except Exception as e:
+                            print(f"[REDPublisher] Click failed: {e}")
+
+                if not published:
+                    # Last resort: find any button-like element
+                    btns = page.locator('button, [role="button"], span[class*="btn"]')
+                    btn_count = await btns.count()
+                    for i in range(min(btn_count, 30)):
+                        b = btns.nth(i)
+                        try:
+                            text = (await b.text_content() or '').strip()
+                            if text and len(text) < 10:
+                                print(f"[REDPublisher] Button #{i}: '{text}'")
+                            if any(pt in (text or '') for pt in publish_texts):
+                                await b.evaluate('el => el.click()')
+                                published = True
+                                print(f"[REDPublisher] Published via button #{i}: '{text}'")
+                                await page.wait_for_timeout(5000)
+                                break
+                        except: pass
 
                 await _shot(page, "04_after_publish")
 
@@ -288,7 +313,9 @@ class REDPublisher:
                 return {"success": True, "message": f"Published! ({images_uploaded} images)"}
 
         except Exception as e:
-            return {"success": False, "message": f"Error: {str(e)}"}
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"Error: {str(e) or repr(e)}"}
 
     async def copy_content(self, content_id: str, db) -> dict:
         """Prepare content for manual copy/paste.
