@@ -430,24 +430,35 @@ async function copyContent(id) {
         const data = await res.json();
         if (!data.success) { alert('Not found'); return; }
 
-        const w = window.open('', '_blank', 'width=500,height=750,scrollbars=yes');
-        w.document.write('<!DOCTYPE html><html><head><title>Copy to RED</title>' +
-            '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#f5f5f5;padding:20px}' +
+        // Open image export folder if images were saved
+        if (data.images_saved > 0) {
+            fetch('/api/content-media/open-red-export', { method: 'POST' }).catch(()=>{});
+        }
+
+        var w = window.open('', '_blank', 'width=520,height=800,scrollbars=yes');
+        w.document.write('<!DOCTYPE html><html><head><title>Copy to RED — ' + (data.title || '') + '</title>' +
+            '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#f5f5f5}' +
             '.card{max-width:420px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)}' +
             '.card-body{padding:20px 16px;color:#222;font-size:15px;line-height:1.7}' +
             '.card-body img{max-width:100%!important;border-radius:12px;margin:12px 0;display:block}' +
             '.tips{max-width:420px;margin:16px auto;background:#ede9fe;border-radius:12px;padding:16px;font-size:13px;color:#5b21b6}' +
-            '.tips b{display:block;margin-bottom:4px}' +
-            '.btn{display:block;width:100%;max-width:420px;margin:12px auto;padding:12px;background:#ff2442;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}' +
-            '</style></head><body>' +
+            '.tips b{display:block;margin-bottom:6px;font-size:14px}' +
+            '.btn{display:block;width:100%;max-width:420px;margin:12px auto;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}' +
+            '.btn-copy{background:#ff2442;color:#fff}' +
+            '.btn-folder{background:#6c5ce7;color:#fff}' +
+            '</style></head><body style="padding:20px 0 40px">' +
+            '<div style="max-width:420px;margin:0 auto 12px;text-align:center;font-size:20px;font-weight:700;color:#222">📕 ' + (data.title || 'RED Note') + '</div>' +
             '<div class="card"><div class="card-body">' + (data.body || '') + '</div></div>' +
-            '<div class="tips"><b>📋 How to publish:</b>1. Select all (Ctrl+A) and Copy (Ctrl+C)<br>2. Open RED App → Create Note → Paste<br>3. Upload images from your computer<br>4. Add tags and publish!</div>' +
-            '<button class="btn" onclick="navigator.clipboard.writeText(document.querySelector(\'.card-body\').innerText).then(()=>alert(\'✅ Text copied! Paste into RED\')).catch(()=>alert(\'Use Ctrl+A then Ctrl+C\'))">📋 Copy Text to Clipboard</button>' +
+            '<div class="tips"><b>📋 发布步骤：</b>' +
+            '1. 点下方「复制文字」按钮<br>' +
+            '2. 打开小红书 App → 发笔记 → 粘贴文字<br>' +
+            (data.images_saved > 0 ? '3. 图片已保存到文件夹（应已自动打开）→ 拖入小红书<br>' : '') +
+            '4. 添加话题标签 → 发布 ✅</div>' +
+            '<button class="btn btn-copy" onclick="navigator.clipboard.writeText(' + JSON.stringify(data.plain_text || '') + ').then(()=>{this.textContent=\'✅ 已复制！\';this.style.background=\'#22c55e\'}).catch(()=>alert(\'复制失败，请手动 Ctrl+A Ctrl+C\'))">📋 复制文字到剪贴板</button>' +
+            (data.images_saved > 0 ? '<button class="btn btn-folder" onclick="fetch(\'/api/content-media/open-red-export\',{method:\'POST\'})">📁 打开图片文件夹 (' + data.images_saved + ' 张)</button>' : '') +
             '</body></html>');
         w.document.close();
-    } catch (e) {
-        alert('Error: ' + e.message);
-    }
+    } catch (e) { alert('Error: ' + e.message); }
 }
 
 loadQueue();

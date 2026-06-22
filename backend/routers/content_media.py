@@ -263,12 +263,69 @@ async def publish_to_red(
 
 @router.get("/{content_id}/copy")
 async def get_copy_content(content_id: str, db: AsyncSession = Depends(get_db)):
-    """Get content formatted for manual copy-paste to RED."""
-    from backend.services.social_publisher import publisher
-    result = await publisher.copy_content(content_id, db)
-    if not result.get("success"):
-        raise HTTPException(status_code=404, detail=result.get("message", "Not found"))
-    return result
+    """Get content + extract images to files for manual RED publishing."""
+    import re, base64 as _b64
+
+    result = await db.execute(select(ContentPiece).where(ContentPiece.id == content_id))
+    piece = result.scalar_one_or_none()
+    if not piece:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    body = piece.body or ""
+
+    # Extract base64 images and save to export folder
+    export_dir = os.path.join(os.path.dirname(__file__), "..", "..", "browser_data", "red_export")
+    os.makedirs(export_dir, exist_ok=True)
+    for old in os.listdir(export_dir):
+        if old.startswith("red_img_"):
+            try: os.remove(os.path.join(export_dir, old))
+            except: pass
+
+    img_idx = 1
+    def save_img(m):
+        nonlocal img_idx
+        fmt = m.group(1) or "jpeg"
+        b64data = m.group(2)
+        ext = "png" if fmt.lower() == "png" else "jpg"
+        fname = f"red_img_{img_idx}.{ext}"
+        fpath = os.path.join(export_dir, fname)
+        try:
+            with open(fpath, "wb") as f:
+                f.write(_b64.b64decode(b64data))
+            img_idx += 1
+            return f'<img src="file:///{fpath.replace(chr(92), "/")}" alt="Product {img_idx - 1}" style="max-width:100%;border-radius:12px;margin:12px 0;display:block;">'
+        except:
+            img_idx += 1
+            return m.group(0)
+
+    body_with_local = re.sub(r'<img[^>]*src="data:image/([^;]+);base64,([^"]+)"[^>]*>', save_img, body)
+
+    plain_text = re.sub(r'<img\b[^>]*>', '[Image]', body_with_local)
+    plain_text = re.sub(r'<[^>]+>', '', plain_text)
+    plain_text = re.sub(r'\n{3,}', '\n\n', plain_text).strip()
+
+    return {
+        "success": True, "id": piece.id, "title": piece.title,
+        "body": body_with_local, "plain_text": plain_text,
+        "platform": piece.platform, "images_saved": img_idx - 1,
+        "export_dir": export_dir.replace("\\", "/"),
+    }
+
+
+@router.post("/open-red-export")
+async def open_red_export():
+    """Open the RED image export folder in Windows Explorer."""
+    import subprocess
+    export_dir = os.path.join(os.path.dirname(__file__), "..", "..", "browser_data", "red_export")
+    os.makedirs(export_dir, exist_ok=True)
+    try:
+        subprocess.Popen(["explorer", os.path.abspath(export_dir)])
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+# ─── RED Auto-Publish + Manual Copy ──────────────────────────────
 
 
 class GenerateRequest(BaseModel):
