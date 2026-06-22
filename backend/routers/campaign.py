@@ -118,14 +118,15 @@ async def send_campaign(data: CampaignRequest, db: AsyncSession = Depends(get_db
 
     # ── 2. Collect customers ──
     if data.customer_ids:
-        customers = []
-        for cid in data.customer_ids:
-            if cid in exclude_ids:
-                continue
-            result = await db.execute(select(Customer).where(Customer.id == cid))
-            c = result.scalar_one_or_none()
-            if c and c.email:
-                customers.append(c)
+        # Batch fetch all customers at once (avoids N+1)
+        valid_ids = [cid for cid in data.customer_ids if cid not in exclude_ids]
+        if valid_ids:
+            result = await db.execute(
+                select(Customer).where(Customer.id.in_(valid_ids), Customer.email != "")
+            )
+            customers = [c for c in result.scalars().all()]
+        else:
+            customers = []
     else:
         filters = data.customer_filters
         query = select(Customer).where(Customer.email != "")
@@ -259,28 +260,33 @@ async def get_campaign_recipients(campaign_id: str, db: AsyncSession = Depends(g
     all_cids = json.loads(camp.customer_ids or "[]")
     sent_ids = set(json.loads(camp.sent_customer_ids or "[]"))
 
+    # Batch fetch all customers at once
+    cust_result = await db.execute(select(Customer).where(Customer.id.in_(all_cids)))
+    customers_map = {c.id: c for c in cust_result.scalars().all()}
+
+    # Batch fetch relevant email logs
+    log_result = await db.execute(
+        select(EmailLog).where(
+            EmailLog.customer_id.in_(all_cids),
+            EmailLog.direction == "out",
+            EmailLog.subject.like(f"%Campaign {campaign_id}%"),
+        ).order_by(EmailLog.sent_at.desc())
+    )
+    logs_map = {}
+    for log in log_result.scalars().all():
+        if log.customer_id not in logs_map:
+            logs_map[log.customer_id] = log
+
     recipients = []
     for cid in all_cids:
-        r = await db.execute(select(Customer).where(Customer.id == cid))
-        c = r.scalar_one_or_none()
-        if not c:
-            continue
-        # Find email log for this customer in this campaign
-        log_result = await db.execute(
-            select(EmailLog).where(
-                EmailLog.customer_id == cid,
-                EmailLog.direction == "out",
-                EmailLog.subject.like(f"%Campaign {campaign_id}%"),
-            ).order_by(EmailLog.sent_at.desc()).limit(1)
-        )
-        log = log_result.scalar_one_or_none()
-
+        c = customers_map.get(cid)
+        log = logs_map.get(cid)
         recipients.append({
             "customer_id": cid,
-            "name": c.name or "",
-            "company": c.company or "",
-            "email": c.email or "",
-            "country": c.country or "",
+            "name": c.name if c else "",
+            "company": c.company if c else "",
+            "email": c.email if c else "",
+            "country": c.country if c else "",
             "sent": cid in sent_ids,
             "sent_at": log.sent_at if log else "",
             "status": log.status if log else ("sent" if cid in sent_ids else "pending"),
@@ -389,12 +395,11 @@ async def _run_campaign(campaign_id: str):
             for oc in all_camps:
                 sent_ids.update(json.loads(oc.sent_customer_ids or "[]"))
 
-            customers = []
-            for cid in customer_ids:
-                r = await db.execute(select(Customer).where(Customer.id == cid))
-                c = r.scalar_one_or_none()
-                if c and c.email:
-                    customers.append(c)
+            # Batch fetch customers
+            r = await db.execute(
+                select(Customer).where(Customer.id.in_(list(customer_ids)), Customer.email != "")
+            )
+            customers = r.scalars().all()
 
             # Pre-load images
             inline_images = []
