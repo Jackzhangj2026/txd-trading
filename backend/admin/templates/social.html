@@ -409,6 +409,7 @@ async function autoPublishNow() {
         else if (data.action === 'login_required') { document.getElementById('auto-msg').textContent = '⚠️ Login first'; }
         else { document.getElementById('auto-msg').textContent = '❌ ' + (data.message || 'Failed'); }
     } catch (e) { document.getElementById('auto-msg').textContent = '❌ ' + e.message; }
+}
 
 // ─── Legacy RED publish (from queue row) ────────
 
