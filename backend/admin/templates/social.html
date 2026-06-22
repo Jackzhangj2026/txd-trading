@@ -160,24 +160,24 @@
 // ─── Tab Switching ──────────────────────────────
 
 function switchTab(platform) {
-    // Update tab button styles
+    // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        const isActive = btn.dataset.tab === platform;
-        btn.style.color = isActive ? '#ff2442' : '#9ca3af';
-        btn.style.borderBottomColor = isActive ? '#ff2442' : 'transparent';
+        var active = btn.getAttribute('data-tab') === platform;
+        btn.style.color = active ? '#ff2442' : '#9ca3af';
+        btn.style.borderBottomColor = active ? '#ff2442' : 'transparent';
     });
-    // Show/hide panels
-    document.querySelectorAll('[id^="tab-"]').forEach(panel => {
-        if (panel.id === 'tab-' + platform) {
-            panel.classList.remove('hidden');
-        } else if (panel.classList.contains('card') && panel.id.startsWith('tab-')) {
-            panel.classList.add('hidden');
+    // Hide all tab panels
+    var panels = document.querySelectorAll('[id^="tab-"]');
+    for (var i = 0; i < panels.length; i++) {
+        var p = panels[i];
+        if (p.tagName === 'DIV' && p.classList.contains('card')) {
+            p.classList.add('hidden');
         }
-    });
-    // Load auto settings when switching to RED
-    if (platform === 'red') {
-        loadAutoSettings();
     }
+    // Show selected
+    var target = document.getElementById('tab-' + platform);
+    if (target) target.classList.remove('hidden');
+    if (platform === 'red') loadAutoSettings();
 }
 
 // ─── RED Card Functions ──────────────────────────
