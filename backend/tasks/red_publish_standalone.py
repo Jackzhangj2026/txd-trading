@@ -200,15 +200,16 @@ async def main():
             await page.wait_for_timeout(3000)
             await shot(page, "03_images_uploaded")
 
-            # ── 6. Fill title ──
+            # ── 6. Fill title (max 20 chars for RED) ──
+            short_title = title[:20]  # RED limit
             for i in range(min(await page.locator('input:visible').count(), 10)):
                 try:
                     el = page.locator('input:visible').nth(i)
                     ph = (await el.get_attribute('placeholder') or '')
                     tp = await el.get_attribute('type') or 'text'
                     if '标题' in ph or 'title' in ph.lower() or (tp == 'text' and not ph):
-                        await el.fill(title)
-                        print(f"  Title filled")
+                        await el.fill(short_title)
+                        print(f"  Title filled ({len(short_title)} chars)")
                         break
                 except: pass
 
@@ -229,17 +230,30 @@ async def main():
                 print("  Content filled (image captions removed)")
             await page.wait_for_timeout(1000)
 
-            # ── 8. Fill topics/hashtags ──
-            # RED has a topic input — try to find it
+            # ── 8. Fill topics, then click outside to dismiss dropdown mask ──
             for i in range(min(await page.locator('input:visible').count(), 15)):
                 try:
                     el = page.locator('input:visible').nth(i)
                     ph = (await el.get_attribute('placeholder') or '')
                     if '话题' in ph or '标签' in ph or 'tag' in ph.lower() or 'topic' in ph.lower():
-                        await el.fill("#PPhollowBoard #SustainablePackaging #FactoryDirect")
-                        print(f"  Topics filled")
+                        await el.fill("#PPhollowBoard #SustainablePackaging")
+                        print("  Topics filled")
                         break
                 except: pass
+
+            # Click outside to dismiss any dropdown/mask from topic suggestions
+            await page.wait_for_timeout(500)
+            await page.evaluate("document.body.click()")  # Click on body to close dropdowns
+            await page.wait_for_timeout(500)
+            # Also click in the content area to move focus away
+            ce = page.locator('[contenteditable="true"]:visible').first
+            if await ce.count() > 0:
+                await ce.click()
+            await page.wait_for_timeout(500)
+            # Press Escape a few times for good measure
+            for _ in range(3):
+                await page.keyboard.press('Escape')
+                await page.wait_for_timeout(200)
 
             await page.wait_for_timeout(1000)
             await shot(page, "04_filled")

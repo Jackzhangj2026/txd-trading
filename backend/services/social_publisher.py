@@ -78,7 +78,7 @@ class REDPublisher:
         ))
         os.makedirs(os.path.dirname(payload_file), exist_ok=True)
         with open(payload_file, "w", encoding="utf-8") as f:
-            _json.dump({"title": title, "body": body}, f)
+            _json.dump({"title": title[:20], "body": body}, f)
 
         def _run():
             result = _sp.run(
