@@ -77,35 +77,43 @@ async def main():
                 print(json.dumps({"success": False, "message": "Login failed"}))
                 return
 
-            # 3. Click "写长文" tab
-            r = await click_by_text(page, "写长文")
+            # 3. Click to create new note
+            # Page may show "发布笔记" (dashboard) or "写长文" (publish page tabs)
+            r = await click_by_text(page, "发布笔记")
             if r != "clicked":
-                # Dump page text for debugging
+                r = await click_by_text(page, "写长文")
+            if r != "clicked":
+                r = await click_by_text(page, "新的创作")
+            if r != "clicked":
                 all_text = await page.evaluate("""() => {
                     const spans = document.querySelectorAll('span, div, button, a');
                     const found = [];
                     for (const el of spans) {
                         const t = el.textContent.trim();
-                        if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) {
-                            found.push(t);
-                        }
+                        if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) found.push(t);
                     }
-                    return [...new Set(found)].slice(0, 30);
+                    return [...new Set(found)].slice(0, 20);
                 }""")
-                print(f"  Page text: {all_text}", file=sys.stderr)
-                await shot(page, "error_write_long_not_found")
-                print(json.dumps({"success": False, "message": f"写长文 not found. Page texts: {all_text[:10]}"}))
+                await shot(page, "error_no_create_button")
+                print(json.dumps({"success": False, "message": f"No create button. Texts: {all_text}"}))
                 return
+            print(f"  Clicked create button: {r}")
             await page.wait_for_timeout(3000)
 
-            # 4. Click "新的创作" button
-            r = await click_by_text(page, "新的创作")
-            if r != "clicked":
-                print(json.dumps({"success": False, "message": "新的创作 button not found"}))
-                return
-            await page.wait_for_timeout(5000)
+            # 4. If we landed on publish page with tabs, click "写长文"
+            # (dashboard's "发布笔记" goes directly to editor, but publish page needs tab selection)
+            r2 = await click_by_text(page, "写长文")
+            if r2 == "clicked":
+                print("  Clicked 写长文 tab")
+                await page.wait_for_timeout(3000)
 
-            # 5. Wait for editor
+            # 5. Click "新的创作" if present
+            r3 = await click_by_text(page, "新的创作")
+            if r3 == "clicked":
+                print("  Clicked 新的创作")
+                await page.wait_for_timeout(5000)
+
+            # 6. Wait for editor
             await page.wait_for_timeout(3000)
             try:
                 await page.wait_for_selector('input:visible, [contenteditable="true"]:visible', timeout=20000)
@@ -138,21 +146,18 @@ async def main():
                 print(f"  Uploading {len(imgs)} images...")
                 await shot(page, "before_images")
 
-                # Debug: find all file inputs on page
+                # Debug: check frames and find upload mechanism
+                frames = page.frames
+                print(f"  Frames: {len(frames)}")
                 fi_count = await page.locator('input[type="file"]').count()
-                print(f"  File inputs on page: {fi_count}")
-                if fi_count == 0:
-                    # Check for any input
-                    all_in = await page.locator('input').count()
-                    print(f"  All inputs: {all_in}")
-                    # Dump first 5 input details
-                    for j in range(min(all_in, 5)):
-                        try:
-                            inp = page.locator('input').nth(j)
-                            tp = await inp.get_attribute('type') or ''
-                            cl = (await inp.get_attribute('class') or '')[:50]
-                            print(f"    Input #{j}: type={tp} class={cl}")
-                        except: pass
+                print(f"  File inputs: {fi_count}")
+                all_in = await page.locator('input').count()
+                print(f"  All inputs: {all_in}")
+
+                for fi, frame in enumerate(frames):
+                    if frame != page.main_frame:
+                        fi_in_frame = await frame.locator('input[type="file"]').count()
+                        print(f"  Frame {fi}: {fi_in_frame} file inputs")
 
                 for i, (fmt, b64) in enumerate(imgs[:9]):
                     uploaded = False
