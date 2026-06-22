@@ -1,6 +1,7 @@
 """Social media publisher — browser automation for RED/Xiaohongshu posting."""
 import asyncio
 import os
+import sys
 import json
 import shutil
 from pathlib import Path
@@ -66,8 +67,53 @@ class REDPublisher:
         tags: list[str] | None = None,
         headless: bool = False,
     ) -> dict:
-        """Publish to RED. Auto-login if needed (opens browser for QR scan)."""
-        import re, base64, tempfile, time
+        """Publish via standalone subprocess (avoids event loop conflicts)."""
+        import subprocess, json as _json
+
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", "tasks", "red_publish_standalone.py"
+        )
+        payload_file = os.path.join(
+            os.path.dirname(__file__), "..", "..", "browser_data", "red_payload.json"
+        )
+        os.makedirs(os.path.dirname(payload_file), exist_ok=True)
+        with open(payload_file, "w", encoding="utf-8") as f:
+            _json.dump({"title": title, "body": body}, f)
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable, os.path.abspath(script_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=150.0)
+
+            if stderr:
+                print(f"[REDPublisher stderr] {stderr.decode('utf-8', errors='replace')[:500]}")
+
+            output = stdout.decode("utf-8", errors="replace").strip()
+            # Find JSON in output (might have print() noise before it)
+            for line in output.split("\n"):
+                line = line.strip()
+                if line.startswith("{") and line.endswith("}"):
+                    try:
+                        return _json.loads(line)
+                    except: pass
+
+            if output:
+                try:
+                    return _json.loads(output.split("\n")[-1])
+                except: pass
+
+            return {"success": False, "message": f"Subprocess: {output[:200] or 'no output'}"}
+
+        except asyncio.TimeoutError:
+            return {"success": False, "message": "Publish timed out (150s)"}
+        except Exception as e:
+            return {"success": False, "message": f"Subprocess error: {e}"}
+
+    # Legacy async publish kept for reference
+    async def _publish_direct(self, title, body, headless=False):
 
         debug_dir = self.user_data / "debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
