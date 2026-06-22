@@ -4,78 +4,102 @@
 <div class="mb-8">
     <h1 class="text-3xl font-bold">📱 Social Media</h1>
     <p class="text-gray-500 mt-1">Generate, schedule, and manage social media content</p>
-    <button onclick="toggleAutoPanel()" id="auto-panel-btn"
-        class="mt-3 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2"
-        style="background:linear-gradient(135deg,#ff2442,#ff6b6b);color:#fff">
-        🤖 Auto Publish RED
-    </button>
 </div>
 
-<div class="card mb-6">
-    <h2 class="text-lg font-semibold mb-4">✨ Generate Content</h2>
-    <div class="flex gap-3 mb-4">
-        <input id="topic-input" type="text" placeholder="Enter a topic (e.g. 'PP hollow board benefits for logistics')"
-            class="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm border border-gray-700">
-        <button onclick="generateContent()" id="gen-btn"
-            class="px-4 py-2 rounded-lg font-semibold text-sm transition"
-            style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff">
-            🪄 Generate
-        </button>
+<!-- Platform Cards Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+    <!-- RED Card (fully functional) -->
+    <div class="card col-span-2 lg:col-span-1" style="border-left:3px solid #ff2442">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="text-2xl">📕</span>
+            <div>
+                <h3 class="font-semibold text-sm">小红书 RED</h3>
+                <span class="text-xs text-gray-500">English notes for intl. audience</span>
+            </div>
+        </div>
+        <input id="red-topic" type="text" placeholder="Topic (e.g. PP hollow board benefits)"
+            class="w-full bg-gray-800 text-white px-3 py-1.5 rounded text-xs border border-gray-700 mb-2">
+        <div class="flex flex-col gap-1.5">
+            <button onclick="generateRed()" class="w-full py-1.5 rounded text-xs font-semibold transition"
+                style="background:linear-gradient(135deg,#ff2442,#ff6b6b);color:#fff">🪄 Generate</button>
+            <button onclick="quickCopyRed()" class="w-full py-1.5 rounded text-xs font-semibold border border-green-500 text-green-400 hover:bg-green-500/10 transition">📋 Copy</button>
+            <button onclick="toggleRedAuto()" class="w-full py-1.5 rounded text-xs font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500/10 transition">🤖 Auto Publish</button>
+        </div>
+        <!-- RED Auto Publish mini-panel -->
+        <div id="red-auto-mini" class="hidden mt-3 pt-3 border-t border-gray-700">
+            <div class="flex items-center gap-2 mb-2">
+                <span id="login-status-icon" class="text-sm">🔴</span>
+                <span id="login-status-text" class="text-xs text-gray-400">Not logged in</span>
+                <button onclick="loginRED()" id="login-btn" class="ml-auto px-2 py-0.5 rounded text-xs border border-purple-400 text-purple-400 hover:bg-purple-400/10">🔑 Login</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input id="auto-time" type="time" value="09:00" class="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-700" onchange="saveAutoSettings()">
+                <select id="auto-count" class="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-700" onchange="saveAutoSettings()">
+                    <option value="1">1/day</option><option value="2">2/day</option><option value="3">3/day</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="flex items-center gap-1 cursor-pointer"><input id="auto-enabled" type="checkbox" class="w-3 h-3" onchange="saveAutoSettings()"><span class="text-xs text-gray-400">Enable</span></label>
+                <button onclick="saveAutoSettings()" class="ml-auto px-2 py-0.5 rounded text-xs border border-gray-600 text-gray-400">💾 Save</button>
+                <button onclick="autoPublishNow()" class="px-2 py-0.5 rounded text-xs font-semibold" style="background:#ff2442;color:#fff">🚀</button>
+            </div>
+            <div id="auto-msg" class="text-xs text-gray-500 mt-1"></div>
+        </div>
     </div>
-    <div id="platform-select" class="flex flex-wrap gap-2 mb-2">
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="linkedin" checked> LinkedIn</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="twitter" checked> Twitter/X</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="youtube"> YouTube</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="pinterest"> Pinterest</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="tiktok"> TikTok</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="facebook"> Facebook</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="red" checked> 小红书</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="douyin"> 抖音</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="wechat_article"> 公众号</label>
-        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" class="platform-cb" value="wechat_moment"> 朋友圈</label>
-    </div>
-    <div id="gen-status" class="text-sm text-gray-500"></div>
-</div>
 
-<!-- RED Auto-Publish Settings Panel -->
-<div id="auto-panel" class="card mb-6 hidden">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">🤖 RED Auto Publish</h2>
-        <button onclick="toggleAutoPanel()" class="text-gray-500 hover:text-white text-lg">&times;</button>
+    <!-- LinkedIn Card -->
+    <div class="card opacity-60" style="border-left:3px solid #0a66c2">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">💼</span><div><h3 class="font-semibold text-sm">LinkedIn</h3><span class="text-xs text-gray-500">Professional articles</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
     </div>
-    <div class="flex items-center gap-3 mb-4 p-3 rounded-lg" style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2)">
-        <span id="login-status-icon" class="text-xl">🔴</span>
-        <div class="flex-1">
-            <div class="text-sm font-semibold" id="login-status-text">Not logged in</div>
-            <div class="text-xs text-gray-500">Login once to enable auto-publish</div>
-        </div>
-        <button onclick="loginRED()" id="login-btn" class="px-4 py-1.5 rounded-lg text-xs font-semibold border border-purple-400 text-purple-400 hover:bg-purple-400/10 transition">🔑 Login</button>
+
+    <!-- Twitter/X Card -->
+    <div class="card opacity-60" style="border-left:3px solid #1da1f2">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">🐦</span><div><h3 class="font-semibold text-sm">Twitter / X</h3><span class="text-xs text-gray-500">Short posts</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
     </div>
-    <div class="grid grid-cols-3 gap-4 mb-4">
-        <div>
-            <label class="text-sm text-gray-400">Publish Time</label>
-            <input id="auto-time" type="time" value="09:00" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 text-sm" onchange="saveAutoSettings()">
-        </div>
-        <div>
-            <label class="text-sm text-gray-400">Posts Per Day</label>
-            <select id="auto-count" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 mt-1 text-sm" onchange="saveAutoSettings()">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-            </select>
-        </div>
-        <div class="flex items-end">
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input id="auto-enabled" type="checkbox" class="w-4 h-4" onchange="saveAutoSettings()">
-                <span class="text-sm text-gray-300">Enable Auto</span>
-            </label>
-        </div>
+
+    <!-- YouTube Card -->
+    <div class="card opacity-60" style="border-left:3px solid #ff0000">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">▶️</span><div><h3 class="font-semibold text-sm">YouTube</h3><span class="text-xs text-gray-500">Video scripts</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
     </div>
-    <div class="flex gap-2">
-        <button onclick="autoPublishNow()" id="auto-publish-btn" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2" style="background:linear-gradient(135deg,#ff2442,#ff6b6b);color:#fff">🚀 Publish Now</button>
-        <button onclick="saveAutoSettings()" class="px-4 py-2 rounded-lg text-sm border border-gray-700 text-gray-400 hover:text-white transition">💾 Save Settings</button>
+
+    <!-- TikTok Card -->
+    <div class="card opacity-60" style="border-left:3px solid #000">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">🎵</span><div><h3 class="font-semibold text-sm">TikTok</h3><span class="text-xs text-gray-500">Short videos</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
     </div>
-    <div id="auto-msg" class="text-xs text-gray-500 mt-2"></div>
+
+    <!-- Pinterest Card -->
+    <div class="card opacity-60" style="border-left:3px solid #e60023">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">📌</span><div><h3 class="font-semibold text-sm">Pinterest</h3><span class="text-xs text-gray-500">Image pins</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
+    </div>
+
+    <!-- Facebook Card -->
+    <div class="card opacity-60" style="border-left:3px solid #1877f2">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">👍</span><div><h3 class="font-semibold text-sm">Facebook</h3><span class="text-xs text-gray-500">Page posts</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
+    </div>
+
+    <!-- 抖音 Card -->
+    <div class="card opacity-60" style="border-left:3px solid #161823">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">🎶</span><div><h3 class="font-semibold text-sm">抖音 Douyin</h3><span class="text-xs text-gray-500">短视频脚本</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
+    </div>
+
+    <!-- 公众号 Card -->
+    <div class="card opacity-60" style="border-left:3px solid #07c160">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">📰</span><div><h3 class="font-semibold text-sm">公众号 WeChat</h3><span class="text-xs text-gray-500">长文章</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
+    </div>
+
+    <!-- 朋友圈 Card -->
+    <div class="card opacity-60" style="border-left:3px solid #07c160">
+        <div class="flex items-center gap-2 mb-3"><span class="text-2xl">💬</span><div><h3 class="font-semibold text-sm">朋友圈 Moments</h3><span class="text-xs text-gray-500">短文案</span></div></div>
+        <div class="text-xs text-gray-600 text-center py-4">Coming soon</div>
+    </div>
 </div>
 
 <div class="card mb-6">
@@ -116,33 +140,68 @@
 </div>
 
 <script>
-async function generateContent() {
-    const topic = document.getElementById('topic-input').value;
-    if (!topic) { alert('Please enter a topic'); return; }
+// ─── RED Card Functions ──────────────────────────
 
+async function generateRed() {
+    const topic = document.getElementById('red-topic').value || 'PP hollow board packaging advantages';
+    const btn = document.querySelector('#red-topic').closest('.card').querySelector('button');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    try {
+        const res = await fetch('/api/content-media/generate', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic, platforms: ['red']})
+        });
+        const data = await res.json();
+        btn.textContent = '✅ Done!';
+        loadQueue();
+        setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1500);
+    } catch (e) {
+        btn.textContent = '❌ Failed';
+        btn.disabled = false;
+    }
+}
+
+async function quickCopyRed() {
+    try {
+        const res = await fetch('/api/content-media/queue?platform=red&page_size=1');
+        const data = await res.json();
+        if (!data.items.length) { alert('No RED content yet. Generate first!'); return; }
+        copyContent(data.items[0].id);
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+function toggleRedAuto() {
+    const mini = document.getElementById('red-auto-mini');
+    mini.classList.toggle('hidden');
+    if (!mini.classList.contains('hidden')) loadAutoSettings();
+}
+
+// ─── OLD generateContent (kept for compatibility) ──
+
+async function generateContent() {
+    const topic = document.getElementById('red-topic')?.value || document.getElementById('topic-input')?.value || 'PP hollow board packaging';
     const checkboxes = document.querySelectorAll('.platform-cb:checked');
-    const platforms = Array.from(checkboxes).map(cb => cb.value);
+    const platforms = checkboxes.length ? Array.from(checkboxes).map(cb => cb.value) : ['red'];
 
     const btn = document.getElementById('gen-btn');
     const status = document.getElementById('gen-status');
-    btn.disabled = true;
-    btn.textContent = '⏳ Generating...';
-    status.textContent = '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+    if (status) status.textContent = '';
 
     try {
         const res = await fetch('/api/content-media/generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({topic, platforms})
         });
         const data = await res.json();
-        status.textContent = `✅ Generated ${data.total} posts`;
+        if (status) status.textContent = '✅ Generated ' + data.total + ' posts';
         loadQueue();
     } catch (e) {
-        status.textContent = '❌ Failed to generate';
+        if (status) status.textContent = '❌ Failed';
     } finally {
-        btn.disabled = false;
-        btn.textContent = '🪄 Generate';
+        if (btn) { btn.disabled = false; btn.textContent = '🪄 Generate'; }
     }
 }
 
@@ -246,13 +305,8 @@ function toggleContentDetail(row, id) {
 
 // ─── RED Auto-Publish Panel ─────────────────────
 
-async function toggleAutoPanel() {
-    const panel = document.getElementById('auto-panel');
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) {
-        await loadAutoSettings();
-    }
-}
+// toggleAutoPanel kept as alias for backwards compat
+async function toggleAutoPanel() { toggleRedAuto(); }
 
 async function loadAutoSettings() {
     try {
@@ -307,22 +361,14 @@ async function loginRED() {
 }
 
 async function autoPublishNow() {
-    const btn = document.getElementById('auto-publish-btn');
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Publishing...';
-    document.getElementById('auto-msg').textContent = 'Generating + publishing to RED...';
+    document.getElementById('auto-msg').textContent = 'Generating + publishing...';
     try {
         const res = await fetch('/api/content-media/red-publish-now', { method: 'POST' });
         const data = await res.json();
         if (data.success) { document.getElementById('auto-msg').textContent = '✅ Published!'; loadQueue(); }
         else if (data.action === 'login_required') { document.getElementById('auto-msg').textContent = '⚠️ Login first'; }
         else { document.getElementById('auto-msg').textContent = '❌ ' + (data.message || 'Failed'); }
-    } catch (e) {
-        document.getElementById('auto-msg').textContent = '❌ Error: ' + e.message;
-    }
-    btn.disabled = false;
-    btn.innerHTML = '🚀 Publish Now';
-}
+    } catch (e) { document.getElementById('auto-msg').textContent = '❌ ' + e.message; }
 
 // ─── Legacy RED publish (from queue row) ────────
 
