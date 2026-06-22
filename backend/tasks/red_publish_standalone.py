@@ -88,42 +88,108 @@ async def main():
             # ── 3. Click 发布笔记 ──
             r = await click_by_text(page, "发布笔记")
             print(f"  发布笔记: {r}")
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(4000)
+            await shot(page, "02_after_publish_note")
 
-            # ── 4. Click 上传图文 ──
+            # Dump what's visible now
+            all_text = await page.evaluate("""() => {
+                const all = document.querySelectorAll('span, div, button');
+                const found = [];
+                for (const el of all) {
+                    const t = el.textContent.trim();
+                    if (t && t.length >= 2 && t.length <= 15 && el.offsetParent !== null) found.push(t);
+                }
+                return [...new Set(found)].slice(0, 25);
+            }""")
+            print(f"  After 发布笔记 texts: {all_text}")
+
+            # ── 4. Click 上传图文 (if visible, otherwise we're already in editor) ──
             r = await click_by_text(page, "上传图文")
-            print(f"  上传图文: {r}")
-            await page.wait_for_timeout(5000)
-            await shot(page, "02_after_upload_tuwen")
+            if r == "clicked":
+                print("  上传图文: clicked")
+                await page.wait_for_timeout(5000)
+            else:
+                print("  上传图文: not found (may already be in editor)")
+            await shot(page, "03_after_tuwen")
 
-            # ── 5. Upload images (all at once) ──
+            # ── 5. Upload images (one at a time, find image-specific input) ──
             print(f"  Uploading {len(image_files)} images...")
 
-            # Click "上传图片" to trigger file dialog
-            for ut in ['上传图片', '添加图片']:
-                r = await click_by_text(page, ut)
-                if r == "clicked":
-                    print(f"    Clicked '{ut}'")
-                    await page.wait_for_timeout(1000)
-                    break
+            # Find IMAGE file input (not video)
+            # RED may have multiple file inputs — find the one accepting images
+            img_input = page.locator('input[type="file"][accept*="image"], input[type="file"]:not([accept*="video"]):not([accept*="mp4"])').first
+            fi_count = await img_input.count()
+            print(f"  Image file inputs found: {fi_count}")
 
-            # Upload all images in one batch
-            fi = page.locator('input[type="file"]').first
-            if await fi.count() > 0:
-                await fi.set_input_files(image_files)
-                print(f"    All {len(image_files)} images selected")
-                # Wait for upload to complete
-                await page.wait_for_timeout(8000)
-            else:
-                print("    No file input found!")
+            if fi_count == 0:
+                # Dump all file inputs for debugging
+                all_fi = page.locator('input[type="file"]')
+                cnt = await all_fi.count()
+                for j in range(cnt):
+                    try:
+                        acc = await all_fi.nth(j).get_attribute('accept') or 'none'
+                        cls = (await all_fi.nth(j).get_attribute('class') or '')[:60]
+                        print(f"    File input #{j}: accept={acc} class={cls}")
+                    except: pass
+
+            for i, img_path in enumerate(image_files):
+                try:
+                    # Click to trigger upload dialog
+                    if i == 0:
+                        for ut in ['上传图片', '添加图片']:
+                            r = await click_by_text(page, ut)
+                            if r == "clicked":
+                                print(f"    Clicked '{ut}'")
+                                await page.wait_for_timeout(800)
+                                break
+
+                    # Use file chooser for each image (handles native dialog)
+                    try:
+                        async with page.expect_file_chooser(timeout=5000) as fc_info:
+                            if i > 0:
+                                # Click upload trigger again for subsequent images
+                                for ut in ['上传图片', '添加图片']:
+                                    r = await click_by_text(page, ut)
+                                    if r == "clicked": break
+                            # If no text button, try clicking the image input area
+                            if img_input and await img_input.count() > 0:
+                                pass  # file chooser is triggered by the input
+                        fc = await fc_info.value
+                        await fc.set_files(img_path)
+                        print(f"    Image {i+1}/{len(image_files)} uploaded")
+                        await page.wait_for_timeout(2000)
+                    except:
+                        # Fallback: direct input
+                        if img_input and await img_input.count() > 0:
+                            await img_input.set_input_files(img_path)
+                            print(f"    Image {i+1}/{len(image_files)} via direct")
+                            await page.wait_for_timeout(2000)
+                        else:
+                            print(f"    Image {i+1}: no input found")
+                except Exception as e:
+                    print(f"    Image {i+1} error: {e}")
 
             # Dismiss any post-upload modals
-            for mask_sel in ['[class*="mask"]', '[class*="modal"]', 'button:has-text("确定")', 'button:has-text("完成")']:
+            # Try Escape first (closes most dialogs)
+            await page.keyboard.press('Escape')
+            await page.wait_for_timeout(500)
+
+            # Then try clicking dismiss buttons
+            for dismiss_text in ['取消', '完成', '确定', '知道了', '关闭', 'Cancel', 'Done', 'OK', 'Got it']:
+                try:
+                    r = await click_by_text(page, dismiss_text)
+                    if r == "clicked":
+                        print(f"    Dismissed '{dismiss_text}'")
+                        await page.wait_for_timeout(800)
+                except: pass
+
+            # Also try clicking mask/overlay background
+            for mask_sel in ['[class*="mask"]', '[class*="modal"]', '[class*="overlay"]', '[class*="dialog"]']:
                 try:
                     el = page.locator(mask_sel).first
                     if await el.count() > 0 and await el.is_visible():
                         await el.click(timeout=2000)
-                        print(f"    Dismissed: {mask_sel}")
+                        print(f"    Dismissed {mask_sel}")
                         await page.wait_for_timeout(500)
                 except: pass
 
