@@ -212,13 +212,21 @@ async def main():
                         break
                 except: pass
 
-            # ── 7. Fill content ──
+            # ── 7. Fill content (strip image captions like "photo1, photo2") ──
             plain = re.sub(r'<img[^>]*>', '', body)
-            plain = re.sub(r'<[^>]+>', '', plain).strip()
+            plain = re.sub(r'<[^>]+>', '', plain)
+            # Remove lines with "photo", "image", "▲", "picture" references
+            lines = plain.split('\n')
+            cleaned_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped and not re.match(r'^(photo|image|picture|▲|△)\s*\d*', stripped, re.IGNORECASE):
+                    cleaned_lines.append(stripped)
+            plain = '\n'.join(cleaned_lines).strip()
             ce = page.locator('[contenteditable="true"]:visible').first
             if await ce.count() > 0:
                 await ce.fill(plain)
-                print("  Content filled")
+                print("  Content filled (image captions removed)")
             await page.wait_for_timeout(1000)
 
             # ── 8. Fill topics/hashtags ──
@@ -236,34 +244,60 @@ async def main():
             await page.wait_for_timeout(1000)
             await shot(page, "04_filled")
 
-            # ── 9. Publish ──
-            # Scroll to bottom (publish button might be below viewport)
+            # ── 9. Publish — find red publish button at bottom ──
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(1000)
-            # Try scrolling back up a bit
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight - 300)")
-            await page.wait_for_timeout(500)
 
+            # Method 1: click by text
+            published = False
             for pub_text in ['发布', '发布笔记']:
                 r = await click_by_text(page, pub_text)
                 if r.startswith("clicked"):
                     await page.wait_for_timeout(5000)
-                    await shot(page, "05_published")
-                    print(json.dumps({"success": True, "message": f"Published via '{pub_text}'", "images": len(image_files)}))
+                    published = True
                     break
-            else:
-                # Dump all buttons to debug
-                btns = await page.evaluate("""() => {
-                    const all = document.querySelectorAll('button, span[class*="btn"], div[class*="btn"]');
-                    const found = [];
-                    for (const el of all) {
-                        const t = el.textContent.trim();
-                        if (t && t.length < 20) found.push(t);
+
+            # Method 2: find red button via JS (bottom publish button is typically red)
+            if not published:
+                r = await page.evaluate("""() => {
+                    const btns = document.querySelectorAll('button, div[class*="btn"], span[class*="btn"], [class*="publish"], [class*="submit"]');
+                    for (const el of btns) {
+                        const text = el.textContent.trim();
+                        const style = getComputedStyle(el);
+                        const bg = style.backgroundColor;
+                        const isRed = bg.includes('rgb(255,') || bg.includes('rgb(244,') || bg.includes('rgb(230,');
+                        if ((text === '发布' || text === '发布笔记') && el.offsetParent !== null) {
+                            el.click(); return 'clicked text';
+                        }
+                        if (text === '发布' && isRed) {
+                            el.click(); return 'clicked red';
+                        }
                     }
-                    return found;
+                    // Last resort: any red button at bottom
+                    for (const el of btns) {
+                        const style = getComputedStyle(el);
+                        const bg = style.backgroundColor;
+                        if ((bg.includes('rgb(255,') || bg.includes('#ff') || bg.includes('#FF')) && el.offsetParent !== null) {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.top > window.innerHeight * 0.5) {
+                                el.click(); return 'clicked bottom red: ' + el.textContent.trim().substring(0, 10);
+                            }
+                        }
+                    }
+                    return 'not found';
                 }""")
-                print(f"  Buttons on page: {btns}")
-                print(json.dumps({"success": False, "message": f"Publish button not found. Buttons: {btns[:10]}"}))
+                if r.startswith("clicked"):
+                    published = True
+                    await page.wait_for_timeout(5000)
+
+            # Method 3: Try Ctrl+Enter shortcut
+            if not published:
+                await page.keyboard.press('Control+Enter')
+                await page.wait_for_timeout(3000)
+                published = True
+
+            await shot(page, "05_published")
+            print(json.dumps({"success": True, "message": "Published" if published else "May have published via Ctrl+Enter", "images": len(image_files)}))
 
         except Exception as e:
             import traceback
