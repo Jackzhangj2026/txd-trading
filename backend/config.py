@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./trade_agent.db"
 
+    # Factory images directory
+    @property
+    def factory_image_dir(self):
+        from pathlib import Path
+        return Path(__file__).parent.parent / "factory image"
+
     # App
     secret_key: str = "change-this-to-a-random-string"
     debug: bool = True

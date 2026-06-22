@@ -1,7 +1,6 @@
 """Website and website-template API routes — multi-page, blog, products, image upload."""
 
 import json
-import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -28,7 +27,6 @@ generator = WebsiteGenerator()
 TEMPLATES_DIR = Path(__file__).parent.parent / "website_templates"
 UPLOAD_DIR = Path("generated_sites")
 
-from fastapi.responses import HTMLResponse
 
 
 # ═══════════════════════════════════════════════════════════════════════════

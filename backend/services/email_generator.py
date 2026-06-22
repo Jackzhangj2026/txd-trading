@@ -4,8 +4,9 @@ import json
 import random
 from pathlib import Path
 from backend.agents import TradeAgent
+from backend.config import settings
 
-FACTORY_IMG_DIR = Path(__file__).parent.parent.parent / "factory image"
+FACTORY_IMG_DIR = settings.factory_image_dir
 
 
 def _get_random_images(count: int = 3) -> list[str]:

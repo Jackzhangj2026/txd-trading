@@ -5,14 +5,13 @@ import base64
 import json
 import random
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.config import settings
 from backend.database import get_db, async_session
 from backend.models.campaign import Campaign
 from backend.models.customer import Customer
@@ -22,7 +21,7 @@ from backend.models.email_template import EmailTemplate
 from backend.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/campaign", tags=["campaign"])
-FACTORY_IMG_DIR = Path(__file__).parent.parent.parent / "factory image"
+FACTORY_IMG_DIR = settings.factory_image_dir
 
 # ─── Running task tracker for stop/resume ──────────────────────────
 

@@ -11,6 +11,7 @@ from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
+from backend.config import settings
 from backend.database import get_db
 from backend.models.content_piece import ContentPiece
 from backend.models.platform_account import PlatformAccount
@@ -27,7 +28,7 @@ PIATFORM_DISPLAY = {
 }
 
 
-FACTORY_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "factory image")
+FACTORY_IMAGE_DIR = str(settings.factory_image_dir)
 
 
 def _embed_factory_images(body: str, max_images: int = 4) -> str:
