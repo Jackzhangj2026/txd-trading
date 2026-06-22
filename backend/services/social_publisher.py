@@ -67,51 +67,47 @@ class REDPublisher:
         tags: list[str] | None = None,
         headless: bool = False,
     ) -> dict:
-        """Publish via standalone subprocess (avoids event loop conflicts)."""
-        import subprocess, json as _json
+        """Publish via standalone subprocess in thread (avoids event loop conflicts)."""
+        import subprocess as _sp, json as _json, concurrent.futures
 
-        script_path = os.path.join(
+        script_path = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "tasks", "red_publish_standalone.py"
-        )
-        payload_file = os.path.join(
+        ))
+        payload_file = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "..", "browser_data", "red_payload.json"
-        )
+        ))
         os.makedirs(os.path.dirname(payload_file), exist_ok=True)
         with open(payload_file, "w", encoding="utf-8") as f:
             _json.dump({"title": title, "body": body}, f)
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                sys.executable, os.path.abspath(script_path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+        def _run():
+            result = _sp.run(
+                [sys.executable, script_path],
+                capture_output=True, text=True, timeout=150,
+                cwd=os.path.dirname(script_path),
             )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=150.0)
-            stderr_text = stderr.decode("utf-8", errors="replace") if stderr else ""
-            stdout_text = stdout.decode("utf-8", errors="replace") if stdout else ""
+            return result
 
-            if stderr_text:
-                print(f"[REDPublisher stderr]\n{stderr_text[:800]}")
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _run)
+
+            if result.stderr:
+                print(f"[REDPublisher stderr]\n{result.stderr[:500]}")
 
             # Find JSON in output
-            for line in stdout_text.split("\n"):
+            for line in (result.stdout or "").split("\n"):
                 line = line.strip()
                 if line.startswith("{") and line.endswith("}"):
                     try: return _json.loads(line)
                     except: pass
 
-            # Try last line
-            lines = [l.strip() for l in stdout_text.split("\n") if l.strip()]
-            if lines:
-                try: return _json.loads(lines[-1])
-                except: pass
+            return {"success": False, "message": f"Output: {(result.stdout or '')[:200]}"}
 
-            return {"success": False, "message": f"Subprocess: {stdout_text[:200] or stderr_text[:200] or 'no output'}"}
-
-        except asyncio.TimeoutError:
+        except _sp.TimeoutExpired:
             return {"success": False, "message": "Publish timed out (150s)"}
         except Exception as e:
-            return {"success": False, "message": f"Subprocess error: {e}"}
+            return {"success": False, "message": f"Error: {type(e).__name__}: {e}"}
 
     # Legacy async publish kept for reference
     async def _publish_direct(self, title, body, headless=False):
