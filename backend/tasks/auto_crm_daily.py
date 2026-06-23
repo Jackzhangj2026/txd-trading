@@ -326,10 +326,14 @@ async def scheduled_auto_crm_task():
                 if customer.email or not customer.website:
                     continue
                 try:
-                    # Try homepage first, then /contact if no email found
-                    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                    # Ensure URL has protocol
+                    website = customer.website.strip()
+                    if not website.startswith("http"):
+                        website = "https://" + website
+
+                    async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False) as client:
                         resp = await aio.wait_for(
-                            client.get(customer.website, headers={"User-Agent": "Mozilla/5.0"}),
+                            client.get(website, headers={"User-Agent": "Mozilla/5.0"}),
                             timeout=8.0
                         )
                         page_text = ""
@@ -340,7 +344,7 @@ async def scheduled_auto_crm_task():
                             for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
                                 try:
                                     r2 = await aio.wait_for(
-                                        client.get(customer.website.rstrip("/") + suffix, headers={"User-Agent": "Mozilla/5.0"}),
+                                        client.get(website.rstrip("/") + suffix, headers={"User-Agent": "Mozilla/5.0"}),
                                         timeout=6.0
                                     )
                                     if r2.status_code == 200:
