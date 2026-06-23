@@ -345,11 +345,14 @@ async def upload_website_image(website_id: str, file: UploadFile = File(...), db
     img_dir.mkdir(parents=True, exist_ok=True)
 
     # Validate file type
-    ext = Path(file.filename).suffix.lower()
+    safe_name = Path(file.filename).name
+    ext = Path(safe_name).suffix.lower()
     if ext not in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
         raise HTTPException(status_code=400, detail="Only jpg/png/gif/webp allowed")
 
-    filepath = img_dir / f"{Path(file.filename).stem}{ext}"
+    import uuid as _uuid
+    safe_stem = Path(safe_name).stem or str(_uuid.uuid4())[:8]
+    filepath = img_dir / f"{safe_stem}{ext}"
     with open(filepath, "wb") as f:
         content = await file.read()
         f.write(content)

@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from backend.config import settings
 from backend.database import get_db
 from backend.models.content_piece import ContentPiece
-from backend.models.platform_account import PlatformAccount
 from backend.services.content_generator import ContentGenerator
 
 router = APIRouter(prefix="/api/content-media", tags=["content-media"])

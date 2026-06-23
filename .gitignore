@@ -1,0 +1,25 @@
+# API keys and secrets
+.env
+*.env
+
+# Browser automation runtime artifacts
+browser_data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Session attachments (debug screenshots)
+.reasonix/attachments/
+
+# Generated runtime data
+generated_sites/auto_crm_report.json
