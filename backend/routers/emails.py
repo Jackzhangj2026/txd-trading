@@ -197,6 +197,24 @@ async def send_email(data: SendEmailRequest, db: AsyncSession = Depends(get_db))
     return {"id": log.id, "status": "pending", "message": "Email queued for sending"}
 
 
+# === Email Stats for Dashboard ===
+
+@router.get("/stats")
+async def email_stats(db: AsyncSession = Depends(get_db)):
+    """Today's email stats for dashboard."""
+    from datetime import date
+    today = date.today().isoformat()
+    sent = (await db.execute(
+        select(func.count()).select_from(EmailLog).where(EmailLog.sent_at >= today)
+    )).scalar() or 0
+    pending = (await db.execute(
+        select(func.count()).select_from(Customer).where(
+            Customer.status == "lead", Customer.email == ""
+        )
+    )).scalar() or 0
+    return {"today_sent": sent, "pending_leads": pending}
+
+
 # === Check / Test ===
 
 class CheckInboxRequest(BaseModel):
