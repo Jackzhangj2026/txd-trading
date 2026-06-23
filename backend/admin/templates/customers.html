@@ -11,11 +11,12 @@
 </div>
 
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
     <div class="card"><div class="text-gray-400 text-sm">{{ _t('Total') }}</div><div class="text-3xl font-bold mt-2" id="stat-total">—</div></div>
     <div class="card"><div class="text-gray-400 text-sm">🟢 {{ _t('status_lead') }}</div><div class="text-3xl font-bold mt-2 text-green-400" id="stat-lead">—</div></div>
     <div class="card"><div class="text-gray-400 text-sm">🔵 {{ _t('status_contacted') }}</div><div class="text-3xl font-bold mt-2 text-blue-400" id="stat-contacted">—</div></div>
     <div class="card"><div class="text-gray-400 text-sm">🟣 {{ _t('status_interested') }}</div><div class="text-3xl font-bold mt-2 text-purple-400" id="stat-interested">—</div></div>
+    <div class="card"><div class="text-gray-400 text-sm">📧 {{ _t('Emails Sent Today') }}</div><div class="text-3xl font-bold mt-2 text-green-400" id="stat-emails">—</div></div>
     <div class="card"><div class="text-gray-400 text-sm">{{ _t('Today New') }}</div><div class="text-3xl font-bold mt-2" id="stat-today">—</div></div>
 </div>
 
@@ -166,6 +167,13 @@ async function loadStats() {
         document.getElementById('stat-contacted').textContent = s.statuses ? s.statuses.contacted : '—';
         document.getElementById('stat-interested').textContent = s.statuses ? s.statuses.interested : '—';
         document.getElementById('stat-today').textContent = '+' + s.today_new;
+    } catch(e) {}
+
+    // Also fetch today's emails
+    try {
+        const er = await fetch('/api/emails/stats');
+        const es = await er.json();
+        document.getElementById('stat-emails').textContent = es.today_sent || 0;
     } catch(e) {}
 }
 
