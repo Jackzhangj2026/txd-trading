@@ -282,28 +282,130 @@ async def scheduled_auto_crm_task():
             search_result = await step_search_new_leads(db, max_save=10)
             report["search"] = search_result
 
-            # Step 1: Get leads to contact
-            leads = await get_leads_for_today(db, target=10)
-            print(f"  [Auto-CRM] Selected {len(leads)} leads for today")
-            report["email"]["leads_selected"] = len(leads)
+            # Step 1: Enrich leads — scrape websites for emails
+            enriched_emails = []
+            enriched = 0
+            import asyncio as aio2
+            import httpx
 
-            if not leads:
-                print("[Auto-CRM] No leads to contact, skipping send")
+            # Read target from config
+            _cfg_file = Path(__file__).parent.parent.parent / "auto-crm" / "data" / "email_config.json"
+            target_emails = 5
+            if _cfg_file.exists():
+                try:
+                    _cfg = json.loads(_cfg_file.read_text(encoding="utf-8"))
+                    target_emails = _cfg.get("emails_per_run", 5)
+                except:
+                    pass
+
+            # Get all non-contacted leads with website but no email
+            enrich_result = await db.execute(
+                select(Customer).where(
+                    (Customer.source.like("auto_crm%") | Customer.source.like("market_scan%")),
+                    Customer.status.notin_(["contacted", "interested"]),
+                    Customer.email == "",
+                    Customer.website != "",
+                ).order_by(Customer.score.desc()).limit(50)
+            )
+            enrich_candidates = list(enrich_result.scalars().all())
+            print(f"  [Auto-CRM] Scraping up to {len(enrich_candidates)} websites (target: {target_emails} emails)...")
+            report["email"]["enrich_candidates"] = len(enrich_candidates)
+            report["email"]["target_emails"] = target_emails
+
+            for customer in enrich_candidates:
+                if enriched >= target_emails:
+                    break
+                    break
+                try:
+                    website = customer.website.strip()
+                    if not website.startswith("http"):
+                        website = "https://" + website
+
+                    async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:
+                        try:
+                            resp = await aio2.wait_for(
+                                client.get(website, headers={"User-Agent": "Mozilla/5.0"}),
+                                timeout=6.0
+                            )
+                            page_text = resp.text[:50000] if resp.status_code == 200 else ""
+                        except:
+                            page_text = ""
+
+                        if not page_text or "@" not in page_text:
+                            for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
+                                try:
+                                    r2 = await aio2.wait_for(
+                                        client.get(website.rstrip("/") + suffix,
+                                                  headers={"User-Agent": "Mozilla/5.0"}),
+                                        timeout=5.0
+                                    )
+                                    if r2.status_code == 200 and "@" in r2.text:
+                                        page_text = r2.text[:30000]
+                                        break
+                                except:
+                                    pass
+
+                    if page_text and "@" in page_text:
+                        import re as _re3
+                        _email_re3 = _re3.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re3.IGNORECASE)
+                        found = set()
+                        for m in _email_re3.findall(page_text):
+                            e = m.strip().lower()
+                            if e and "@" in e and not e.endswith((".png",".jpg",".gif",".svg",".css",".js")):
+                                found.add(e)
+                        if found:
+                            from backend.services.email_intel import is_role_account
+                            best = None
+                            for e in found:
+                                if not is_role_account(e):
+                                    best = e; break
+                            if not best:
+                                best = next(iter(found))
+                            customer.email = best
+                            enriched += 1
+                            enriched_emails.append(customer)
+                            print(f"  [Auto-CRM] [{enriched}/5] Found: {customer.company} → {best}")
+                except Exception as e:
+                    pass  # Skip failures silently
+
+            if enriched > 0:
+                await db.commit()
+                report["email"]["enriched"] = enriched
+                print(f"  [Auto-CRM] Enriched {enriched} emails from websites")
+
+            # Step 2: Send emails to enriched leads
+            if not enriched_emails:
+                print("[Auto-CRM] No emails enriched — nothing to send")
                 report["email"]["sent"] = 0
-                report["email"]["skip_reason"] = "no_leads_matching_criteria"
+                report["email"]["skip_reason"] = f"no_emails_found_from_{len(enrich_candidates)}_websites"
                 await db.commit()
                 _save_report(report)
                 return report
 
-            # Step 2: Get mailbox & template
+            # Get mailbox & template
             mailbox_result = await db.execute(
                 select(Mailbox).where(Mailbox.active == True).order_by(Mailbox.created_at.desc())
             )
             mailbox = mailbox_result.scalar_one_or_none()
+            if not mailbox:
+                print("[Auto-CRM] No active mailbox")
+                report["email"]["sent"] = 0
+                report["email"]["skip_reason"] = "no_mailbox"
+                await db.commit()
+                _save_report(report)
+                return report
+
             template_result = await db.execute(
                 select(EmailTemplate).where(EmailTemplate.name == "auto_crm_first_contact")
             )
             template = template_result.scalar_one_or_none()
+            if not template:
+                print("[Auto-CRM] No email template")
+                report["email"]["sent"] = 0
+                report["email"]["skip_reason"] = "no_template"
+                await db.commit()
+                _save_report(report)
+                return report
 
             if not mailbox:
                 print("[Auto-CRM] No active mailbox configured")
