@@ -166,3 +166,41 @@ async def set_schedule(data: dict):
     cfg_file.parent.mkdir(parents=True, exist_ok=True)
     cfg_file.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     return {"status": "ok", "schedule_hour": hour}
+
+
+# ─── Email target config ──────────────────────────────────────
+
+@router.get("/email-target")
+async def get_email_target():
+    """Get emails_per_run setting (default 5)."""
+    from pathlib import Path
+    import json
+    cfg_file = Path("auto-crm/data/email_config.json")
+    default = {"emails_per_run": 5}
+    if cfg_file.exists():
+        try:
+            cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+            return {"emails_per_run": cfg.get("emails_per_run", 5)}
+        except:
+            pass
+    return default
+
+
+@router.post("/email-target")
+async def set_email_target(data: dict):
+    """Set emails_per_run (1-50)."""
+    from pathlib import Path
+    import json
+    count = int(data.get("emails_per_run", 5))
+    count = max(1, min(50, count))
+    cfg_file = Path("auto-crm/data/email_config.json")
+    cfg = {}
+    if cfg_file.exists():
+        try:
+            cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+        except:
+            pass
+    cfg["emails_per_run"] = count
+    cfg_file.parent.mkdir(parents=True, exist_ok=True)
+    cfg_file.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    return {"status": "ok", "emails_per_run": count}

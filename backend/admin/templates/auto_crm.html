@@ -19,16 +19,23 @@
 <!-- Schedule Settings -->
 <div class="card mb-6">
     <h2 class="text-lg font-semibold mb-4">Schedule Settings</h2>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-4 flex-wrap">
         <label class="text-sm text-gray-400">Daily Run Time (Beijing)</label>
         <select id="schedule-hour" class="bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700" onchange="saveSchedule()">
             <option value="6">06:00</option><option value="7">07:00</option>
-            <option value="8" selected>08:00</option><option value="9">09:00</option>
+            <option value="8">08:00</option><option value="9">09:00</option>
             <option value="10">10:00</option><option value="11">11:00</option>
             <option value="14">14:00</option><option value="16">16:00</option>
             <option value="18">18:00</option><option value="20">20:00</option>
         </select>
         <span id="schedule-saved" class="text-xs text-green-400 hidden">Saved ✓</span>
+
+        <span class="mx-2 text-gray-700">|</span>
+        <label class="text-sm text-gray-400">Emails Per Run</label>
+        <input id="email-target" type="number" min="1" max="50" value="5" 
+               class="bg-gray-800 text-white w-20 px-3 py-2 rounded-lg border border-gray-700 text-center"
+               onchange="saveEmailTarget()">
+        <span id="email-target-saved" class="text-xs text-green-400 hidden">Saved ✓</span>
     </div>
 </div>
 
@@ -141,6 +148,26 @@ async function saveSchedule() {
         document.getElementById('schedule-saved').classList.remove('hidden');
         document.getElementById('stat-schedule').textContent = hour + ':00 Beijing';
         setTimeout(function() { document.getElementById('schedule-saved').classList.add('hidden'); }, 2000);
+    } catch(e) {}
+}
+
+async function loadEmailTarget() {
+    try {
+        const res = await fetch('/api/auto-crm/email-target');
+        const data = await res.json();
+        document.getElementById('email-target').value = data.emails_per_run || 5;
+    } catch(e) {}
+}
+
+async function saveEmailTarget() {
+    const count = document.getElementById('email-target').value;
+    try {
+        await fetch('/api/auto-crm/email-target', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({emails_per_run: parseInt(count)}),
+        });
+        document.getElementById('email-target-saved').classList.remove('hidden');
+        setTimeout(function() { document.getElementById('email-target-saved').classList.add('hidden'); }, 2000);
     } catch(e) {}
 }
 
@@ -282,6 +309,7 @@ async function runDailyTask() {
 
 loadStats();
 loadSchedule();
+loadEmailTarget();
 loadSearchCustomers();
 loadReports();
 loadTodaySends();
