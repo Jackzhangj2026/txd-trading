@@ -25,7 +25,7 @@ async def list_customers(
     query = select(Customer)
 
     if source:
-        query = query.where(Customer.source == source)
+        query = query.where(Customer.source.startswith(source))
     if market:
         query = query.where(Customer.matched_market == market)
     if score_min is not None:
