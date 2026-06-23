@@ -98,7 +98,7 @@ class REDPublisher:
                 line = line.strip()
                 if line.startswith("{") and line.endswith("}"):
                     try: return _json.loads(line)
-                    except: pass
+                    except Exception: pass  # FIXME: log
             return {"success": True, "message": "Check browser window"}
         except _sp.TimeoutExpired:
             return {"success": True, "message": "Browser still open — click publish"}

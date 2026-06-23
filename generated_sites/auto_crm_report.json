@@ -166,5 +166,81 @@
       "sent": 1
     },
     "elapsed_seconds": 78.9
+  },
+  {
+    "date": "2026-06-23",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "linkedin_dm_enriched": 5,
+      "sent": 0
+    },
+    "elapsed_seconds": 76.9
+  },
+  {
+    "date": "2026-06-23",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "linkedin_dm_enriched": 5,
+      "sent": 0
+    },
+    "elapsed_seconds": 69.4
+  },
+  {
+    "date": "2026-06-23",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "linkedin_dm_enriched": 5,
+      "sent": 0
+    },
+    "elapsed_seconds": 53.0
+  },
+  {
+    "date": "2026-06-23",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "linkedin_dm_enriched": 5,
+      "sent": 0
+    },
+    "elapsed_seconds": 42.5
+  },
+  {
+    "date": "2026-06-23",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "leads_selected": 10,
+      "enriched_from_website": 1,
+      "linkedin_dm_enriched": 5,
+      "sent": 1
+    },
+    "elapsed_seconds": 40.3
   }
 ]

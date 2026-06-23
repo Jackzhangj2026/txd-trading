@@ -295,8 +295,7 @@ async def scheduled_auto_crm_task():
                 try:
                     _cfg = json.loads(_cfg_file.read_text(encoding="utf-8"))
                     target_emails = _cfg.get("emails_per_run", 5)
-                except:
-                    pass
+                except Exception: pass  # FIXME: log
 
             # Get all non-contacted leads with website but no email
             enrich_result = await db.execute(
@@ -328,7 +327,7 @@ async def scheduled_auto_crm_task():
                                 timeout=6.0
                             )
                             page_text = resp.text[:50000] if resp.status_code == 200 else ""
-                        except:
+                        except Exception:
                             page_text = ""
 
                         if not page_text or "@" not in page_text:
@@ -342,8 +341,7 @@ async def scheduled_auto_crm_task():
                                     if r2.status_code == 200 and "@" in r2.text:
                                         page_text = r2.text[:30000]
                                         break
-                                except:
-                                    pass
+                                except Exception: pass  # FIXME: log
 
                     if page_text and "@" in page_text:
                         import re as _re3
@@ -453,8 +451,7 @@ async def scheduled_auto_crm_task():
                                         page_text += r2.text[:30000]
                                         if "@" in r2.text[:30000]:
                                             break
-                                except:
-                                    pass
+                                except Exception: pass  # FIXME: log
                         if page_text and "@" in page_text:
                             import re as _re
                             _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)

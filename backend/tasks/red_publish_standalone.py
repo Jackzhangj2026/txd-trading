@@ -14,7 +14,7 @@ DEBUG.mkdir(parents=True, exist_ok=True)
 
 async def shot(page, name):
     try: await page.screenshot(path=str(DEBUG / f"{name}.png"))
-    except: pass
+    except Exception: pass  # FIXME: log
 
 async def main():
     if not PAYLOAD.exists():
@@ -50,7 +50,7 @@ async def main():
                     await page.wait_for_url(lambda u: "login" not in u.lower(), timeout=90000)
                     print("      ✅ Logged in!")
                     await page.wait_for_timeout(5000)
-                except:
+                except Exception:
                     print("      ❌ Login timeout")
                     return
 
@@ -87,7 +87,7 @@ async def main():
                         await el.fill(title)
                         print(f"      ✅ {title}")
                         break
-                except: pass
+                except Exception: pass  # FIXME: log
 
             # 5. Fill content
             print("[5/6] Filling content...")
@@ -111,20 +111,20 @@ async def main():
                         await el.fill("#PPhollowBoard #SustainablePackaging #FactoryDirect")
                         print("      ✅ Topics filled")
                         break
-                except: pass
+                except Exception: pass  # FIXME: log
             # Dismiss topic dropdown (safe)
             try: await page.evaluate("document.body.click()")
-            except: pass
+            except Exception: pass  # FIXME: log
             await page.wait_for_timeout(500)
             try: await page.keyboard.press('Escape')
-            except: pass
+            except Exception: pass  # FIXME: log
             await page.wait_for_timeout(300)
             try:
                 if await ce.count() > 0: await ce.click()
-            except: pass
+            except Exception: pass  # FIXME: log
             await page.wait_for_timeout(300)
             try: await page.evaluate("document.body.click()")
-            except: pass
+            except Exception: pass  # FIXME: log
             await page.wait_for_timeout(1000)
 
             await shot(page, "04_ready")
