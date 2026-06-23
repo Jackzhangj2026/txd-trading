@@ -173,6 +173,9 @@ class MarketScanner:
                         body["gl"] = "nl"
                     elif any(c in query.lower() for c in ["poland", "polska"]):
                         body["gl"] = "pl"
+                    else:
+                        body["gl"] = "cn"
+                        body["hl"] = "zh-cn"
                     resp = await client.post(
                         "https://google.serper.dev/search",
                         json=body,
