@@ -182,7 +182,7 @@ async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Custom
     # First: leads with email
     result = await db.execute(
         select(Customer).where(
-            Customer.source.like("auto_crm%"),
+            Customer.source.like("auto_crm%") | Customer.source.like("market_scan%"),
             Customer.status.notin_(["contacted", "interested"]),
             Customer.email != "",
         ).order_by(Customer.score.desc()).limit(target)
@@ -193,7 +193,7 @@ async def get_leads_for_today(db: AsyncSession, target: int = 10) -> list[Custom
     if len(leads) < target:
         web_result = await db.execute(
             select(Customer).where(
-                Customer.source.like("auto_crm%"),
+                Customer.source.like("auto_crm%") | Customer.source.like("market_scan%"),
                 Customer.status.notin_(["contacted", "interested"]),
                 Customer.email == "",
                 Customer.website != "",
@@ -289,12 +289,19 @@ async def scheduled_auto_crm_task():
 
             if not leads:
                 print("[Auto-CRM] No leads to contact, skipping send")
-                await db.commit()
                 report["email"]["sent"] = 0
+                report["email"]["skip_reason"] = "no_leads_matching_criteria"
+                await db.commit()
                 _save_report(report)
                 return report
 
-            # Step 2: Get mailbox & template
+            # Step 2: Enrich leads without email by scraping websites
+            enriched = 0
+            import asyncio as aio
+            import httpx
+            leads_to_enrich = [c for c in leads if not c.email and c.website]
+            print(f"  [Auto-CRM] Enriching {len(leads_to_enrich)} leads by scraping websites...")
+            for customer in leads_to_enrich:
             mailbox_result = await db.execute(
                 select(Mailbox).where(Mailbox.active == True).order_by(Mailbox.created_at.desc())
             )
