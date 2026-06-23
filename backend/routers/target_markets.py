@@ -210,10 +210,11 @@ async def get_market_leads(
 
 class ScanResponse(BaseModel):
     market_name: str
-    keywords_used: list[str]
+    keywords_used: list[str] = []
     results_found: int
     leads_extracted: list[dict]
     scanned_at: str
+    emails_sent: int = 0
 
 
 @router.post("/{market_id}/scan", response_model=ScanResponse)
@@ -239,13 +240,15 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
     try:
         scan_result = await scanner.scan_market(market_dict)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Scan error: {str(e)[:200]}")
+        import traceback, sys, json as _json
+        err = traceback.format_exc()
+        print(f"[ScanError] {err}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=_json.dumps({"error": str(e), "traceback": err.split(chr(10))[-3:]}, ensure_ascii=False))
 
     # Save extracted leads as customers
     from backend.models.customer import Customer
     saved_count = 0
+    print(f"[ScanAPI] Saving {len(scan_result.get('leads_extracted', []))} leads...")
     for lead in scan_result.get("leads_extracted", []):
         company = lead.get("company", "Unknown")
         country = lead.get("country", "Unknown")
@@ -316,6 +319,7 @@ async def scan_market(market_id: str, db: AsyncSession = Depends(get_db)):
     # ── Step 1: Enrich customers without emails by scraping their websites ──
     import asyncio as aio
     enriched = 0
+    print(f"[ScanAPI] Enrichment: saved={saved_count}")
     if saved_count > 0:
         # Get customers just saved that have website but no email
         no_email_result = await db.execute(

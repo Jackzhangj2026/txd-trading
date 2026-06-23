@@ -396,7 +396,7 @@ If no leads, output []."""
         all_results = []
         lane_stats = {}
 
-        # Search: use only 3 queries to stay fast with local LLM
+        # Search: use up to 3 queries
         for q in query_lanes[:3]:
             try:
                 results = await aio.wait_for(
