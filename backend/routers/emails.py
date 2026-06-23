@@ -201,18 +201,39 @@ async def send_email(data: SendEmailRequest, db: AsyncSession = Depends(get_db))
 
 @router.get("/stats")
 async def email_stats(db: AsyncSession = Depends(get_db)):
-    """Today's email stats for dashboard."""
+    """Dashboard stats: today's emails, new leads, contacted, interested."""
     from datetime import date
     today = date.today().isoformat()
+
     sent = (await db.execute(
         select(func.count()).select_from(EmailLog).where(EmailLog.sent_at >= today)
     )).scalar() or 0
+
+    new_today = (await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.created_at >= today)
+    )).scalar() or 0
+
+    contacted = (await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "contacted")
+    )).scalar() or 0
+
+    interested = (await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "interested")
+    )).scalar() or 0
+
     pending = (await db.execute(
         select(func.count()).select_from(Customer).where(
             Customer.status == "lead", Customer.email == ""
         )
     )).scalar() or 0
-    return {"today_sent": sent, "pending_leads": pending}
+
+    return {
+        "today_sent": sent,
+        "new_today": new_today,
+        "contacted": contacted,
+        "interested": interested,
+        "pending_leads": pending,
+    }
 
 
 # === Check / Test ===

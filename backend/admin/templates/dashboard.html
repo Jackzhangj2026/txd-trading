@@ -7,25 +7,39 @@
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+    <!-- Row 1: Today's activity -->
     <div class="card">
-        <div class="text-gray-400 text-sm">New Inquiries</div>
-        <div class="text-3xl font-bold mt-2" id="inquiry-count">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">Total Customers</div>
-        <div class="text-3xl font-bold mt-2" id="customer-count">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">Active Products</div>
-        <div class="text-3xl font-bold mt-2" id="product-count">—</div>
-    </div>
-    <div class="card">
-        <div class="text-gray-400 text-sm">Emails Sent Today</div>
+        <div class="text-gray-400 text-sm">{{ _t('Emails Sent Today') }}</div>
         <div class="text-3xl font-bold mt-2 text-green-400" id="emails-today">—</div>
     </div>
     <div class="card">
-        <div class="text-gray-400 text-sm">Pending Leads</div>
-        <div class="text-3xl font-bold mt-2 text-yellow-400" id="pending-leads">—</div>
+        <div class="text-gray-400 text-sm">{{ _t('New Today') }}</div>
+        <div class="text-3xl font-bold mt-2 text-blue-400" id="new-today">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Contacted') }}</div>
+        <div class="text-3xl font-bold mt-2 text-purple-400" id="contacted">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Interested') }}</div>
+        <div class="text-3xl font-bold mt-2 text-yellow-400" id="interested">—</div>
+    </div>
+    <!-- Row 2: Overall stats -->
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Total Customers') }}</div>
+        <div class="text-3xl font-bold mt-2" id="customer-count">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Active Products') }}</div>
+        <div class="text-3xl font-bold mt-2" id="product-count">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('New Inquiries') }}</div>
+        <div class="text-3xl font-bold mt-2" id="inquiry-count">—</div>
+    </div>
+    <div class="card">
+        <div class="text-gray-400 text-sm">{{ _t('Pending Leads') }}</div>
+        <div class="text-3xl font-bold mt-2 text-red-400" id="pending-leads">—</div>
     </div>
 </div>
 
@@ -111,17 +125,17 @@ fetch('/api/customers')
     .then(d => document.getElementById('customer-count').textContent = d.total)
     .catch(() => document.getElementById('customer-count').textContent = '0');
 
-// Email stats
+// Email + customer stats
 fetch('/api/emails/stats')
     .then(r => r.json())
     .then(d => {
         document.getElementById('emails-today').textContent = d.today_sent || 0;
         document.getElementById('pending-leads').textContent = d.pending_leads || 0;
+        document.getElementById('new-today').textContent = d.new_today || 0;
+        document.getElementById('contacted').textContent = d.contacted || 0;
+        document.getElementById('interested').textContent = d.interested || 0;
     })
-    .catch(() => {
-        document.getElementById('emails-today').textContent = '—';
-        document.getElementById('pending-leads').textContent = '—';
-    });
+    .catch(() => {});
 
 // ─── LLM Config Modal ────────────────────────────────────────────────
 async function showLLMConfig() {
