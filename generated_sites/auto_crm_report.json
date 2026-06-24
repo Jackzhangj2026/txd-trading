@@ -242,5 +242,20 @@
       "sent": 1
     },
     "elapsed_seconds": 40.3
+  },
+  {
+    "date": "2026-06-24",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "enrich_candidates": 50,
+      "target_emails": 5,
+      "enriched": 1
+    },
+    "error": "name 'leads' is not defined"
   }
 ]
