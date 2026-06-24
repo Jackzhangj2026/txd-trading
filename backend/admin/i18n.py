@@ -60,6 +60,7 @@ I18N = {
     "Email": {"en": "Email", "zh": "邮箱"},
     "Country": {"en": "Country", "zh": "国家"},
     "Score": {"en": "Score", "zh": "评分"},
+    "Created": {"en": "Created", "zh": "创建"},
     "No customers found": {"en": "No customers found", "zh": "暂无客户"},
     "Add Customer": {"en": "Add Customer", "zh": "添加客户"},
     "Phone": {"en": "Phone", "zh": "电话"},
