@@ -1,7 +1,7 @@
 """Customer/Lead API routes — manage prospects and clients."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func, or_, desc
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -18,6 +18,8 @@ async def list_customers(
     score_min: int | None = None,
     status: str | None = None,
     search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -42,10 +44,24 @@ async def list_customers(
             )
         )
 
+    # Sorting
+    sort_col = Customer.created_at  # default
+    sort_map = {
+        "name": Customer.name, "company": Customer.company,
+        "country": Customer.country, "created": Customer.created_at,
+        "score": Customer.score, "email": Customer.email,
+    }
+    if sort_by in sort_map:
+        sort_col = sort_map[sort_by]
+    if sort_order == "asc":
+        query = query.order_by(sort_col.asc())
+    else:
+        query = query.order_by(sort_col.desc())
+
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
 
-    query = query.offset((page - 1) * page_size).limit(page_size).order_by(desc(Customer.score), desc(Customer.created_at))
+    query = query.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     items = result.scalars().all()
 

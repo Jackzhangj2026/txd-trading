@@ -45,14 +45,14 @@
     <table class="w-full text-sm" style="table-layout:fixed;min-width:900px;">
         <thead>
             <tr class="text-gray-400 border-b border-gray-700">
-                <th class="text-left py-3 px-3" style="width:10%">{{ _t('Name') }}</th>
+                <th class="text-left py-3 px-3 cursor-pointer hover:text-white" style="width:10%" onclick="sortBy('name')">{{ _t('Name') }} <span id="sort-name" class="text-xs"></span></th>
                 <th class="text-left py-3 px-3" style="width:14%">{{ _t('Email') }}</th>
-                <th class="text-left py-3 px-3" style="width:11%">{{ _t('Company') }}</th>
+                <th class="text-left py-3 px-3 cursor-pointer hover:text-white" style="width:11%" onclick="sortBy('company')">{{ _t('Company') }} <span id="sort-company" class="text-xs"></span></th>
                 <th class="text-left py-3 px-3" style="width:10%">{{ _t('Website') }}</th>
                 <th class="text-left py-3 px-3" style="width:6%">{{ _t('Status') }}</th>
-                <th class="text-left py-3 px-3" style="width:5%">{{ _t('Score') }}</th>
-                <th class="text-left py-3 px-3" style="width:6%">{{ _t('Country') }}</th>
-                <th class="text-left py-3 px-3" style="width:9%">{{ _t('Created') }}</th>
+                <th class="text-left py-3 px-3 cursor-pointer hover:text-white" style="width:5%" onclick="sortBy('score')">{{ _t('Score') }} <span id="sort-score" class="text-xs">▼</span></th>
+                <th class="text-left py-3 px-3 cursor-pointer hover:text-white" style="width:6%" onclick="sortBy('country')">{{ _t('Country') }} <span id="sort-country" class="text-xs"></span></th>
+                <th class="text-left py-3 px-3 cursor-pointer hover:text-white" style="width:9%" onclick="sortBy('created')">{{ _t('Created') }} <span id="sort-created" class="text-xs">▼</span></th>
                 <th class="text-left py-3 px-3" style="width:10%">{{ _t('Notes') }}</th>
                 <th class="text-right py-3 px-3" style="width:9%">{{ _t('Actions') }}</th>
             </tr>
@@ -106,6 +106,26 @@
 const STR = {{ _js_t | safe }};
 function _t(k) { return STR[k] || k; }
 let currentStatus = '';
+let currentSort = 'created';
+let currentOrder = 'desc';
+
+function sortBy(col) {
+    if (currentSort === col) {
+        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = col;
+        currentOrder = 'desc';
+    }
+    updateSortIndicators();
+    loadCustomers();
+}
+
+function updateSortIndicators() {
+    ['name','company','score','country','created'].forEach(function(c) {
+        var el = document.getElementById('sort-' + c);
+        if (el) el.textContent = (currentSort === c) ? (currentOrder === 'asc' ? '▲' : '▼') : '';
+    });
+}
 
 function debounceLoad() { clearTimeout(window._dl); window._dl = setTimeout(loadCustomers, 300); }
 
@@ -123,6 +143,7 @@ async function loadCustomers() {
     if (search) url += '&search=' + encodeURIComponent(search);
     if (source) url += '&source=' + source;
     if (currentStatus) url += '&status=' + currentStatus;
+    url += '&sort_by=' + currentSort + '&sort_order=' + currentOrder;
     try {
         const res = await fetch(url);
         const data = await res.json();
@@ -253,6 +274,7 @@ function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 // Init
 filterByStatus('');
+updateSortIndicators();
 loadStats();
 </script>
 {% endblock %}
