@@ -7,5 +7,6 @@
   "daily_limit": 5,
   "interval_min": 180,
   "enabled": true,
-  "emails_per_run": 5
+  "emails_per_run": 5,
+  "schedule_hour": 8
 }

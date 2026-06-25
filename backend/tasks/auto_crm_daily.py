@@ -418,95 +418,9 @@ async def scheduled_auto_crm_task():
                 _save_report(report)
                 return report
 
-            # Step 3: Enrich customers without email by scraping websites
-            enriched = 0
-            import asyncio as aio
-            import httpx
-            for customer in leads:
-                if customer.email or not customer.website:
-                    continue
-                try:
-                    # Ensure URL has protocol
-                    website = customer.website.strip()
-                    if not website.startswith("http"):
-                        website = "https://" + website
-
-                    async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False) as client:
-                        resp = await aio.wait_for(
-                            client.get(website, headers={"User-Agent": "Mozilla/5.0"}),
-                            timeout=8.0
-                        )
-                        page_text = ""
-                        if resp.status_code == 200:
-                            page_text = resp.text[:50000]
-                        # Also try /contact or /about
-                        if not page_text or "@" not in page_text:
-                            for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
-                                try:
-                                    r2 = await aio.wait_for(
-                                        client.get(website.rstrip("/") + suffix, headers={"User-Agent": "Mozilla/5.0"}),
-                                        timeout=6.0
-                                    )
-                                    if r2.status_code == 200:
-                                        page_text += r2.text[:30000]
-                                        if "@" in r2.text[:30000]:
-                                            break
-                                except Exception: pass  # FIXME: log
-                        if page_text and "@" in page_text:
-                            import re as _re
-                            _email_re = _re.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re.IGNORECASE)
-                            found = set()
-                            for m in _email_re.findall(page_text):
-                                email = m.strip().lower()
-                                if email and "@" in email and not email.endswith((".png",".jpg",".gif",".svg",".css",".js")):
-                                    found.add(email)
-                            if found:
-                                from backend.services.email_intel import is_role_account
-                                best = None
-                                for e in found:
-                                    if not is_role_account(e):
-                                        best = e; break
-                                if not best:
-                                    best = next(iter(found))
-                                customer.email = best
-                                enriched += 1
-                                print(f"  [Auto-CRM] Found email for {customer.company}: {best}")
-                except (aio.TimeoutError, Exception):
-                    pass
-            if enriched > 0:
-                await db.commit()
-                report["email"]["enriched_from_website"] = enriched
-                print(f"  [Auto-CRM] Enriched {enriched} customers with emails from websites")
-
-            # Step 3.5: LinkedIn DM search for companies (top 5 leads)
-            dm_enriched = 0
-            from backend.services.market_scanner import MarketScanner
-            scanner = MarketScanner()
-            for customer in leads[:5]:
-                if not customer.company or customer.company == "Unknown":
-                    continue
-                try:
-                    dm_results = await aio.wait_for(
-                        scanner.search_linkedin_dm(customer.company), timeout=10.0
-                    )
-                except aio.TimeoutError:
-                    dm_results = []
-                if dm_results:
-                    dm_names = [dm.get("title", "").split(" - ")[0].strip() for dm in dm_results[:3]]
-                    dm_str = "LinkedIn DMs: " + ", ".join([n for n in dm_names if n])
-                    if customer.notes:
-                        customer.notes = customer.notes + " | " + dm_str
-                    else:
-                        customer.notes = dm_str
-                    dm_enriched += 1
-                    print(f"  [Auto-CRM] LinkedIn DMs for {customer.company}: {', '.join(dm_names[:3])}")
-            if dm_enriched > 0:
-                await db.commit()
-                report["email"]["linkedin_dm_enriched"] = dm_enriched
-
-            # Step 4: Send emails
+            # Step 4: Send emails to enriched leads
             sent_count = 0
-            for customer in leads:
+            for customer in enriched_emails:
                 if not customer.email:
                     continue
                 # Calculate subject once per customer
