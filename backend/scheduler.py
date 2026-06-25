@@ -3,6 +3,7 @@
 from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 scheduler = AsyncIOScheduler()
 
@@ -45,21 +46,20 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Auto-CRM: search every 2 hours until daily email target met
-    # (task itself checks if already reached today's target)
+    # Auto-CRM: search every N minutes (IntervalTrigger, configured via interval_min)
     import json as _json
     _cfg_file = Path("auto-crm/data/email_config.json")
-    _interval_minutes = 120  # default: every 2 hours
+    _interval_minutes = 180  # default: every 3 hours
     if _cfg_file.exists():
         try:
             _cfg = _json.loads(_cfg_file.read_text(encoding="utf-8"))
-            _interval_minutes = _cfg.get("interval_min", 120) or 120
+            _interval_minutes = _cfg.get("interval_min", 180) or 180
         except:
             pass
     from backend.tasks.auto_crm_daily import scheduled_auto_crm_task
     scheduler.add_job(
         scheduled_auto_crm_task,
-        CronTrigger(minute=f"*/{_interval_minutes}"),
+        IntervalTrigger(minutes=_interval_minutes),
         id="auto_crm_daily",
         replace_existing=True,
     )
