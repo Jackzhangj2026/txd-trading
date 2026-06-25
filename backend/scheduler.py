@@ -53,7 +53,7 @@ def start_scheduler():
     if _cfg_file.exists():
         try:
             _cfg = _json.loads(_cfg_file.read_text(encoding="utf-8"))
-            _interval_minutes = _cfg.get("search_interval_min", 120)
+            _interval_minutes = _cfg.get("interval_min", 120) or 120
         except:
             pass
     from backend.tasks.auto_crm_daily import scheduled_auto_crm_task

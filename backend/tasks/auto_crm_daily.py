@@ -370,26 +370,8 @@ async def scheduled_auto_crm_task():
                     target_emails = _cfg.get("emails_per_run", 5)
                 except Exception: pass
 
-            # Check today's already sent count
-            from sqlalchemy import func as _func
-            today_sent = (await db.execute(
-                select(_func.count()).where(
-                    EmailLog.direction == "out",
-                    EmailLog.sent_at >= today_str + "T00:00:00",
-                    EmailLog.status == "sent"
-                )
-            )).scalar() or 0
-
-            if today_sent >= target_emails:
-                print(f"[Auto-CRM] Today's target ({target_emails}) already reached ({today_sent} sent). Skipping.")
-                report["email"]["skipped"] = True
-                report["email"]["already_sent_today"] = today_sent
-                await db.commit()
-                _save_report(report)
-                return report
-
-            remaining = target_emails - today_sent
-            print(f"[Auto-CRM] Today: {today_sent}/{target_emails} emails sent, need {remaining} more")
+            print(f"[Auto-CRM] Starting at {start.isoformat()}, target: {target_emails} emails per run")
+            remaining = target_emails
 
             # Loop: search + enrich until target met (max 5 batches)
             MAX_BATCHES = 5
@@ -497,9 +479,8 @@ async def scheduled_auto_crm_task():
             await db.commit()
             elapsed = (datetime.now() - start).total_seconds()
             report["email"]["sent"] = sent_count
-            report["email"]["sent_today"] = today_sent + sent_count
             report["elapsed_seconds"] = round(elapsed, 1)
-            print(f"  [Auto-CRM] Done: sent {sent_count} (total today: {today_sent + sent_count}/{target_emails}), searched {total_searched} new leads, {elapsed:.0f}s")
+            print(f"  [Auto-CRM] Done: sent {sent_count}/{target_emails}, searched {total_searched} new leads, {elapsed:.0f}s")
 
             # Sync auto-crm lead statuses into customers
             from pathlib import Path as _Path
