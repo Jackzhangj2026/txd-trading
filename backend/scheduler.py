@@ -45,22 +45,21 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Auto-CRM: send development emails at configured hour (Beijing time)
+    # Auto-CRM: search every 2 hours until daily email target met
+    # (task itself checks if already reached today's target)
     import json as _json
     _cfg_file = Path("auto-crm/data/email_config.json")
-    _schedule_hour = 10  # default
+    _interval_minutes = 120  # default: every 2 hours
     if _cfg_file.exists():
         try:
             _cfg = _json.loads(_cfg_file.read_text(encoding="utf-8"))
-            _schedule_hour = _cfg.get("schedule_hour", 10)
+            _interval_minutes = _cfg.get("search_interval_min", 120)
         except:
             pass
-    # Convert Beijing hour to UTC
-    _utc_hour = (_schedule_hour - 8) % 24
     from backend.tasks.auto_crm_daily import scheduled_auto_crm_task
     scheduler.add_job(
         scheduled_auto_crm_task,
-        CronTrigger(hour=_utc_hour, minute=0),
+        CronTrigger(minute=f"*/{_interval_minutes}"),
         id="auto_crm_daily",
         replace_existing=True,
     )

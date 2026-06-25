@@ -8,5 +8,6 @@
   "interval_min": 180,
   "enabled": true,
   "emails_per_run": 5,
-  "schedule_hour": 8
+  "schedule_hour": 8,
+  "search_interval_min": 120
 }
