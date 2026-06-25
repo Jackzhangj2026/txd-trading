@@ -54,7 +54,7 @@ def generate_search_queries(day_of_month: int = None) -> list[str]:
     for b2b in ["alibaba.com", "europages.com", "tradeindia.com"]:
         queries.append(f'site:{b2b} "{product}" buy request')
     queries.append(f'"{product}" procurement manager linkedin')
-    return queries[:4]  # Keep small for local LLM speed
+    return queries[:8]  # 8 queries per batch for wider coverage
 
 
 async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
@@ -74,7 +74,7 @@ async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
     for query in queries:
         try:
             results = await asyncio.wait_for(
-                scanner.google_search(query, num_results=4), timeout=30.0
+                scanner.google_search(query, num_results=6), timeout=30.0
             )
             all_results.extend(results)
         except asyncio.TimeoutError:
@@ -270,24 +270,95 @@ async def send_development_email(customer: Customer, mailbox: Mailbox, template:
         return False
 
 
+async def step_enrich_emails(db: AsyncSession, target: int = 5) -> list[Customer]:
+    """Scrape websites of unenriched leads to find emails. Returns list of enriched customers."""
+    import asyncio as aio2
+    import httpx
+    enriched_list = []
+    enriched = 0
+
+    enrich_result = await db.execute(
+        select(Customer).where(
+            (Customer.source.like("auto_crm%") | Customer.source.like("market_scan%")),
+            Customer.status.notin_(["contacted", "interested"]),
+            Customer.email == "",
+            Customer.website != "",
+        ).order_by(Customer.score.desc()).limit(target * 10)
+    )
+    candidates = list(enrich_result.scalars().all())
+    print(f"  [Enrich] Scraping up to {len(candidates)} websites (target: {target})...")
+
+    for customer in candidates:
+        if enriched >= target:
+            break
+        try:
+            website = customer.website.strip()
+            if not website.startswith("http"):
+                website = "https://" + website
+
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:
+                page_text = ""
+                try:
+                    resp = await aio2.wait_for(
+                        client.get(website, headers={"User-Agent": "Mozilla/5.0"}),
+                        timeout=6.0
+                    )
+                    if resp.status_code == 200:
+                        page_text = resp.text[:50000]
+                except Exception:
+                    pass
+
+                if not page_text or "@" not in page_text:
+                    for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
+                        try:
+                            r2 = await aio2.wait_for(
+                                client.get(website.rstrip("/") + suffix,
+                                          headers={"User-Agent": "Mozilla/5.0"}),
+                                timeout=5.0
+                            )
+                            if r2.status_code == 200 and "@" in r2.text:
+                                page_text = r2.text[:30000]
+                                break
+                        except Exception:
+                            pass
+
+                if page_text and "@" in page_text:
+                    import re as _re3
+                    _email_re3 = _re3.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re3.IGNORECASE)
+                    found = set()
+                    for m in _email_re3.findall(page_text):
+                        e = m.strip().lower()
+                        if e and "@" in e and not e.endswith((".png",".jpg",".gif",".svg",".css",".js")):
+                            found.add(e)
+                    if found:
+                        from backend.services.email_intel import is_role_account
+                        best = None
+                        for e in found:
+                            if not is_role_account(e):
+                                best = e; break
+                        if not best:
+                            best = next(iter(found))
+                        customer.email = best
+                        enriched += 1
+                        enriched_list.append(customer)
+                        print(f"  [Enrich] [{enriched}/{target}] {customer.company} → {best}")
+        except Exception:
+            pass
+
+    if enriched > 0:
+        await db.commit()
+    print(f"  [Enrich] Done: {enriched} emails found")
+    return enriched_list
+
+
 async def scheduled_auto_crm_task():
-    """Daily auto-CRM: SEARCH -> SAVE -> SELECT -> SEND -> LOG."""
+    """Daily auto-CRM: SEARCH -> SAVE -> SELECT -> SEND -> LOG.
+    Loops until target emails found OR max search batches exhausted."""
     start = datetime.now()
-    print(f"[Auto-CRM] Starting daily run at {start.isoformat()}")
     report = {"date": start.strftime("%Y-%m-%d"), "search": {}, "email": {}}
 
     async with async_session() as db:
         try:
-            # Step 0: Search for new leads (max 10 saved)
-            search_result = await step_search_new_leads(db, max_save=10)
-            report["search"] = search_result
-
-            # Step 1: Enrich leads — scrape websites for emails
-            enriched_emails = []
-            enriched = 0
-            import asyncio as aio2
-            import httpx
-
             # Read target from config
             _cfg_file = Path(__file__).parent.parent.parent / "auto-crm" / "data" / "email_config.json"
             target_emails = 5
@@ -295,87 +366,45 @@ async def scheduled_auto_crm_task():
                 try:
                     _cfg = json.loads(_cfg_file.read_text(encoding="utf-8"))
                     target_emails = _cfg.get("emails_per_run", 5)
-                except Exception: pass  # FIXME: log
+                except Exception: pass
 
-            # Get all non-contacted leads with website but no email
-            enrich_result = await db.execute(
-                select(Customer).where(
-                    (Customer.source.like("auto_crm%") | Customer.source.like("market_scan%")),
-                    Customer.status.notin_(["contacted", "interested"]),
-                    Customer.email == "",
-                    Customer.website != "",
-                ).order_by(Customer.score.desc()).limit(50)
-            )
-            enrich_candidates = list(enrich_result.scalars().all())
-            print(f"  [Auto-CRM] Scraping up to {len(enrich_candidates)} websites (target: {target_emails} emails)...")
-            report["email"]["enrich_candidates"] = len(enrich_candidates)
+            print(f"[Auto-CRM] Starting daily run at {start.isoformat()}, target: {target_emails} emails")
+
+            # Loop: search + enrich until target met (max 5 batches)
+            MAX_BATCHES = 5
+            enriched_emails = []
+            total_searched = 0
+
+            for batch_num in range(1, MAX_BATCHES + 1):
+                needed = target_emails - len(enriched_emails)
+                if needed <= 0:
+                    break
+
+                batch_size = max(20, needed * 5)  # search 5x what we need
+                print(f"  [Auto-CRM] Batch {batch_num}/{MAX_BATCHES}: need {needed} more emails, searching {batch_size}...")
+
+                # Step 0: Search for new leads
+                search_result = await step_search_new_leads(db, max_save=batch_size)
+                total_searched += search_result.get("saved", 0)
+                report["search"] = search_result
+
+                # Step 1: Scrape websites for emails from unenriched leads
+                batch_enriched = await step_enrich_emails(db, target=needed)
+                enriched_emails.extend(batch_enriched)
+                report["email"]["enriched_batch_" + str(batch_num)] = len(batch_enriched)
+
+                if len(enriched_emails) >= target_emails:
+                    break
+
+            report["email"]["enrich_candidates_scraped"] = total_searched
             report["email"]["target_emails"] = target_emails
-
-            for customer in enrich_candidates:
-                if enriched >= target_emails:
-                    break
-                    break
-                try:
-                    website = customer.website.strip()
-                    if not website.startswith("http"):
-                        website = "https://" + website
-
-                    async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:
-                        try:
-                            resp = await aio2.wait_for(
-                                client.get(website, headers={"User-Agent": "Mozilla/5.0"}),
-                                timeout=6.0
-                            )
-                            page_text = resp.text[:50000] if resp.status_code == 200 else ""
-                        except Exception:
-                            page_text = ""
-
-                        if not page_text or "@" not in page_text:
-                            for suffix in ["/contact", "/about", "/kontakt", "/impressum"]:
-                                try:
-                                    r2 = await aio2.wait_for(
-                                        client.get(website.rstrip("/") + suffix,
-                                                  headers={"User-Agent": "Mozilla/5.0"}),
-                                        timeout=5.0
-                                    )
-                                    if r2.status_code == 200 and "@" in r2.text:
-                                        page_text = r2.text[:30000]
-                                        break
-                                except Exception: pass  # FIXME: log
-
-                    if page_text and "@" in page_text:
-                        import re as _re3
-                        _email_re3 = _re3.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re3.IGNORECASE)
-                        found = set()
-                        for m in _email_re3.findall(page_text):
-                            e = m.strip().lower()
-                            if e and "@" in e and not e.endswith((".png",".jpg",".gif",".svg",".css",".js")):
-                                found.add(e)
-                        if found:
-                            from backend.services.email_intel import is_role_account
-                            best = None
-                            for e in found:
-                                if not is_role_account(e):
-                                    best = e; break
-                            if not best:
-                                best = next(iter(found))
-                            customer.email = best
-                            enriched += 1
-                            enriched_emails.append(customer)
-                            print(f"  [Auto-CRM] [{enriched}/5] Found: {customer.company} → {best}")
-                except Exception as e:
-                    pass  # Skip failures silently
-
-            if enriched > 0:
-                await db.commit()
-                report["email"]["enriched"] = enriched
-                print(f"  [Auto-CRM] Enriched {enriched} emails from websites")
+            report["email"]["enriched"] = len(enriched_emails)
 
             # Step 2: Send emails to enriched leads
             if not enriched_emails:
                 print("[Auto-CRM] No emails enriched — nothing to send")
                 report["email"]["sent"] = 0
-                report["email"]["skip_reason"] = f"no_emails_found_from_{len(enrich_candidates)}_websites"
+                report["email"]["skip_reason"] = f"no_emails_found_from_{total_searched}_searched"
                 await db.commit()
                 _save_report(report)
                 return report
@@ -448,7 +477,7 @@ async def scheduled_auto_crm_task():
             elapsed = (datetime.now() - start).total_seconds()
             report["email"]["sent"] = sent_count
             report["elapsed_seconds"] = round(elapsed, 1)
-            print(f"  [Auto-CRM] Done: sent {sent_count}, searched {search_result['saved']} new leads, {elapsed:.0f}s")
+            print(f"  [Auto-CRM] Done: sent {sent_count}, searched {total_searched} new leads, {elapsed:.0f}s")
 
             # Sync auto-crm lead statuses into customers
             from pathlib import Path as _Path
