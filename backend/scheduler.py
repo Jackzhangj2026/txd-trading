@@ -1,11 +1,26 @@
 """APScheduler setup for background tasks."""
-
+import traceback
+from functools import wraps
 from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 scheduler = AsyncIOScheduler()
+
+
+def _safe_job(name: str):
+    """Decorator: catch any exception in scheduled job, log it, never crash."""
+    def decorator(fn):
+        @wraps(fn)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await fn(*args, **kwargs)
+            except Exception:
+                print(f"[Scheduler] {name} FAILED:\n{traceback.format_exc()}")
+                return None
+        return wrapper
+    return decorator
 
 
 def start_scheduler():
