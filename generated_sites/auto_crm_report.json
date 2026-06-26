@@ -257,5 +257,125 @@
       "enriched": 1
     },
     "error": "name 'leads' is not defined"
+  },
+  {
+    "date": "2026-06-25",
+    "search": {
+      "queries": 4,
+      "results": 16,
+      "leads_extracted": 16,
+      "saved": 10
+    },
+    "email": {
+      "enrich_candidates": 50,
+      "target_emails": 5,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_50_websites"
+    }
+  },
+  {
+    "date": "2026-06-26",
+    "search": {
+      "queries": 8,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 25
+    },
+    "email": {
+      "enriched_batch_1": 0,
+      "enriched_batch_2": 0,
+      "enriched_batch_3": 0,
+      "enriched_batch_4": 0,
+      "enriched_batch_5": 0,
+      "enrich_candidates_scraped": 125,
+      "target_emails": 5,
+      "enriched": 0,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_125_searched"
+    }
+  },
+  {
+    "date": "2026-06-26",
+    "search": {
+      "queries": 8,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 25
+    },
+    "email": {
+      "enriched_batch_1": 0,
+      "enriched_batch_2": 0,
+      "enriched_batch_3": 0,
+      "enriched_batch_4": 0,
+      "enriched_batch_5": 0,
+      "enrich_candidates_scraped": 125,
+      "target_emails": 5,
+      "enriched": 0,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_125_searched"
+    }
+  },
+  {
+    "date": "2026-06-26",
+    "search": {
+      "queries": 8,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 25
+    },
+    "email": {
+      "enriched_batch_1": 0,
+      "enriched_batch_2": 0,
+      "enriched_batch_3": 0,
+      "enriched_batch_4": 0,
+      "enriched_batch_5": 0,
+      "enrich_candidates_scraped": 125,
+      "target_emails": 5,
+      "enriched": 0,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_125_searched"
+    }
+  },
+  {
+    "date": "2026-06-26",
+    "search": {
+      "queries": 8,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 25
+    },
+    "email": {
+      "enriched_batch_1": 0,
+      "enriched_batch_2": 0,
+      "enriched_batch_3": 0,
+      "enriched_batch_4": 0,
+      "enriched_batch_5": 0,
+      "enrich_candidates_scraped": 125,
+      "target_emails": 5,
+      "enriched": 0,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_125_searched"
+    }
+  },
+  {
+    "date": "2026-06-26",
+    "search": {
+      "queries": 8,
+      "results": 48,
+      "leads_extracted": 48,
+      "saved": 25
+    },
+    "email": {
+      "enriched_batch_1": 0,
+      "enriched_batch_2": 0,
+      "enriched_batch_3": 0,
+      "enriched_batch_4": 0,
+      "enriched_batch_5": 0,
+      "enrich_candidates_scraped": 125,
+      "target_emails": 5,
+      "enriched": 0,
+      "sent": 0,
+      "skip_reason": "no_emails_found_from_125_searched"
+    }
   }
 ]
