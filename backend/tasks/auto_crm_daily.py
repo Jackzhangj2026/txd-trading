@@ -296,7 +296,7 @@ async def step_enrich_emails(db: AsyncSession, target: int = 5) -> list[Customer
             if not website.startswith("http"):
                 website = "https://" + website
 
-            async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
                 page_text = ""
                 try:
                     resp = await aio2.wait_for(

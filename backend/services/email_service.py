@@ -1,5 +1,6 @@
 """Email service — send via SMTP, receive via IMAP, LLM classification."""
 
+import asyncio
 import smtplib
 import imaplib
 import email as email_lib
@@ -43,17 +44,15 @@ class EmailService:
         body: str,
         use_ssl: bool = True,
     ) -> bool:
-        """Send an email via SMTP. Auto-detects HTML content and sends multipart."""
-        try:
+        """Send an email via SMTP (offloaded to thread pool)."""
+        def _send():
             msg = EmailMessage()
             msg["From"] = from_addr
             msg["To"] = to_addr
             msg["Subject"] = subject
-            msg.set_content(subject)  # placeholder, replaced below
-            
-            # Detect HTML content
+            msg.set_content(subject)
             if body.strip().startswith("<") or "html" in body[:200].lower():
-                msg.set_content("This email requires HTML support. Please enable HTML viewing.")
+                msg.set_content("This email requires HTML support.")
                 msg.add_alternative(body, subtype="html")
             else:
                 msg.set_content(body)
@@ -69,6 +68,10 @@ class EmailService:
                     if smtp_user:
                         server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
+
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, _send)
             return True
         except Exception as e:
             print(f"[EmailService] Send failed: {e}")
@@ -82,9 +85,9 @@ class EmailService:
         imap_pass: str,
         use_ssl: bool = True,
     ) -> list[dict]:
-        """Fetch unread emails from IMAP inbox. Returns list of email dicts."""
-        results = []
-        try:
+        """Fetch unread emails from IMAP inbox (offloaded to thread pool)."""
+        def _check():
+            results = []
             if use_ssl or imap_port == 993:
                 imap = imaplib.IMAP4_SSL(imap_host, imap_port, timeout=30)
             else:
@@ -93,14 +96,12 @@ class EmailService:
             imap.login(imap_user, imap_pass)
             imap.select("INBOX")
 
-            # Search for unseen messages
             status, message_ids = imap.search(None, "UNSEEN")
             if status != "OK":
                 imap.logout()
                 return results
 
             ids = message_ids[0].split() if message_ids[0] else []
-            # Process latest 20 unseen emails
             for mid in ids[-20:]:
                 status, msg_data = imap.fetch(mid, "(RFC822)")
                 if status != "OK":
@@ -111,12 +112,10 @@ class EmailService:
                         raw_email = response_part[1]
                         msg = email_lib.message_from_bytes(raw_email)
 
-                        # Extract fields
                         subject = EmailService._decode_mime_header(msg.get("Subject", ""))
                         from_hdr = EmailService._decode_mime_header(msg.get("From", ""))
                         body = ""
 
-                        # Get body
                         if msg.is_multipart():
                             for part in msg.walk():
                                 if part.get_content_type() == "text/plain":
@@ -133,17 +132,20 @@ class EmailService:
                             "message_id": msg.get("Message-ID", ""),
                             "subject": subject,
                             "from": from_hdr,
-                            "body": body[:5000],  # Cap at 5000 chars
+                            "body": body[:5000],
                             "date": msg.get("Date", ""),
                         })
 
             imap.logout()
+            return results
+
+        try:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, _check)
         except Exception as e:
             err_msg = str(e)
             print(f"[EmailService] IMAP check failed: {err_msg}")
-            return [{"error": True, "message": f"IMAP failed: {err_msg[:200]}"}]  # Return error instead of empty
-
-        return results
+            return [{"error": True, "message": f"IMAP failed: {err_msg[:200]}"}]
 
     @staticmethod
     async def classify_email(subject: str, body: str) -> dict:
