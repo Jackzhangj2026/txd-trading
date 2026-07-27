@@ -26,6 +26,9 @@ class LeadScoringEngine:
         "urgent", "order", "purchase", "buy", "need", "require",
         "looking for", "seeking", "interested in", "quote",
         "price", "quotation", "importer", "distributor", "wholesale",
+        "packaging", "box", "carton", "rigid box", "gift box",
+        "fruit box", "vegetable box", "shipping box", "logistics packaging",
+        "custom packaging", "printed box", "corrugated",
     ]
 
     @staticmethod

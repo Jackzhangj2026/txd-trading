@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -64,6 +65,11 @@ app.include_router(auto_crm_router)
 app.include_router(campaign_router)
 app.include_router(admin_router)
 app.include_router(content_media_router.router)
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/admin")
 
 
 @app.get("/api/health")

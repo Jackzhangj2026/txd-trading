@@ -63,6 +63,23 @@
     </table>
 </div>
 
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-4 mb-2">
+    <div class="text-gray-400 text-sm" id="page-info">—</div>
+    <div class="flex gap-2 items-center">
+        <button id="btn-first" onclick="goToPage(1)" class="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white text-sm" disabled>⏮ First</button>
+        <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white text-sm" disabled>◀ Prev</button>
+        <span class="text-gray-400 text-sm px-2" id="page-numbers">1 / 1</span>
+        <button id="btn-next" onclick="changePage(1)" class="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white text-sm" disabled>Next ▶</button>
+        <button id="btn-last" onclick="goToLastPage()" class="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white text-sm" disabled>Last ⏭</button>
+        <select id="page-size-select" class="bg-gray-800 text-white px-2 py-1.5 rounded-lg text-sm border border-gray-700" onchange="changePageSize()">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+</div>
+
 <!-- Customer Modal -->
 <div id="customer-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center">
     <div class="card max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -108,6 +125,9 @@ function _t(k) { return STR[k] || k; }
 let currentStatus = '';
 let currentSort = 'created';
 let currentOrder = 'desc';
+let currentPage = 1;
+let currentPageSize = 50;
+let totalCustomers = 0;
 
 function sortBy(col) {
     if (currentSort === col) {
@@ -117,6 +137,7 @@ function sortBy(col) {
         currentOrder = 'desc';
     }
     updateSortIndicators();
+    currentPage = 1;
     loadCustomers();
 }
 
@@ -127,19 +148,48 @@ function updateSortIndicators() {
     });
 }
 
-function debounceLoad() { clearTimeout(window._dl); window._dl = setTimeout(loadCustomers, 300); }
+function debounceLoad() { clearTimeout(window._dl); window._dl = setTimeout(function(){ currentPage = 1; loadCustomers(); }, 300); }
 
 function filterByStatus(status) {
     currentStatus = status;
     document.querySelectorAll('.status-tab').forEach(b => b.classList.remove('active'));
     document.querySelector(`.status-tab[data-status="${status}"]`).classList.add('active');
+    currentPage = 1;
+    loadCustomers();
+}
+
+function changePage(delta) {
+    var newPage = currentPage + delta;
+    var totalPages = Math.ceil(totalCustomers / currentPageSize);
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        loadCustomers();
+    }
+}
+
+function goToPage(page) {
+    var totalPages = Math.ceil(totalCustomers / currentPageSize);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        loadCustomers();
+    }
+}
+
+function goToLastPage() {
+    var totalPages = Math.ceil(totalCustomers / currentPageSize);
+    goToPage(totalPages);
+}
+
+function changePageSize() {
+    currentPageSize = parseInt(document.getElementById('page-size-select').value);
+    currentPage = 1;
     loadCustomers();
 }
 
 async function loadCustomers() {
     const search = document.getElementById('search-input').value;
     const source = document.getElementById('filter-source').value;
-    let url = '/api/customers?page_size=50';
+    let url = '/api/customers?page=' + currentPage + '&page_size=' + currentPageSize;
     if (search) url += '&search=' + encodeURIComponent(search);
     if (source) url += '&source=' + source;
     if (currentStatus) url += '&status=' + currentStatus;
@@ -147,37 +197,49 @@ async function loadCustomers() {
     try {
         const res = await fetch(url);
         const data = await res.json();
+        totalCustomers = data.total || 0;
+        const totalPages = Math.ceil(totalCustomers / currentPageSize) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        
         const tbody = document.getElementById('customer-table-body');
         if (data.items.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" class="text-gray-500 py-8 text-center">' + _t('No customers found') + '</td></tr>';
-            return;
+        } else {
+            tbody.innerHTML = data.items.map(c => {
+                const scoreColor = c.score >= 60 ? '#22c55e' : c.score >= 30 ? '#eab308' : '#6b7280';
+                const statusColors = {lead: '#22c55e', contacted: '#3b82f6', interested: '#a855f7'};
+                const statusLabels = {lead: 'Lead', contacted: 'Contacted', interested: 'Interested'};
+                const sc = statusColors[c.status] || '#6b7280';
+                const sl = statusLabels[c.status] || c.status;
+                const created = c.created_at ? c.created_at.substring(0, 19).replace('T', ' ') : '';
+                return `<tr class="border-b border-gray-800 hover:bg-white/5">
+                    <td class="py-3 px-3 text-white truncate">${c.name || ''}</td>
+                    <td class="py-3 px-3 text-blue-400 text-xs truncate">${c.email || ''}</td>
+                    <td class="py-3 px-3 text-gray-300 truncate">${c.company || ''}</td>
+                    <td class="py-3 px-3 text-xs truncate">${c.website ? (function(){ var url = c.website; if (!/^https?:\/\//i.test(url)) url = 'https://' + url; var display = url.replace(/^https?:\/\//,'').replace(/\/$/,'').substring(0,25); return '<a href="' + url + '" target="_blank" class="text-green-400 hover:text-green-300">' + display + '</a>'; })() : ''}</td>
+                    <td class="py-3 px-3"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
+                    <td class="py-3 px-3"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
+                    <td class="py-3 px-3 text-gray-400 truncate">${c.country || ''}</td>
+                    <td class="py-3 px-3 text-gray-500 text-xs">${created}</td>
+                    <td class="py-3 px-3 text-gray-500 text-xs truncate" title="${(c.notes || '').replace(/"/g,'&quot;')}">${(c.notes || '').substring(0, 40)}</td>
+                    <td class="py-3 px-3 text-right whitespace-nowrap">
+                        <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
+                        ${c.status === 'interested' 
+                            ? `<button onclick="unmarkInterested('${c.id}')" class="text-gray-400 hover:text-gray-300 text-xs mr-2">${_t('Unmark')}</button>`
+                            : `<button onclick="markInterested('${c.id}')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">${_t('Interested')}</button>`}
+                        <button onclick="deleteCustomer('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">${_t('Delete')}</button>
+                    </td>
+                </tr>`;
+            }).join('');
         }
-        tbody.innerHTML = data.items.map(c => {
-            const scoreColor = c.score >= 60 ? '#22c55e' : c.score >= 30 ? '#eab308' : '#6b7280';
-            const statusColors = {lead: '#22c55e', contacted: '#3b82f6', interested: '#a855f7'};
-            const statusLabels = {lead: 'Lead', contacted: 'Contacted', interested: 'Interested'};
-            const sc = statusColors[c.status] || '#6b7280';
-            const sl = statusLabels[c.status] || c.status;
-            const created = c.created_at ? c.created_at.substring(0, 19).replace('T', ' ') : '';
-            return `<tr class="border-b border-gray-800 hover:bg-white/5">
-                <td class="py-3 px-3 text-white truncate">${c.name || ''}</td>
-                <td class="py-3 px-3 text-blue-400 text-xs truncate">${c.email || ''}</td>
-                <td class="py-3 px-3 text-gray-300 truncate">${c.company || ''}</td>
-                <td class="py-3 px-3 text-xs truncate">${c.website ? '<a href="' + c.website + '" target="_blank" class="text-green-400 hover:text-green-300">' + (c.website.replace(/^https?:\/\//,'').replace(/\/$/,'').substring(0,25)) + '</a>' : ''}</td>
-                <td class="py-3 px-3"><span class="badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
-                <td class="py-3 px-3"><span class="badge" style="background:${scoreColor}22;color:${scoreColor}">${c.score}</span></td>
-                <td class="py-3 px-3 text-gray-400 truncate">${c.country || ''}</td>
-                <td class="py-3 px-3 text-gray-500 text-xs">${created}</td>
-                <td class="py-3 px-3 text-gray-500 text-xs truncate" title="${(c.notes || '').replace(/"/g,'&quot;')}">${(c.notes || '').substring(0, 40)}</td>
-                <td class="py-3 px-3 text-right whitespace-nowrap">
-                    <button onclick="editCustomer('${c.id}')" class="text-blue-400 hover:text-blue-300 text-xs mr-2">${_t('Edit')}</button>
-                    ${c.status === 'interested' 
-                        ? `<button onclick="unmarkInterested('${c.id}')" class="text-gray-400 hover:text-gray-300 text-xs mr-2">${_t('Unmark')}</button>`
-                        : `<button onclick="markInterested('${c.id}')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">${_t('Interested')}</button>`}
-                    <button onclick="deleteCustomer('${c.id}')" class="text-red-400 hover:text-red-300 text-xs">${_t('Delete')}</button>
-                </td>
-            </tr>`;
-        }).join('');
+        
+        // Update pagination controls
+        document.getElementById('page-info').textContent = 'Showing ' + (((currentPage - 1) * currentPageSize) + 1) + ' - ' + Math.min(currentPage * currentPageSize, totalCustomers) + ' of ' + totalCustomers;
+        document.getElementById('page-numbers').textContent = currentPage + ' / ' + totalPages;
+        document.getElementById('btn-first').disabled = currentPage <= 1;
+        document.getElementById('btn-prev').disabled = currentPage <= 1;
+        document.getElementById('btn-next').disabled = currentPage >= totalPages;
+        document.getElementById('btn-last').disabled = currentPage >= totalPages;
     } catch(e) {
         document.getElementById('customer-table-body').innerHTML = '<tr><td colspan="10" class="text-red-400 py-8 text-center">' + _t('Failed to load') + '</td></tr>';
     }

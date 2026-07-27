@@ -124,7 +124,7 @@ async def generate_keywords(data: GenerateKeywordsRequest):
     """Use LLM to generate effective search keywords for a target market."""
     agent = TradeAgent(system_prompt="You are an international trade SEO expert.")
 
-    prompt = f"""Generate 10 effective search queries for finding buyers of the following product/market:
+    prompt = f"""Generate 10 effective search queries for finding buyers of the following packaging products/market:
 
 Market: {data.name}
 Keywords: {', '.join(data.keywords) if data.keywords else 'N/A'}
@@ -134,8 +134,15 @@ Industries: {', '.join(data.industries) if data.industries else 'N/A'}
 The queries should be things real buyers would search for on Google and B2B platforms.
 Include buyer-intent phrases like: "buyer", "importer", "supplier", "wholesale", "distributor", "RFQ", "quotation"
 
+Cover these packaging segments where relevant:
+- Gift boxes / rigid boxes / luxury packaging
+- Carton boxes / paper boxes / corrugated packaging
+- Fruit packaging / agricultural produce boxes
+- Logistics / shipping / transport packaging
+- PP hollow board / plastic packaging
+
 Respond with a JSON array of strings only, no explanation.
-Example: ["PP hollow sheet buyer USA", "corrugated plastic sheet importer Europe", ...]"""
+Example: ["gift box buyer USA", "carton box importer Europe", "fruit packaging supplier", ...]"""
     try:
         response = await agent.chat(prompt, temperature=0.7)
         # Extract JSON array
@@ -145,7 +152,7 @@ Example: ["PP hollow sheet buyer USA", "corrugated plastic sheet importer Europe
             return {"keywords": keywords[:15]}
         return {"keywords": [data.name]}
     except Exception:
-        # Fallback: generate basic keywords
+        # Fallback: generate basic keywords with packaging industry coverage
         base = data.name.lower().replace(" ", " ")
         return {
             "keywords": [
@@ -159,6 +166,11 @@ Example: ["PP hollow sheet buyer USA", "corrugated plastic sheet importer Europe
                 f"{base} manufacturer China",
                 f"{base} supplier",
                 f"{base} price",
+                "gift box buyer",
+                "carton box importer",
+                "fruit packaging supplier",
+                "logistics packaging wholesale",
+                "rigid box manufacturer",
             ]
         }
 

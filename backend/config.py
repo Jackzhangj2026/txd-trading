@@ -1,5 +1,6 @@
 """Application configuration via environment variables."""
 
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Literal
 
@@ -34,7 +35,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-this-to-a-random-string"
     debug: bool = True
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": str(Path(__file__).parent / ".env"), "env_file_encoding": "utf-8"}
 
 
 settings = Settings()

@@ -20,6 +20,7 @@ REPORT_FILE = Path("generated_sites") / "auto_crm_report.json"
 # --- Search Topics (from auto-crm/lead_search.py) ---
 
 SEARCH_TOPICS = [
+    # PP hollow board / core products
     {"product": "PP hollow sheet", "buyer": ["importer", "distributor", "wholesaler", "buyer"]},
     {"product": "corrugated plastic sheet", "buyer": ["importer", "distributor", "wholesaler"]},
     {"product": "PP hollow board", "buyer": ["manufacturer", "importer", "procurement"]},
@@ -30,11 +31,43 @@ SEARCH_TOPICS = [
     {"product": "reusable plastic container", "buyer": ["importer", "distributor"]},
     {"product": "ESD packaging material", "buyer": ["importer", "procurement"]},
     {"product": "plastic corrugated box", "buyer": ["importer", "wholesaler", "buyer"]},
+    # Gift box / rigid box packaging
+    {"product": "gift box", "buyer": ["importer", "distributor", "wholesaler", "manufacturer"]},
+    {"product": "rigid box", "buyer": ["importer", "supplier", "buyer"]},
+    {"product": "luxury packaging box", "buyer": ["importer", "distributor", "wholesaler"]},
+    {"product": "magnetic gift box", "buyer": ["importer", "procurement", "buyer"]},
+    {"product": "custom gift box", "buyer": ["importer", "manufacturer", "distributor"]},
+    # Carton / paper box packaging
+    {"product": "carton box", "buyer": ["importer", "distributor", "wholesaler", "buyer"]},
+    {"product": "paper box", "buyer": ["importer", "supplier", "distributor"]},
+    {"product": "corrugated carton", "buyer": ["importer", "wholesaler", "procurement"]},
+    {"product": "folding carton", "buyer": ["importer", "manufacturer", "buyer"]},
+    {"product": "kraft paper box", "buyer": ["importer", "distributor", "wholesaler"]},
+    # Fruit packaging
+    {"product": "fruit box", "buyer": ["importer", "distributor", "wholesaler", "buyer"]},
+    {"product": "fruit packaging", "buyer": ["importer", "manufacturer", "supplier"]},
+    {"product": "apple box", "buyer": ["importer", "wholesaler", "procurement"]},
+    {"product": "citrus packaging", "buyer": ["importer", "distributor", "buyer"]},
+    {"product": "fresh fruit carton", "buyer": ["importer", "supplier", "wholesaler"]},
+    # Agricultural / vegetable packaging
+    {"product": "vegetable box", "buyer": ["importer", "distributor", "wholesaler", "buyer"]},
+    {"product": "agricultural packaging", "buyer": ["importer", "manufacturer", "supplier"]},
+    {"product": "produce box", "buyer": ["importer", "wholesaler", "distributor"]},
+    {"product": "tomato box", "buyer": ["importer", "procurement", "buyer"]},
+    {"product": "fresh produce carton", "buyer": ["importer", "supplier", "manufacturer"]},
+    # Logistics / shipping packaging
+    {"product": "logistics packaging", "buyer": ["importer", "distributor", "wholesaler", "buyer"]},
+    {"product": "shipping box", "buyer": ["importer", "supplier", "procurement"]},
+    {"product": "heavy duty box", "buyer": ["importer", "manufacturer", "buyer"]},
+    {"product": "industrial packaging", "buyer": ["importer", "wholesaler", "distributor"]},
+    {"product": "export packaging", "buyer": ["importer", "supplier", "buyer"]},
 ]
 
 COUNTRIES = ["USA", "Germany", "UK", "France", "Italy", "Spain",
              "Netherlands", "Brazil", "Mexico", "UAE", "Saudi Arabia",
-             "South Africa", "Australia", "Poland", "Turkey"]
+             "South Africa", "Australia", "Poland", "Turkey",
+             "Canada", "Japan", "Singapore", "Thailand", "Vietnam",
+             "Chile", "Argentina", "Russia", "Sweden", "Belgium"]
 
 
 def generate_search_queries(day_of_month: int = None) -> list[str]:
@@ -85,12 +118,25 @@ async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
             continue
 
     # Parse companies directly from search result titles
+    # 严格要求：每个线索必须有真实URL来源，过滤掉社交媒体和非企业网站
     import re as _re2
     _email_re2 = _re2.compile(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b', _re2.IGNORECASE)
+    _NON_COMPANY_DOMAINS = (
+        "google.com", "youtube.com", "facebook.com", "linkedin.com",
+        "twitter.com", "instagram.com", "wikipedia.org", "bing.com",
+        "baidu.com", "pinterest.com"
+    )
     for result in all_results:
         title = (result.get("title") or "").strip()
         snippet = (result.get("snippet") or "").strip()
         url = (result.get("url") or "").strip()
+
+        # 必须有真实URL来源 — 无URL或社交媒体链接的搜索结果不可信
+        if not url or not url.startswith(("http://", "https://")):
+            continue
+        if any(skip in url.lower() for skip in _NON_COMPANY_DOMAINS):
+            continue
+
         company = ""
         if " - " in title:
             company = title.split(" - ")[0].strip()
@@ -142,6 +188,10 @@ async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
 
         if company.lower() in ("unknown", "") and not email:
             continue
+        # 必须有真实网站URL作为企业存在的证据
+        website = (lead.get("website") or "").strip()
+        if not website:
+            continue
         dedup_key = email if email else company.lower()
         if dedup_key in seen_companies:
             continue
@@ -153,7 +203,6 @@ async def step_search_new_leads(db: AsyncSession, max_save: int = 10) -> dict:
             existing_emails.add(email)
 
         name = company or email.split("@")[0] if email else "Unknown"
-        website = (lead.get("website") or "").strip()
         source_text = lead.get("source_text", "")
         notes = f"Auto-search: {product}" if product else ""
         if source_text:
@@ -352,67 +401,49 @@ async def step_enrich_emails(db: AsyncSession, target: int = 5) -> list[Customer
 
 
 async def scheduled_auto_crm_task():
-    """Daily auto-CRM: SEARCH -> SAVE -> SELECT -> SEND -> LOG.
-    Loops until target emails found OR max search batches exhausted.
-    Skips if today's target already reached."""
+    """Daily auto-CRM: SEARCH -> SAVE -> SELECT FROM CUSTOMER DB -> SEND -> LOG.
+    Recipients come from the existing customer list (with real email addresses).
+    Hard cap: 5 emails per day. Simulates human sending with random delays.
+    """
+    import random as _random
     start = datetime.now()
     today_str = start.strftime("%Y-%m-%d")
     report = {"date": today_str, "search": {}, "email": {}}
 
     async with async_session() as db:
         try:
-            # Read target from config
-            _cfg_file = Path(__file__).parent.parent.parent / "auto-crm" / "data" / "email_config.json"
-            target_emails = 5
-            if _cfg_file.exists():
-                try:
-                    _cfg = json.loads(_cfg_file.read_text(encoding="utf-8"))
-                    target_emails = _cfg.get("emails_per_run", 5)
-                except Exception: pass
+            # Daily limit — never send more than 5 per day
+            DAILY_LIMIT = 5
 
-            print(f"[Auto-CRM] Starting at {start.isoformat()}, target: {target_emails} emails per run")
-            remaining = target_emails
+            # Count emails already sent today (across all runs)
+            today_prefix = today_str  # YYYY-MM-DD
+            sent_today_result = await db.execute(
+                select(EmailLog).where(
+                    EmailLog.direction == "out",
+                    EmailLog.status == "sent",
+                    EmailLog.sent_at.like(f"{today_prefix}%"),
+                )
+            )
+            sent_today = len(sent_today_result.scalars().all())
+            remaining = max(0, DAILY_LIMIT - sent_today)
 
-            # Loop: search + enrich until target met (max 5 batches)
-            MAX_BATCHES = 5
-            enriched_emails = []
-            total_searched = 0
+            print(f"[Auto-CRM] Starting at {start.isoformat()}, sent today: {sent_today}/{DAILY_LIMIT}, remaining: {remaining}")
 
-            for batch_num in range(1, MAX_BATCHES + 1):
-                needed = remaining - len(enriched_emails)
-                if needed <= 0:
-                    break
-
-                batch_size = max(20, needed * 5)  # search 5x what we need
-                print(f"  [Auto-CRM] Batch {batch_num}/{MAX_BATCHES}: need {needed} more emails, searching {batch_size}...")
-
-                # Step 0: Search for new leads
-                search_result = await step_search_new_leads(db, max_save=batch_size)
-                total_searched += search_result.get("saved", 0)
-                report["search"] = search_result
-
-                # Step 1: Scrape websites for emails from unenriched leads
-                batch_enriched = await step_enrich_emails(db, target=needed)
-                enriched_emails.extend(batch_enriched)
-                report["email"]["enriched_batch_" + str(batch_num)] = len(batch_enriched)
-
-                if len(enriched_emails) >= target_emails:
-                    break
-
-            report["email"]["enrich_candidates_scraped"] = total_searched
-            report["email"]["target_emails"] = target_emails
-            report["email"]["enriched"] = len(enriched_emails)
-
-            # Step 2: Send emails to enriched leads
-            if not enriched_emails:
-                print("[Auto-CRM] No emails enriched — nothing to send")
+            if remaining == 0:
+                print("[Auto-CRM] Daily limit reached — skipping send")
                 report["email"]["sent"] = 0
-                report["email"]["skip_reason"] = f"no_emails_found_from_{total_searched}_searched"
-                await db.commit()
+                report["email"]["skip_reason"] = "daily_limit_reached"
                 _save_report(report)
                 return report
 
-            # Get mailbox & template
+            # Step 0: Search & save new leads (keeps the customer list growing)
+            search_result = await step_search_new_leads(db, max_save=20)
+            report["search"] = search_result
+
+            # Step 1: Enrich emails for website-only leads (still useful)
+            await step_enrich_emails(db, target=5)
+
+            # Step 2: Get mailbox & template
             mailbox_result = await db.execute(
                 select(Mailbox).where(Mailbox.active == True).order_by(Mailbox.created_at.desc())
             )
@@ -426,7 +457,7 @@ async def scheduled_auto_crm_task():
                 return report
 
             template_result = await db.execute(
-                select(EmailTemplate).where(EmailTemplate.name == "auto_crm_first_contact")
+                select(EmailTemplate).where(EmailTemplate.name == "cold_first_contact")
             )
             template = template_result.scalar_one_or_none()
             if not template:
@@ -437,29 +468,71 @@ async def scheduled_auto_crm_task():
                 _save_report(report)
                 return report
 
-            if not mailbox:
-                print("[Auto-CRM] No active mailbox configured")
+            # Step 3: Select recipients from EXISTING customers with real emails.
+            # Rule: new customers first (created_at DESC), and skip anyone emailed
+            # within the last 15 days to avoid high-frequency repeat sending.
+            fifteen_days_ago = (datetime.now(timezone.utc) - timedelta(days=15)).isoformat()
+            # Customer emails that were sent to in the last 15 days (exclude these)
+            recent_sent_result = await db.execute(
+                select(EmailLog.customer_id).where(
+                    EmailLog.direction == "out",
+                    EmailLog.status == "sent",
+                    EmailLog.sent_at >= fifteen_days_ago,
+                    EmailLog.customer_id.isnot(None),
+                )
+            )
+            recent_sent_ids = {row[0] for row in recent_sent_result.fetchall()}
+
+            recipients_result = await db.execute(
+                select(Customer).where(
+                    Customer.status.notin_(["contacted", "interested"]),
+                    Customer.email != "",
+                    Customer.email.isnot(None),
+                ).order_by(Customer.created_at.desc()).limit(remaining * 5)
+            )
+            all_candidates = list(recipients_result.scalars().all())
+
+            # Filter out customers emailed within 15 days
+            recipients = []
+            for c in all_candidates:
+                if c.id in recent_sent_ids:
+                    continue
+                recipients.append(c)
+                if len(recipients) >= remaining:
+                    break
+
+            if not recipients:
+                print("[Auto-CRM] No eligible customers with email — nothing to send")
                 report["email"]["sent"] = 0
-                await db.commit()
-                _save_report(report)
-                return report
-            if not template:
-                print("[Auto-CRM] No email template found")
-                report["email"]["sent"] = 0
+                report["email"]["skip_reason"] = "no_eligible_customers"
                 await db.commit()
                 _save_report(report)
                 return report
 
-            # Step 4: Send emails to enriched leads
+            print(f"  [Auto-CRM] Selected {len(recipients)} recipients (newest first, 15-day cooldown applied; {len(all_candidates) - len(recipients)} skipped due to recent contact)")
+
+            # Step 4: Send emails with human-like random delays (30-180 seconds between sends)
             sent_count = 0
-            for customer in enriched_emails:
+            for idx, customer in enumerate(recipients):
+                if sent_count >= remaining:
+                    break
                 if not customer.email:
                     continue
-                # Calculate subject once per customer
+
+                # Random delay between emails (skip before the first send)
+                if idx > 0:
+                    delay = _random.randint(30, 180)
+                    print(f"  [Auto-CRM] Human-like delay: waiting {delay}s before next send...")
+                    await asyncio.sleep(delay)
+
                 email_subject = (template.subject_template or "Introduction from TXD CO., LTD")
                 email_subject = email_subject.replace("{{company_name}}", customer.company or "TXD CO., LTD")
                 email_subject = email_subject.replace("{{CONTACT_NAME}}", customer.name or "Valued Partner")
+                email_subject = email_subject.replace("{{company}}", customer.company or "TXD CO., LTD")
+                email_subject = email_subject.replace("{{name}}", customer.name or "Valued Partner")
+                email_subject = email_subject.replace("{{country}}", customer.country or "")
 
+                print(f"  [Auto-CRM] Sending to {customer.email} ({customer.company or 'unknown'})...")
                 success = await send_development_email(customer, mailbox, template)
                 if success:
                     sent_count += 1
@@ -475,36 +548,19 @@ async def scheduled_auto_crm_task():
                         status="sent", sent_at=datetime.now(timezone.utc).isoformat(),
                     )
                     db.add(log)
+                    # Commit after each send so progress is saved even if interrupted
+                    await db.commit()
+                    print(f"  [Auto-CRM] ✓ Sent {sent_count}/{remaining} to {customer.email}")
+                else:
+                    print(f"  [Auto-CRM] ✗ Failed to send to {customer.email}")
 
             await db.commit()
             elapsed = (datetime.now() - start).total_seconds()
             report["email"]["sent"] = sent_count
+            report["email"]["daily_limit"] = DAILY_LIMIT
+            report["email"]["sent_before_run"] = sent_today
             report["elapsed_seconds"] = round(elapsed, 1)
-            print(f"  [Auto-CRM] Done: sent {sent_count}/{target_emails}, searched {total_searched} new leads, {elapsed:.0f}s")
-
-            # Sync auto-crm lead statuses into customers
-            from pathlib import Path as _Path
-            leads_file = _Path(__file__).parent.parent.parent / "auto-crm" / "data" / "leads.json"
-            if leads_file.exists():
-                try:
-                    all_leads = json.loads(leads_file.read_text(encoding="utf-8"))
-                    synced = 0
-                    for lead in all_leads:
-                        if lead.get("status") != "contacted":
-                            continue
-                        email = (lead.get("email") or "").strip().lower()
-                        if not email:
-                            continue
-                        r = await db.execute(select(Customer).where(Customer.email == email))
-                        c = r.scalar_one_or_none()
-                        if c and c.status != "contacted":
-                            c.status = "contacted"
-                            synced += 1
-                    if synced > 0:
-                        await db.commit()
-                        print(f"  [Auto-CRM] Synced {synced} customer statuses to contacted")
-                except Exception as e:
-                    print(f"  [Auto-CRM] Status sync error: {e}")
+            print(f"  [Auto-CRM] Done: sent {sent_count}/{remaining} (today total {sent_today + sent_count}/{DAILY_LIMIT}), {elapsed:.0f}s")
 
         except Exception as e:
             print(f"[Auto-CRM] Error: {e}")

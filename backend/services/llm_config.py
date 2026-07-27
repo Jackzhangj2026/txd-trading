@@ -58,7 +58,21 @@ def get_api_key(provider: str, runtime_config: Optional[dict] = None) -> str:
     if db_key and runtime_config.get(db_key):
         return runtime_config[db_key]
 
-    # Fallback to env
+    # Fallback to backend.config.settings (reads .env via pydantic-settings)
+    try:
+        from backend.config import settings
+        settings_map = {
+            "deepseek": settings.deepseek_api_key,
+            "openai": settings.openai_api_key,
+            "claude": settings.anthropic_api_key,
+        }
+        key = settings_map.get(provider)
+        if key:
+            return key
+    except Exception:
+        pass
+
+    # Final fallback to os.environ
     env_map = {
         "deepseek": "DEEPSEEK_API_KEY",
         "openai": "OPENAI_API_KEY",
