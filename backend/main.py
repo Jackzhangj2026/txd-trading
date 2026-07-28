@@ -95,3 +95,8 @@ async def health_check():
         "database": "connected" if db_ok else "disconnected",
         "has_api_key": has_key,
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000)
